@@ -1,4 +1,4 @@
-**C# OpenGL graphics engine**
+# C# OpenGL graphics engine
 
 Made with c# and openTK c# library
 
