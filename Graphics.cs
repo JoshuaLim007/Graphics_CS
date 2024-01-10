@@ -33,10 +33,10 @@ namespace JLGraphics
         public static List<Camera> Cameras { get; set; }
         public static Shader DefaultMaterial { get; private set; }
 
-        public static float FixedDeltaTime { get; internal set; } = 0;
-        public static float DeltaTime { get; private set; } = 0;
-        public static float SmoothDeltaTime { get; private set; } = 0;
-        public static float ElapsedTime { get; private set; } = 0;
+        internal static float FixedDeltaTime { get; set; } = 0;
+        internal static float DeltaTime { get; private set; } = 0;
+        internal static float SmoothDeltaTime { get; private set; } = 0;
+        internal static float ElapsedTime { get; private set; } = 0;
         public static bool DisableRendering { get; set; } = false;
 
         private static int m_drawCount = 0;
