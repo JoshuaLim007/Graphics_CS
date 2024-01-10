@@ -33,4 +33,13 @@
     <PackageReference Include="StbImageSharp" Version="2.27.13" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Mesh\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Shaders\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  
 </Project>

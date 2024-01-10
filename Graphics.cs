@@ -78,7 +78,7 @@ namespace JLGraphics
             float statsInterval = 0.0f;
             Cameras = new List<Camera>();
 
-            DefaultMaterial = new Shader("Default", "../../../../JLGraphics/fragment.glsl", "../../../../JLGraphics/vertex.glsl");
+            DefaultMaterial = new Shader("Default", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
 
             DateTime time1 = DateTime.Now;
@@ -92,7 +92,6 @@ namespace JLGraphics
                 float updateFreq = 1.0f / FixedDeltaTime;
                 if (Window.UpdateFrequency != updateFreq)
                 {
-                    Console.WriteLine("Updated update frequency");
                     Window.UpdateFrequency = updateFreq;
                 }
             };
@@ -210,7 +209,38 @@ namespace JLGraphics
                 }
             }
         }
-        
+        static void mInvokeUpdates()
+        {
+            for (int i = 0; i < Entity.AllUpdates.Count; i++)
+            {
+                var current = Entity.AllUpdates[i];
+                if (!current.IsActiveAndEnabled())
+                {
+                    continue;
+                }
+                current.Update();
+            }
+        }
+        static void mInvokeOnRenders(int cameraIndex)
+        {
+            //invoke render event
+            for (int i = 0; i < Entity.AllOnRenders.Count; i++)
+            {
+                var current = Entity.AllOnRenders[i];
+                if (!current.IsActiveAndEnabled())
+                {
+                    continue;
+                }
+                current.OnRender(Cameras[cameraIndex]);
+            }
+        }
+        static void mSetShaderCameraData(int cameraIndex)
+        {
+            Shader.SetGlobalMat4("_projectionMatrix", Cameras[cameraIndex].ProjectionMatrix);
+            Shader.SetGlobalMat4("_viewMatrix", Cameras[cameraIndex].ViewMatrix);
+            Shader.SetGlobalVector3("_cameraWorldSpacePos", Cameras[cameraIndex].Transform.Position);
+            Shader.SetGlobalVector3("_cameraDirection", Cameras[cameraIndex].Transform.Forward);
+        }
         private static void Update()
         {
             m_drawCount = 0;
@@ -221,22 +251,10 @@ namespace JLGraphics
                 GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
                 //apply global matrices
-                Shader.SetGlobalMat4("_projectionMatrix", Cameras[cameraIndex].ProjectionMatrix);
-                Shader.SetGlobalMat4("_viewMatrix", Cameras[cameraIndex].ViewMatrix);
-                Shader.SetGlobalVector3("_CameraWorldSpacePos", Cameras[cameraIndex].Transform.Position);
-                Shader.SetGlobalVector3("_CameraDirection", Cameras[cameraIndex].Transform.Forward);
+                mSetShaderCameraData(cameraIndex);
 
                 //invoke update event
-                for (int i = 0; i < Entity.AllUpdates.Count; i++)
-                {
-                    var current = Entity.AllUpdates[i];
-                    if (!current.IsActiveAndEnabled())
-                    {
-                        continue;
-                    }
-
-                    current.Update();
-                }
+                mInvokeUpdates();
 
                 //Render Everything
                 //vvvvvvvvvvvvvvvvv
@@ -247,16 +265,8 @@ namespace JLGraphics
                     continue;
                 }
 
-                //invoke render event
-                for (int i = 0; i < Entity.AllOnRenders.Count; i++)
-                {
-                    var current = Entity.AllOnRenders[i];
-                    if (!current.IsActiveAndEnabled())
-                    {
-                        continue;
-                    }
-                    current.OnRender(Cameras[cameraIndex]);
-                }
+                //invoke on render
+                mInvokeOnRenders(cameraIndex);
 
                 //apply dynamic batching
                 //apply static batching

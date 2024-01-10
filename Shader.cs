@@ -85,6 +85,18 @@ namespace JLGraphics
             Name = name;
             int vshader = GL.CreateShader(ShaderType.VertexShader);
             int fshader = GL.CreateShader(ShaderType.FragmentShader);
+
+            if (!File.Exists(fragmentShader))
+            {
+                Console.WriteLine("Fragment Shader not found: " + fragmentShader);
+                return;
+            }
+            if (!File.Exists(vertexShader))
+            {
+                Console.WriteLine("Vertex Shader not found: " + vertexShader);
+                return;
+            }
+
             GL.ShaderSource(vshader, File.ReadAllText(vertexShader));
             GL.ShaderSource(fshader, File.ReadAllText(fragmentShader));
             GL.CompileShader(vshader);

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace JLGraphics
 {
@@ -54,7 +55,28 @@ namespace JLGraphics
         internal static List<IStart> AllStarts { get; } = new List<IStart>();
         internal static List<IOnRender> AllOnRenders { get; } = new List<IOnRender>();
 
-
+        public static Entity FindObjectByName(string name)
+        {
+            for (int i = 0; i < AllEntities.Count; i++)
+            {
+                if (AllEntities[i].Name == name)
+                {
+                    return AllEntities[i];
+                }
+            }
+            return null;
+        }
+        public static Entity FindObjectOfType<T>() where T: Component
+        {
+            for (int i = 0; i < AllEntities.Count; i++)
+            {
+                if (AllEntities[i].HasComponent<T>())
+                {
+                    return AllEntities[i];
+                }
+            }
+            return null;
+        }
 
         private List<Component> m_components = new List<Component>();
         private void Init(Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
@@ -104,7 +126,7 @@ namespace JLGraphics
             }
             return null;
         }
-        public T AddComponent<T>(T instance) where T : Component
+        public Entity AddComponent<T>(T instance) where T : Component
         {
             m_components.Add(instance);
             if(typeof(IUpdate).IsAssignableFrom(typeof(T)))
@@ -128,17 +150,13 @@ namespace JLGraphics
                 AllRenderers.Add(instance as Renderer);
             }
             instance.Entity = this;
-            return instance;
+            return this;
         }
-        public void RemoveComponent<T>(T instance) where T : Component
-        {
-            m_components.Remove(instance);
-        }
-        public bool HasComponent<T>(T instance) where T : Component
+        public bool HasComponent<T>() where T : Component
         {
             for (int i = 0; i < m_components.Count; i++)
             {
-                if (m_components[i] == instance)
+                if (m_components[i].GetType() == typeof(T))
                 {
                     return true;
                 }

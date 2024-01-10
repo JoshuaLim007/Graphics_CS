@@ -35,7 +35,7 @@ namespace JLGraphics
 
         public bool IsCameraTransform { get; internal set; } = false;
 
-        public Vector3 Forward => CalculateLocalAxis(Vector4.UnitZ);
+        public Vector3 Forward => CalculateLocalAxis(-Vector4.UnitZ);
         public Vector3 Right => CalculateLocalAxis(Vector4.UnitX);
         public Vector3 Up => CalculateLocalAxis(Vector4.UnitY);
 
