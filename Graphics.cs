@@ -207,6 +207,7 @@ namespace JLGraphics
                 }
             }
         }
+        
         static void mInvokeUpdates()
         {
             for (int i = 0; i < Entity.AllUpdates.Count; i++)
@@ -219,7 +220,7 @@ namespace JLGraphics
                 current.Update();
             }
         }
-        static void mInvokeOnRenders(int cameraIndex)
+        static void mInvokeOnRenders(Camera camera)
         {
             //invoke render event
             for (int i = 0; i < Entity.AllOnRenders.Count; i++)
@@ -229,16 +230,28 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                current.OnRender(Cameras[cameraIndex]);
+                current.OnRender(camera);
             }
         }
-        static void mSetShaderCameraData(int cameraIndex)
+        static void mSetShaderCameraData(Camera camera)
         {
-            Shader.SetGlobalMat4("_projectionMatrix", Cameras[cameraIndex].ProjectionMatrix);
-            Shader.SetGlobalMat4("_viewMatrix", Cameras[cameraIndex].ViewMatrix);
-            Shader.SetGlobalVector3("_cameraWorldSpacePos", Cameras[cameraIndex].Transform.Position);
-            Shader.SetGlobalVector3("_cameraDirection", Cameras[cameraIndex].Transform.Forward);
+            Shader.SetGlobalMat4("_projectionMatrix", camera.ProjectionMatrix);
+            Shader.SetGlobalMat4("_viewMatrix", camera.ViewMatrix);
+            Shader.SetGlobalVector3("_cameraWorldSpacePos", camera.Transform.Position);
+            Shader.SetGlobalVector3("_cameraDirection", camera.Transform.Forward);
         }
+        static void mSetDrawMode(bool wireframe)
+        {
+            if (wireframe)
+            {
+                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
+            }
+            else
+            {
+                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+            }
+        }
+        
         public class RenderTexture
         {
             public int width { get; }
@@ -268,9 +281,9 @@ namespace JLGraphics
                 GL.GenTextures(1, renderedTexture);
                 GL.BindTexture(TextureTarget.Texture2D, renderedTexture[0]);
                 GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, width, height, 0, pixelFormat, PixelType.UnsignedByte, IntPtr.Zero);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (float)All.Linear);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (float)All.Linear);
-
+                int linearFilter = (int)All.Linear;
+                GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, ref linearFilter);
+                GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, ref linearFilter);
                 // Set "renderedTexture" as our colour attachement #0
                 GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, renderedTexture[0], 0);
 
@@ -279,7 +292,6 @@ namespace JLGraphics
                 GL.GenRenderbuffers(1, depthrenderbuffer);
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, depthrenderbuffer[0]);
                 GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Depth24Stencil8, width, height);
-
                 //set depth and stencil
                 GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, depthrenderbuffer[0]);
 
@@ -302,6 +314,7 @@ namespace JLGraphics
             public void BindFrameBuffer()
             {
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferPtr);
+                GL.Viewport(0,0,width,height);
             }
         }
 
@@ -342,16 +355,16 @@ namespace JLGraphics
 
             // Render to the screen
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+            GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit);
             GL.Viewport(0, 0, m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y);
 
-            //set maintex
-            CopyToScreenShader.SetTexture(0, "MainTex", rt.colorAttachmentTexturePtr);
             CopyToScreenShader.SetVector2("MainTex_Size", new Vector2(rt.width, rt.height));
             CopyToScreenShader.UseProgram();
 
             //disable depth testing
             GL.Disable(EnableCap.DepthTest);
-
+            GL.BindTexture(TextureTarget.Texture2D, rt.colorAttachmentTexturePtr);
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
             GL.BindVertexArray(0);
@@ -364,110 +377,80 @@ namespace JLGraphics
             m_shaderMeshBindCount = 0;
             m_verticesCount = 0;
 
-            for (int cameraIndex = 0; cameraIndex < Cameras.Count; cameraIndex++)
+            GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
+            GL.Enable(EnableCap.DepthTest);
+
+            for (int cameraIndex = 0; cameraIndex < Cameras.Count && !DisableRendering; cameraIndex++)
             {
-                RenderTexture rt = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelFormat.Rgba);
-                rt.BindFrameBuffer();
-                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-                GL.Enable(EnableCap.DepthTest);
+                mRenderCamera(Cameras[cameraIndex]);
+            }
 
-                //apply global matrices
-                mSetShaderCameraData(cameraIndex);
+            Window.SwapBuffers();
+        }
 
-                //invoke update event
-                mInvokeUpdates();
+        static void mRenderCamera(Camera camera)
+        {
+            Mesh? previousMesh = null;
+            Shader? previousMaterial = null;
 
-                //Render Everything
-                //vvvvvvvvvvvvvvvvv
+            mSetShaderCameraData(camera);
+            mInvokeUpdates();
+            mInvokeOnRenders(camera);
+            mSetDrawMode(camera.EnabledWireFrame);
 
-                if (DisableRendering)
+            //TODO:
+            //apply dynamic batching
+            //apply static batching
+
+            //render each renderer
+            for (int i = 0; i < Entity.AllRenderers.Count; i++)
+            {
+                var current = Entity.AllRenderers[i];
+                if (current == null || !current.Enabled || current.Material == null)
                 {
-                    Window.SwapBuffers();
                     continue;
                 }
+                Mesh meshData = current.Mesh;
+                Shader material = current.Material;
 
-                //invoke on render
-                mInvokeOnRenders(cameraIndex);
-
-                //apply dynamic batching
-                //apply static batching
-
-                Mesh previousMesh = null;
-                Shader previousMaterial = null;
-
-                if (Cameras[cameraIndex].EnabledWireFrame)
+                //bind shader and mesh
+                //don't bind if the previous mesh and previous material are the same
+                if (meshData != previousMesh || material != previousMaterial)
                 {
-                    GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
-                }
-                else
-                {
-                    GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
-                }
+                    //unbind previous mesh and shader
+                    GL.BindVertexArray(0);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+                    Shader.Unbind();
 
-                //render each renderer
-                for (int i = 0; i < Entity.AllRenderers.Count; i++)
-                {
-                    var current = Entity.AllRenderers[i];
-                    if (current == null || !current.Enabled)
-                    {
-                        continue;
-                    }
+                    m_shaderMeshBindCount++;
 
-                    //if no material, then don't render object
-                    if (current.Material == null)
-                    {
-                        continue;
-                    }
+                    //bind new stuff
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
+                    GL.BindVertexArray(meshData.VertexArrayObject);
+                    material.UseProgram();
 
-                    Mesh meshData = current.Mesh;
-                    Shader material = current.Material;
-
-                    //bind
-                    //don't bind if the previous mesh and previous material are the same
-                    if (meshData != previousMesh || material != previousMaterial)
-                    {
-                        //unbind previous mesh and shader
-                        GL.BindVertexArray(0);
-                        GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
-                        Shader.Unbind();
-
-                        m_shaderMeshBindCount++;
-
-                        //bind new stuff
-                        GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
-                        GL.BindVertexArray(meshData.VertexArrayObject);
-                        material.UseProgram();
-
-                        previousMaterial = current.Material;
-                        previousMesh = meshData;
-                    }
-
-                    m_verticesCount += meshData.VertexCount;
-
-                    //apply model matrix
-                    var val = current.Entity.Transform.WorldToLocalMatrix;
-                    GL.UniformMatrix4(current.Material.GetUniformLocation("_modelMatrix"), false, ref val);
-
-                    //draw to RT
-                    GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
-
-                    m_drawCount++;
+                    previousMaterial = current.Material;
+                    previousMesh = meshData;
                 }
 
+                m_verticesCount += meshData.VertexCount;
 
-                //blit RT to screen
-                BlitRT(rt);
+                //apply model matrix
+                var val = current.Entity.Transform.WorldToLocalMatrix;
+                GL.UniformMatrix4(current.Material.GetUniformLocation("_modelMatrix"), false, ref val);
 
-                //dispose RT
-                rt.Dispose();
+                //render object
+                GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
 
-                //unbind
-                GL.BindVertexArray(0);
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
-                Shader.Unbind();
-
-                Window.SwapBuffers();
+                m_drawCount++;
             }
+
+            //unbind
+            GL.BindVertexArray(0);
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+            Shader.Unbind();
         }
+
     }
 }
