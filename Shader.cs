@@ -1,4 +1,5 @@
-﻿using ObjLoader.Loader.Data.VertexData;
+﻿using Assimp.Unmanaged;
+using ObjLoader.Loader.Data.VertexData;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using StbImageSharp;
@@ -34,6 +35,27 @@ namespace JLGraphics
             textures[textureIndex] = texture;
             
             if (texture != null)
+            {
+                textureMask |= 1 << textureIndex;
+            }
+            else
+            {
+                textureMask &= ~(1 << textureIndex);
+            }
+
+            var texLoc = GL.GetUniformLocation(ProgramId, uniformName);
+            GL.Uniform1(texLoc, textureIndex);
+
+            GL.UseProgram(previousProgram);
+        }
+        public void SetTexture(int textureIndex, string uniformName, int texturePtr)
+        {
+            var previousProgram = GL.GetInteger(GetPName.CurrentProgram);
+            GL.UseProgram(ProgramId);
+
+            textures[textureIndex] = (Texture)texturePtr;
+
+            if (texturePtr != 0)
             {
                 textureMask |= 1 << textureIndex;
             }

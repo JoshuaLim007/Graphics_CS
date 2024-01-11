@@ -9,7 +9,7 @@ in VS_OUT{
 	vec3 Tangent;
 } fs_in;
 
-//out to screen
+//out to render texture
 out vec4 frag;
 
 //textures

@@ -1,10 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using StbImageSharp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JLGraphics
 {
@@ -22,13 +17,14 @@ namespace JLGraphics
         public TextureMagFilter textureMagFilter { get; set; }
 
         public ImageResult image { get; private set; }
-        public int textureID { get; }
+        public int textureID { get; private set; }
 
         public Texture()
         {
             textureID = GL.GenTexture();
         }
-
+        public static implicit operator int(Texture texture) => texture.textureID;
+        public static explicit operator Texture(int ptr) => new Texture() {textureID = ptr};
         public void Apply()
         {
             GL.BindTexture(TextureTarget.Texture2D, textureID);
