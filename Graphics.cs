@@ -169,6 +169,13 @@ namespace JLGraphics
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
             PassthroughShader = new Shader("PassthroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
+            InitialFrameBuffer = CreateFrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelInternalFormat.Rgba, PixelFormat.Rgba);
+        }
+        public static void Free()
+        {
+            FreeFrameBuffer(InitialFrameBuffer);
+            GL.DeleteVertexArray(FullScreenQuad);
+            m_isInit = false;
         }
         public static void Run()
         {
@@ -237,10 +244,10 @@ namespace JLGraphics
         }
         static void SetShaderCameraData(Camera camera)
         {
-            Shader.SetGlobalMat4("_projectionMatrix", camera.ProjectionMatrix);
-            Shader.SetGlobalMat4("_viewMatrix", camera.ViewMatrix);
-            Shader.SetGlobalVector3("_cameraWorldSpacePos", camera.Transform.Position);
-            Shader.SetGlobalVector3("_cameraDirection", camera.Transform.Forward);
+            Shader.SetGlobalMat4("ProjectionMatrix", camera.ProjectionMatrix);
+            Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
+            Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
+            Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
         }
         static void SetDrawMode(bool wireframe)
         {
@@ -254,7 +261,7 @@ namespace JLGraphics
             }
         }
 
-        public struct FrameBuffer
+        internal struct FrameBuffer
         {
             public int Width { get; }
             public int Height { get; }
@@ -272,7 +279,8 @@ namespace JLGraphics
         }
         static int FullScreenQuad = 0;
         static Shader PassthroughShader = null;
-        static int CreateFullScreenQuad()
+        static FrameBuffer InitialFrameBuffer;
+        internal static int CreateFullScreenQuad()
         {
             int[] quad_VertexArrayID = new int[1];
             GL.GenVertexArrays(1, quad_VertexArrayID);
@@ -296,7 +304,7 @@ namespace JLGraphics
             int vao = quad_VertexArrayID[0];
             return vao;
         }
-        public static void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        internal static void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
         {
             // second pass
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, dst.FrameBufferObject);
@@ -311,10 +319,12 @@ namespace JLGraphics
 
             GL.BindVertexArray(FullScreenQuad);
             GL.Disable(EnableCap.DepthTest);
+            m_drawCount++;
+            m_verticesCount += 6;
 
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
         }
-        public static FrameBuffer CreateFrameBuffer(int width, int height, PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
+        internal static FrameBuffer CreateFrameBuffer(int width, int height, PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
         {
             int fbo;
             int textureColorbuffer;
@@ -356,24 +366,22 @@ namespace JLGraphics
 
             return new FrameBuffer(width, height, fbo, textureColorbuffer, rbo);
         }
-        public static void FreeFrameBuffer(FrameBuffer frameBuffer)
+        internal static void FreeFrameBuffer(FrameBuffer frameBuffer)
         {
             GL.DeleteFramebuffer(frameBuffer.FrameBufferObject);
             GL.DeleteTexture(frameBuffer.ColorAttach0);
             GL.DeleteRenderbuffer(frameBuffer.RenderBufferObject);
         }
-        public static FrameBuffer GetScreenFrameBuffer()
+        internal static FrameBuffer GetScreenFrameBuffer()
         {
             return new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, 0, 0, 0);
         }
 
         private static void Update()
         {
-            var srcBuffer = CreateFrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelInternalFormat.Rgba, PixelFormat.Rgba);
-
             //bind RT
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, srcBuffer.FrameBufferObject);
-            GL.Viewport(0, 0, srcBuffer.Width, srcBuffer.Height);
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, InitialFrameBuffer.FrameBufferObject);
+            GL.Viewport(0, 0, InitialFrameBuffer.Width, InitialFrameBuffer.Height);
 
             //draw scene (first pass)
             m_drawCount = 0;
@@ -388,9 +396,7 @@ namespace JLGraphics
             }
 
             // second pass
-            Blit(srcBuffer, GetScreenFrameBuffer(), null);
-
-            FreeFrameBuffer(srcBuffer);
+            Blit(InitialFrameBuffer, GetScreenFrameBuffer(), null);
 
             Window.SwapBuffers();
         }
@@ -444,7 +450,7 @@ namespace JLGraphics
 
                 //apply model matrix
                 var val = current.Entity.Transform.WorldToLocalMatrix;
-                GL.UniformMatrix4(current.Material.GetUniformLocation("_modelMatrix"), false, ref val);
+                GL.UniformMatrix4(current.Material.GetUniformLocation("ModelMatrix"), false, ref val);
 
                 //render object
                 GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);

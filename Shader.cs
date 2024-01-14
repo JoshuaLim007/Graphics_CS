@@ -1,15 +1,5 @@
-﻿using Assimp.Unmanaged;
-using ObjLoader.Loader.Data.VertexData;
-using OpenTK.Graphics.OpenGL;
+﻿using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using StbImageSharp;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace JLGraphics
 {
@@ -73,58 +63,20 @@ namespace JLGraphics
         static readonly List<Shader> m_shaderInstances = new List<Shader>();
         
         
-
-        public Shader(Shader shader)
+        int CompileShader(string fragmentShader, string vertexShader)
         {
-            FragmentShaderPath = shader.FragmentShaderPath;
-            VertexShaderPath = shader.VertexShaderPath;
-            Name = shader.Name + "_clone";
             int vshader = GL.CreateShader(ShaderType.VertexShader);
             int fshader = GL.CreateShader(ShaderType.FragmentShader);
-            GL.ShaderSource(vshader, File.ReadAllText(VertexShaderPath));
-            GL.ShaderSource(fshader, File.ReadAllText(FragmentShaderPath));
-            GL.CompileShader(vshader);
-            GL.CompileShader(fshader);
-            string d = GL.GetShaderInfoLog(vshader);
-            if(d != "")
-                Console.WriteLine(d);
-            d = GL.GetShaderInfoLog(fshader);
-            if (d != "")
-                Console.WriteLine(d);
-            int program = GL.CreateProgram();
-            GL.AttachShader(program, vshader);
-            GL.AttachShader(program, fshader);
-            GL.LinkProgram(program);
-            GL.DetachShader(program, vshader);
-            GL.DetachShader(program, fshader);
-            GL.DeleteShader(vshader);
-            GL.DeleteShader(fshader);
-            d = GL.GetProgramInfoLog(program);
-            if(d != "")
-                Console.WriteLine(d);
-            ProgramId = program;
-            m_shaderInstances.Add(this);
-        }
-
-        public Shader(string name, string fragmentShader, string vertexShader)
-        {
-            FragmentShaderPath = fragmentShader;
-            VertexShaderPath = vertexShader;
-            Name = name;
-            int vshader = GL.CreateShader(ShaderType.VertexShader);
-            int fshader = GL.CreateShader(ShaderType.FragmentShader);
-
             if (!File.Exists(fragmentShader))
             {
                 Console.WriteLine("Fragment Shader not found: " + fragmentShader);
-                return;
+                return 0;
             }
             if (!File.Exists(vertexShader))
             {
                 Console.WriteLine("Vertex Shader not found: " + vertexShader);
-                return;
+                return 0;
             }
-
             GL.ShaderSource(vshader, File.ReadAllText(vertexShader));
             GL.ShaderSource(fshader, File.ReadAllText(fragmentShader));
             GL.CompileShader(vshader);
@@ -146,7 +98,24 @@ namespace JLGraphics
             d = GL.GetProgramInfoLog(program);
             if (d != "")
                 Console.WriteLine(d);
-            ProgramId = program;
+            return program;
+        }
+        public Shader(Shader shader)
+        {
+            FragmentShaderPath = shader.FragmentShaderPath;
+            VertexShaderPath = shader.VertexShaderPath;
+
+            Name = shader.Name + "_clone";
+            ProgramId = CompileShader(FragmentShaderPath, VertexShaderPath);
+            m_shaderInstances.Add(this);
+        }
+
+        public Shader(string name, string fragmentShader, string vertexShader)
+        {
+            FragmentShaderPath = fragmentShader;
+            VertexShaderPath = vertexShader;
+            Name = name;
+            ProgramId = CompileShader(FragmentShaderPath, VertexShaderPath);
             m_shaderInstances.Add(this);
         }
         ~Shader()

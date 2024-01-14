@@ -41,17 +41,17 @@ uniform vec3 AlbedoColor;
 uniform vec3 EmissiveColor;
 
 //matrices
-uniform mat4 _viewMatrix;
-uniform mat4 _projectionMatrix;
-uniform mat4 _modelMatrix;
+uniform mat4 ViewMatrix;
+uniform mat4 ProjectionMatrix;
+uniform mat4 ModelMatrix;
 
 //misc
-uniform vec3 _cameraWorldSpacePos;
-uniform vec3 _cameraDirection;
+uniform vec3 CameraWorldSpacePos;
+uniform vec3 CameraDirection;
 
 void main(){
 
-	vec3 viewVector = normalize(fs_in.Position.xyz - _cameraWorldSpacePos.xyz);
+	vec3 viewVector = normalize(fs_in.Position.xyz - CameraWorldSpacePos.xyz);
 	vec3 sunDirection = normalize(vec3(1,1,1));
 
 	vec4 color = vec4(1,1,1,1);

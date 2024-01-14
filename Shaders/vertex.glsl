@@ -16,15 +16,15 @@ out VS_OUT{
 	vec3 Tangent;
 } vs_out;
 
-uniform mat4 _viewMatrix;
-uniform mat4 _projectionMatrix;
-uniform mat4 _modelMatrix;
+uniform mat4 ViewMatrix;
+uniform mat4 ProjectionMatrix;
+uniform mat4 ModelMatrix;
 
 void main(){
 	vs_out.Color = aColor;
 	vs_out.TexCoord = aTexCoord;
-	vs_out.Normal = normalize((_modelMatrix * vec4(aNormal, 0.0)).xyz);
-	vs_out.Position = (_modelMatrix * vec4(aPosition,1)).xyz;
-	vs_out.Tangent = normalize((_modelMatrix * vec4(atangent, 0.0)).xyz);
-	gl_Position = _projectionMatrix * _viewMatrix * _modelMatrix * vec4(aPosition, 1.0);
+	vs_out.Normal = normalize((ModelMatrix * vec4(aNormal, 0.0)).xyz);
+	vs_out.Position = (ModelMatrix * vec4(aPosition,1)).xyz;
+	vs_out.Tangent = normalize((ModelMatrix * vec4(atangent, 0.0)).xyz);
+	gl_Position = ProjectionMatrix * ViewMatrix * ModelMatrix * vec4(aPosition, 1.0);
 }
