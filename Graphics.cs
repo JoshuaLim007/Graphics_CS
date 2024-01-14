@@ -169,7 +169,7 @@ namespace JLGraphics
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
             PassthroughShader = new Shader("PassthroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
-            InitialFrameBuffer = CreateFrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelInternalFormat.Rgba, PixelFormat.Rgba);
+            InitialFrameBuffer = CreateFrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
         }
         public static void Free()
         {
@@ -377,13 +377,14 @@ namespace JLGraphics
             return new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, 0, 0, 0);
         }
 
+        static Shader postProcess = null;
         private static void Update()
         {
             //bind RT
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, InitialFrameBuffer.FrameBufferObject);
             GL.Viewport(0, 0, InitialFrameBuffer.Width, InitialFrameBuffer.Height);
 
-            //draw scene (first pass)
+            //draw opaques (first pass) (forward rendering)
             m_drawCount = 0;
             m_shaderMeshBindCount = 0;
             m_verticesCount = 0;
@@ -395,8 +396,18 @@ namespace JLGraphics
                 RenderCamera(Cameras[cameraIndex]);
             }
 
-            // second pass
-            Blit(InitialFrameBuffer, GetScreenFrameBuffer(), null);
+            //do rest of render queue
+
+            //do post processing
+            var pp = CreateFrameBuffer(InitialFrameBuffer.Width, InitialFrameBuffer.Height, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
+            if(postProcess == null)
+            {
+                postProcess = new Shader("PostProcess", "./Shaders/PostProcess.frag", "./Shaders/Passthrough.vert");
+            }
+            Blit(InitialFrameBuffer, pp, postProcess);
+            Blit(pp, GetScreenFrameBuffer(), null);
+
+            FreeFrameBuffer(pp);
 
             Window.SwapBuffers();
         }

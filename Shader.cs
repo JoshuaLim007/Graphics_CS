@@ -212,7 +212,6 @@ namespace JLGraphics
 
         private Dictionary<string, int> m_cachedUniformValueIndex = new Dictionary<string, int>();
         private readonly List<UniformValue> m_uniformValues = new List<UniformValue>();
-        private static int m_prevProgram;
 
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {
