@@ -85,8 +85,12 @@ namespace JLGraphics
             GL.ShaderSource(fshader, File.ReadAllText(FragmentShaderPath));
             GL.CompileShader(vshader);
             GL.CompileShader(fshader);
-            Console.WriteLine(GL.GetShaderInfoLog(vshader));
-            Console.WriteLine(GL.GetShaderInfoLog(fshader));
+            string d = GL.GetShaderInfoLog(vshader);
+            if(d != "")
+                Console.WriteLine(d);
+            d = GL.GetShaderInfoLog(fshader);
+            if (d != "")
+                Console.WriteLine(d);
             int program = GL.CreateProgram();
             GL.AttachShader(program, vshader);
             GL.AttachShader(program, fshader);
@@ -95,7 +99,9 @@ namespace JLGraphics
             GL.DetachShader(program, fshader);
             GL.DeleteShader(vshader);
             GL.DeleteShader(fshader);
-            Console.WriteLine(GL.GetProgramInfoLog(program));
+            d = GL.GetProgramInfoLog(program);
+            if(d != "")
+                Console.WriteLine(d);
             ProgramId = program;
             m_shaderInstances.Add(this);
         }
@@ -123,8 +129,12 @@ namespace JLGraphics
             GL.ShaderSource(fshader, File.ReadAllText(fragmentShader));
             GL.CompileShader(vshader);
             GL.CompileShader(fshader);
-            Console.WriteLine(GL.GetShaderInfoLog(vshader));
-            Console.WriteLine(GL.GetShaderInfoLog(fshader));
+            string d = GL.GetShaderInfoLog(vshader);
+            if (d != "")
+                Console.WriteLine(d);
+            d = GL.GetShaderInfoLog(fshader);
+            if (d != "")
+                Console.WriteLine(d);
             int program = GL.CreateProgram();
             GL.AttachShader(program, vshader);
             GL.AttachShader(program, fshader);
@@ -133,7 +143,9 @@ namespace JLGraphics
             GL.DetachShader(program, fshader);
             GL.DeleteShader(vshader);
             GL.DeleteShader(fshader);
-            Console.WriteLine(GL.GetProgramInfoLog(program));
+            d = GL.GetProgramInfoLog(program);
+            if (d != "")
+                Console.WriteLine(d);
             ProgramId = program;
             m_shaderInstances.Add(this);
         }

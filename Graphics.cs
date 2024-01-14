@@ -3,6 +3,7 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using StbImageSharp;
+using System;
 using All = OpenTK.Graphics.OpenGL4.All;
 
 namespace JLGraphics
@@ -166,7 +167,8 @@ namespace JLGraphics
 
             DefaultMaterial = new Shader("Default", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
-            CopyToScreenShader = new Shader("BlitRT", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
+            FullScreenQuad = CreateFullScreenQuad();
+            PassthroughShader = new Shader("PassthroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
         }
         public static void Run()
         {
@@ -208,7 +210,7 @@ namespace JLGraphics
             }
         }
         
-        static void mInvokeUpdates()
+        static void InvokeUpdates()
         {
             for (int i = 0; i < Entity.AllUpdates.Count; i++)
             {
@@ -220,7 +222,7 @@ namespace JLGraphics
                 current.Update();
             }
         }
-        static void mInvokeOnRenders(Camera camera)
+        static void InvokeOnRenders(Camera camera)
         {
             //invoke render event
             for (int i = 0; i < Entity.AllOnRenders.Count; i++)
@@ -233,14 +235,14 @@ namespace JLGraphics
                 current.OnRender(camera);
             }
         }
-        static void mSetShaderCameraData(Camera camera)
+        static void SetShaderCameraData(Camera camera)
         {
             Shader.SetGlobalMat4("_projectionMatrix", camera.ProjectionMatrix);
             Shader.SetGlobalMat4("_viewMatrix", camera.ViewMatrix);
             Shader.SetGlobalVector3("_cameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("_cameraDirection", camera.Transform.Forward);
         }
-        static void mSetDrawMode(bool wireframe)
+        static void SetDrawMode(bool wireframe)
         {
             if (wireframe)
             {
@@ -251,86 +253,32 @@ namespace JLGraphics
                 GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
             }
         }
-        
-        public class RenderTexture
+
+        public struct FrameBuffer
         {
-            public int width { get; }
-            public int height { get; }
-            public PixelFormat pixelFormat { get; }
-            internal int frameBufferPtr { get; }
-            internal int colorAttachmentTexturePtr { get; }
-            internal int depthAttachmentTexturePtr { get; }
-            public void Dispose()
+            public int Width { get; }
+            public int Height { get; }
+            public int FrameBufferObject { get; }
+            public int ColorAttach0 { get; }
+            public int RenderBufferObject { get; }
+            public FrameBuffer(int width, int height, int fbo, int c0, int rbo)
             {
-                GL.DeleteFramebuffer(frameBufferPtr);
-                GL.DeleteTexture(colorAttachmentTexturePtr);
-                GL.DeleteRenderbuffer(depthAttachmentTexturePtr);
-            }
-            public RenderTexture(int width, int height, PixelFormat pixelFormat)
-            {
-                this.width = width;
-                this.height = height;
-                this.pixelFormat = pixelFormat;
-
-                int[] frameBufferName = new int[1];
-                GL.GenBuffers(1, frameBufferName);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferName[0]);
-
-                // The texture we're going to render to
-                int[] renderedTexture = new int[1];
-                GL.GenTextures(1, renderedTexture);
-                GL.BindTexture(TextureTarget.Texture2D, renderedTexture[0]);
-                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, width, height, 0, pixelFormat, PixelType.UnsignedByte, IntPtr.Zero);
-                int linearFilter = (int)All.Linear;
-                GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, ref linearFilter);
-                GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, ref linearFilter);
-                // Set "renderedTexture" as our colour attachement #0
-                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, renderedTexture[0], 0);
-
-                 // The depth buffer
-                int[] depthrenderbuffer = new int[1];
-                GL.GenRenderbuffers(1, depthrenderbuffer);
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, depthrenderbuffer[0]);
-                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Depth24Stencil8, width, height);
-                //set depth and stencil
-                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, depthrenderbuffer[0]);
-
-                if (GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != FramebufferErrorCode.FramebufferComplete)
-                {
-                    Console.WriteLine("Error creating render texture!");
-                    GL.DeleteFramebuffer(frameBufferName[0]);
-                    GL.DeleteTexture(renderedTexture[0]);
-                    GL.DeleteRenderbuffer(depthrenderbuffer[0]);
-                    return;
-                }
-
-                frameBufferPtr = frameBufferName[0];
-                colorAttachmentTexturePtr = renderedTexture[0];
-                depthAttachmentTexturePtr = depthrenderbuffer[0];
-
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-                return;
-            }
-            public void BindFrameBuffer()
-            {
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBufferPtr);
-                GL.Viewport(0,0,width,height);
+                Width = width;
+                Height = height;
+                FrameBufferObject = fbo;
+                ColorAttach0 = c0;
+                RenderBufferObject = rbo;
             }
         }
-
-        static Shader CopyToScreenShader = null;
-        static bool FullScreenVAO_created = false;
-        static int FullScreenVAO = 0;
-        static void BlitRT(RenderTexture rt)
+        static int FullScreenQuad = 0;
+        static Shader PassthroughShader = null;
+        static int CreateFullScreenQuad()
         {
-            // The fullscreen quad's FBO
-            if (!FullScreenVAO_created)
-            {
-                int[] quad_VertexArrayID = new int[1];
-                GL.GenVertexArrays(1, quad_VertexArrayID);
-                GL.BindVertexArray(quad_VertexArrayID[0]);
+            int[] quad_VertexArrayID = new int[1];
+            GL.GenVertexArrays(1, quad_VertexArrayID);
+            GL.BindVertexArray(quad_VertexArrayID[0]);
 
-                float[] g_quad_vertex_buffer_data = {
+            float[] g_quad_vertex_buffer_data = {
                     -1.0f, -1.0f,
                     1.0f, -1.0f,
                     -1.0f,  1.0f,
@@ -339,65 +287,123 @@ namespace JLGraphics
                     1.0f,  1.0f,
                 };
 
-                int[] quad_vertexbuffer = new int[1];
-                GL.GenBuffers(1, quad_vertexbuffer);
-                GL.BindBuffer(BufferTarget.ArrayBuffer, quad_vertexbuffer[0]);
-                GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * g_quad_vertex_buffer_data.Length, g_quad_vertex_buffer_data, BufferUsageHint.StaticDraw);
-                GL.EnableVertexAttribArray(0);
-                GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
-                FullScreenVAO = quad_VertexArrayID[0];
-                FullScreenVAO_created = true;
-            }
-            else
-            {
-                GL.BindVertexArray(FullScreenVAO);
-            }
-
-            // Render to the screen
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+            int[] quad_vertexbuffer = new int[1];
+            GL.GenBuffers(1, quad_vertexbuffer);
+            GL.BindBuffer(BufferTarget.ArrayBuffer, quad_vertexbuffer[0]);
+            GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * g_quad_vertex_buffer_data.Length, g_quad_vertex_buffer_data, BufferUsageHint.StaticDraw);
+            GL.EnableVertexAttribArray(0);
+            GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
+            int vao = quad_VertexArrayID[0];
+            return vao;
+        }
+        public static void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        {
+            // second pass
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, dst.FrameBufferObject);
+            GL.Viewport(0, 0, dst.Width, dst.Height);
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit);
-            GL.Viewport(0, 0, m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y);
 
-            CopyToScreenShader.SetVector2("MainTex_Size", new Vector2(rt.width, rt.height));
-            CopyToScreenShader.UseProgram();
+            Shader blitShader = shader ?? PassthroughShader;
+            blitShader.SetVector2("MainTex_Size", new Vector2(dst.Width, dst.Height));
+            blitShader.SetTexture(0, "MainTex", src.ColorAttach0);
+            blitShader.UseProgram();
 
-            //disable depth testing
+            GL.BindVertexArray(FullScreenQuad);
             GL.Disable(EnableCap.DepthTest);
-            GL.BindTexture(TextureTarget.Texture2D, rt.colorAttachmentTexturePtr);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
-            GL.BindVertexArray(0);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+        }
+        public static FrameBuffer CreateFrameBuffer(int width, int height, PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
+        {
+            int fbo;
+            int textureColorbuffer;
+            int rbo;
+
+            // generate texture
+            unsafe
+            {
+                GL.GenFramebuffers(1, &fbo);
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
+                GL.GenTextures(1, &textureColorbuffer);
+            }
+
+            GL.BindTexture(TextureTarget.Texture2D, textureColorbuffer);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, pixelInternalFormat,
+                width, height, 0, pixelFormat, PixelType.UnsignedByte, (IntPtr)null);
+            int linearFilter = (int)All.Linear;
+            GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, ref linearFilter);
+            GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, ref linearFilter);
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+            GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, textureColorbuffer, 0);
+
+            //render buffers
+            unsafe
+            {
+                GL.GenRenderbuffers(1, &rbo);
+            }
+            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, rbo);
+            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Depth24Stencil8, m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y);
+            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
+            GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, rbo);
+
+            DrawBuffersEnum[] attachments = { DrawBuffersEnum.ColorAttachment0, DrawBuffersEnum.ColorAttachment1 };
+            GL.DrawBuffers(2, attachments);
+
+            if (GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != FramebufferErrorCode.FramebufferComplete)
+                Console.WriteLine("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+            return new FrameBuffer(width, height, fbo, textureColorbuffer, rbo);
+        }
+        public static void FreeFrameBuffer(FrameBuffer frameBuffer)
+        {
+            GL.DeleteFramebuffer(frameBuffer.FrameBufferObject);
+            GL.DeleteTexture(frameBuffer.ColorAttach0);
+            GL.DeleteRenderbuffer(frameBuffer.RenderBufferObject);
+        }
+        public static FrameBuffer GetScreenFrameBuffer()
+        {
+            return new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, 0, 0, 0);
         }
 
         private static void Update()
         {
+            var srcBuffer = CreateFrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelInternalFormat.Rgba, PixelFormat.Rgba);
+
+            //bind RT
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, srcBuffer.FrameBufferObject);
+            GL.Viewport(0, 0, srcBuffer.Width, srcBuffer.Height);
+
+            //draw scene (first pass)
             m_drawCount = 0;
             m_shaderMeshBindCount = 0;
             m_verticesCount = 0;
-
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
             GL.Enable(EnableCap.DepthTest);
-
             for (int cameraIndex = 0; cameraIndex < Cameras.Count && !DisableRendering; cameraIndex++)
             {
-                mRenderCamera(Cameras[cameraIndex]);
+                RenderCamera(Cameras[cameraIndex]);
             }
+
+            // second pass
+            Blit(srcBuffer, GetScreenFrameBuffer(), null);
+
+            FreeFrameBuffer(srcBuffer);
 
             Window.SwapBuffers();
         }
 
-        static void mRenderCamera(Camera camera)
+        static void RenderCamera(Camera camera)
         {
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
 
-            mSetShaderCameraData(camera);
-            mInvokeUpdates();
-            mInvokeOnRenders(camera);
-            mSetDrawMode(camera.EnabledWireFrame);
+            SetShaderCameraData(camera);
+            InvokeUpdates();
+            InvokeOnRenders(camera);
+            SetDrawMode(camera.EnabledWireFrame);
 
             //TODO:
             //apply dynamic batching

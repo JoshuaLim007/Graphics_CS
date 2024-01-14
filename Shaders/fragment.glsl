@@ -10,7 +10,7 @@ in VS_OUT{
 } fs_in;
 
 //out to render texture
-out vec4 frag;
+layout(location = 0) out vec4 frag;
 
 //textures
 uniform sampler2D AlbedoTex;	//rgba texture
