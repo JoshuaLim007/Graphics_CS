@@ -143,16 +143,6 @@ namespace JLGraphics
             m_gameWindowSettings = GameWindowSettings.Default;
             m_nativeWindowSettings = NativeWindowSettings.Default;
 
-            //32 bit depth + stencil
-            m_nativeWindowSettings.DepthBits = 24;
-            m_nativeWindowSettings.StencilBits = 8;
-
-            //32 bit color
-            m_nativeWindowSettings.AlphaBits = 8;
-            m_nativeWindowSettings.RedBits = 8;
-            m_nativeWindowSettings.GreenBits = 8;
-            m_nativeWindowSettings.BlueBits = 8;
-
             m_gameWindowSettings.RenderFrequency = renderFrequency;
             m_gameWindowSettings.UpdateFrequency = updateFrequency;
 
