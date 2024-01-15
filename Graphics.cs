@@ -78,7 +78,7 @@ namespace JLGraphics
             DateTime time1 = DateTime.Now;
             DateTime time2 = DateTime.Now;
 
-            Window.Load += Start;
+            //Window.Load += Start; //start now happens after the first frame
             Window.UpdateFrame += delegate (FrameEventArgs eventArgs)
             {
                 FixedUpdate();
@@ -197,12 +197,18 @@ namespace JLGraphics
             }
         }
 
-        private static void Start()
+        private static void InvokeNewStarts()
         {
-            for (int i = 0; i < Entity.AllStarts.Count; i++)
+            for (int i = 0; i < Entity.StartQueue.Count; i++)
             {
-                Entity.AllStarts[i].Start();
+                var current = Entity.StartQueue[i];
+                if (!current.IsActiveAndEnabled())
+                {
+                    continue;
+                }
+                current.Start();
             }
+            Entity.StartQueue.Clear();
         }
 
         private static void FixedUpdate()
@@ -323,6 +329,8 @@ namespace JLGraphics
         static CommandBuffer renderPassCommandBuffer = new CommandBuffer();
         private static void Update()
         {
+            InvokeNewStarts();
+
             renderPasses.Sort();
 
             for (int i = 0; i < renderPasses.Count; i++)
@@ -341,6 +349,7 @@ namespace JLGraphics
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
             GL.Enable(EnableCap.DepthTest);
+            InvokeUpdates();
             for (int cameraIndex = 0; cameraIndex < Cameras.Count && !DisableRendering; cameraIndex++)
             {
                 RenderCamera(Cameras[cameraIndex]);
@@ -392,6 +401,7 @@ namespace JLGraphics
             }
 
             Window.SwapBuffers();
+
         }
 
         static void RenderCamera(Camera camera)
@@ -400,7 +410,6 @@ namespace JLGraphics
             Shader? previousMaterial = null;
 
             SetShaderCameraData(camera);
-            InvokeUpdates();
             InvokeOnRenders(camera);
             SetDrawMode(camera.EnabledWireFrame);
 

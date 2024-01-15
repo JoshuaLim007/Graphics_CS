@@ -43,18 +43,22 @@ namespace JLGraphics
 
 
         internal static List<Entity> AllEntities { get; } = new List<Entity>();
-        internal static void AddEntityToWorld(Entity entity)
-        {
-            AllEntities.Add(entity);
-        }
+
+
         internal static List<Renderer> AllRenderers { get; } = new List<Renderer>();
 
 
         internal static List<IUpdate> AllUpdates { get; } = new List<IUpdate>();
         internal static List<IFixedUpdate> AllFixedUpdates { get; } = new List<IFixedUpdate>();
-        internal static List<IStart> AllStarts { get; } = new List<IStart>();
+        internal static List<IStart> StartQueue { get; } = new List<IStart>();
         internal static List<IOnRender> AllOnRenders { get; } = new List<IOnRender>();
-
+        internal static void ClearEntityCache()
+        {
+            AllUpdates.Clear();
+            AllFixedUpdates.Clear();
+            StartQueue.Clear();
+            AllOnRenders.Clear();
+        }
         public static Entity FindObjectByName(string name)
         {
             for (int i = 0; i < AllEntities.Count; i++)
@@ -139,7 +143,7 @@ namespace JLGraphics
             }
             if (typeof(IStart).IsAssignableFrom(typeof(T)))
             {
-                AllStarts.Add((IStart)instance);
+                StartQueue.Add((IStart)instance);
             }
             if (typeof(IOnRender).IsAssignableFrom(typeof(T)))
             {
