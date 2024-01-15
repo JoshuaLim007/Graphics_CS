@@ -70,12 +70,12 @@ void main(){
 
 
 	vec3 normal = bump.xyz;
-	vec3 shade = vec3(max(dot(normal, sunDirection), 0)) * vec3(20,17,12) * 3;
+	vec3 shade = vec3(max(dot(normal, sunDirection), 0)) * vec3(20,17,12) * 0.5f;
 	vec3 reflectedVector = reflect(viewVector, normal);
 	float specular = max(dot(reflectedVector, sunDirection), 0);
-	specular = pow(specular, 8) * 4;
-
-	vec4 c = vec4((color.xyz) * (shade + vec3(0.2,0.35,0.5)),0) + specular;
+	specular = pow(specular, 32);
+	specular = smoothstep(0.3, 1., specular) * 32;
+	vec4 c = vec4((color.xyz) * (shade + vec3(0.2,0.35,0.5) * 0.5f),0) + specular;
 
 	c.r *= AlbedoColor.r;
 	c.g *= AlbedoColor.g;
