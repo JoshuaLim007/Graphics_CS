@@ -159,11 +159,11 @@ namespace JLGraphics
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
             PassthroughShader = new Shader("PassthroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
-            InitialFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
+            MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
         }
         public static void Free()
         {
-            InitialFrameBuffer.Free();
+            MainFrameBuffer.Free();
             GL.DeleteVertexArray(FullScreenQuad);
             m_isInit = false;
         }
@@ -179,6 +179,9 @@ namespace JLGraphics
 
         private static void Resize(ResizeEventArgs args)
         {
+            m_nativeWindowSettings.Size = new Vector2i(args.Width, args.Height);
+            MainFrameBuffer.Free();
+            MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
             GL.Viewport(0, 0, args.Width, args.Height);
             for (int i = 0; i < Cameras.Count; i++)
             {
@@ -260,7 +263,7 @@ namespace JLGraphics
         static int FullScreenQuad = 0;
         static Shader PassthroughShader = null;
 
-        static RenderTexture InitialFrameBuffer;
+        static RenderTexture MainFrameBuffer;
         internal static int CreateFullScreenQuad()
         {
             int[] quad_VertexArrayID = new int[1];
@@ -329,8 +332,8 @@ namespace JLGraphics
             }
 
             //bind RT
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, InitialFrameBuffer.FrameBufferObject);
-            GL.Viewport(0, 0, InitialFrameBuffer.Width, InitialFrameBuffer.Height);
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
+            GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
 
             //draw opaques (first pass) (forward rendering)
             m_drawCount = 0;
@@ -353,7 +356,7 @@ namespace JLGraphics
                 {
                     break;
                 }
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, InitialFrameBuffer);
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
                 renderPassCommandBuffer.Invoke();
             }
 
@@ -369,7 +372,7 @@ namespace JLGraphics
                 {
                     break;
                 }
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, InitialFrameBuffer);
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
                 renderPassCommandBuffer.Invoke();
             }
 
@@ -377,12 +380,12 @@ namespace JLGraphics
             //opaque render pass
             for (; renderPassIndex < renderPasses.Count; renderPassIndex++)
             {
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, InitialFrameBuffer);
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
                 renderPassCommandBuffer.Invoke();
             }
 
             //blit render buffer to screen
-            Blit(InitialFrameBuffer, null, null);
+            Blit(MainFrameBuffer, null, null);
 
             //frame cleanup
             for (int i = 0; i < renderPasses.Count; i++)
