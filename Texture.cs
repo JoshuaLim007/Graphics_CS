@@ -3,66 +3,48 @@ using StbImageSharp;
 
 namespace JLGraphics
 {
-    public class Texture : IDisposable
+    public class Texture
     {
-        private bool disposedValue = false;
+        public PixelFormat pixelFormat { get; set; } = PixelFormat.Rgba;
+        public PixelInternalFormat internalPixelFormat { get; set; } = PixelInternalFormat.Rgba;
+        public bool generateMipMaps { get; set; } = true;
+        public TextureWrapMode textureWrapMode { get; set; } = TextureWrapMode.ClampToEdge;
+        public TextureMinFilter textureMinFilter { get; set; } = TextureMinFilter.Linear;
+        public TextureMagFilter textureMagFilter { get; set; } = TextureMagFilter.Linear;
+        public virtual int Width { get; set; }
+        public virtual int Height { get; set; }
 
-        public string Name { get; set; }
-        public string path { get; set; }
-        public PixelFormat pixelFormat { get; set; }
-        public PixelInternalFormat internalPixelFormat { get; set; }
-        public bool generateMipMaps { get; set; }
-        public TextureWrapMode textureWrapMode { get; set; }
-        public TextureMinFilter textureMinFilter { get; set; }
-        public TextureMagFilter textureMagFilter { get; set; }
-
-        public ImageResult image { get; private set; }
-        public int textureID { get; private set; }
+        public int GlTextureID { get; private set; }
 
         public Texture()
         {
-            textureID = GL.GenTexture();
+            GlTextureID = GL.GenTexture();
         }
-        public static implicit operator int(Texture texture) => texture.textureID;
-        public static explicit operator Texture(int ptr) => new Texture() {textureID = ptr};
-        public void Apply()
+        public static implicit operator int(Texture texture) => texture.GlTextureID;
+        public static explicit operator Texture(int ptr) => new Texture() {GlTextureID = ptr};
+        protected virtual IntPtr GetPixelData()
         {
-            GL.BindTexture(TextureTarget.Texture2D, textureID);
+            return IntPtr.Zero;
+        }
+        public void ResolveTexture()
+        {
+            GL.BindTexture(TextureTarget.Texture2D, GlTextureID);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)textureWrapMode);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)textureWrapMode);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)textureMinFilter);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)textureMagFilter);
 
-            image = ImageResult.FromStream(File.OpenRead(path), ColorComponents.RedGreenBlueAlpha);
-            GL.TexImage2D(TextureTarget.Texture2D, 0, internalPixelFormat, image.Width, image.Height, 0, pixelFormat, PixelType.UnsignedByte, image.Data);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.UnsignedByte, GetPixelData());
+
             if (generateMipMaps)
             {
-                GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+                GL.GenerateTextureMipmap(GlTextureID);
             }
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
-
-        protected virtual void Dispose(bool disposing)
+        public virtual void Free()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects)
-                }
-
-                GL.DeleteTexture(textureID);
-                image = null;
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
-            }
-        }
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            GL.DeleteTexture(GlTextureID);
         }
     }
 }

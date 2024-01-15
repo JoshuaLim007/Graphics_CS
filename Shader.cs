@@ -150,7 +150,7 @@ namespace JLGraphics
                 if(((textureMask >> i) & 1) == 1)
                 {
                     GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
-                    GL.BindTexture(TextureTarget.Texture2D, textures[i].textureID);
+                    GL.BindTexture(TextureTarget.Texture2D, textures[i].GlTextureID);
                 }
             }
 

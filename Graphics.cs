@@ -169,11 +169,11 @@ namespace JLGraphics
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
             PassthroughShader = new Shader("PassthroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
-            InitialFrameBuffer = CreateFrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
+            InitialFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
         }
         public static void Free()
         {
-            FreeFrameBuffer(InitialFrameBuffer);
+            InitialFrameBuffer.Free();
             GL.DeleteVertexArray(FullScreenQuad);
             m_isInit = false;
         }
@@ -261,25 +261,10 @@ namespace JLGraphics
             }
         }
 
-        internal struct FrameBuffer
-        {
-            public int Width { get; }
-            public int Height { get; }
-            public int FrameBufferObject { get; }
-            public int ColorAttach0 { get; }
-            public int RenderBufferObject { get; }
-            public FrameBuffer(int width, int height, int fbo, int c0, int rbo)
-            {
-                Width = width;
-                Height = height;
-                FrameBufferObject = fbo;
-                ColorAttach0 = c0;
-                RenderBufferObject = rbo;
-            }
-        }
         static int FullScreenQuad = 0;
         static Shader PassthroughShader = null;
-        static FrameBuffer InitialFrameBuffer;
+
+        static RenderTexture InitialFrameBuffer;
         internal static int CreateFullScreenQuad()
         {
             int[] quad_VertexArrayID = new int[1];
@@ -304,17 +289,21 @@ namespace JLGraphics
             int vao = quad_VertexArrayID[0];
             return vao;
         }
-        internal static void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        internal static void Blit(RenderTexture src, RenderTexture dst, Shader shader = null)
         {
             // second pass
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, dst.FrameBufferObject);
-            GL.Viewport(0, 0, dst.Width, dst.Height);
+            int width = dst != null ? dst.Width : Window.Size.X;
+            int height = dst != null ? dst.Height : Window.Size.Y;
+            int fbo = dst != null ? dst.FrameBufferObject : 0;
+
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
+            GL.Viewport(0, 0, width, height);
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             Shader blitShader = shader ?? PassthroughShader;
-            blitShader.SetVector2("MainTex_Size", new Vector2(dst.Width, dst.Height));
-            blitShader.SetTexture(0, "MainTex", src.ColorAttach0);
+            blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
+            blitShader.SetTexture(0, "MainTex", src.GlTextureID);
             blitShader.UseProgram();
 
             GL.BindVertexArray(FullScreenQuad);
@@ -324,62 +313,23 @@ namespace JLGraphics
 
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
         }
-        internal static FrameBuffer CreateFrameBuffer(int width, int height, PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
+        
+        static List<RenderPass> renderPasses = new List<RenderPass>();
+        public static void EnqueueRenderPass(RenderPass renderPass)
         {
-            int fbo;
-            int textureColorbuffer;
-            int rbo;
-
-            // generate texture
-            unsafe
-            {
-                GL.GenFramebuffers(1, &fbo);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
-                GL.GenTextures(1, &textureColorbuffer);
-            }
-
-            GL.BindTexture(TextureTarget.Texture2D, textureColorbuffer);
-            GL.TexImage2D(TextureTarget.Texture2D, 0, pixelInternalFormat,
-                width, height, 0, pixelFormat, PixelType.UnsignedByte, (IntPtr)null);
-            int linearFilter = (int)All.Linear;
-            GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, ref linearFilter);
-            GL.TexParameterI(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, ref linearFilter);
-            GL.BindTexture(TextureTarget.Texture2D, 0);
-            GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, textureColorbuffer, 0);
-
-            //render buffers
-            unsafe
-            {
-                GL.GenRenderbuffers(1, &rbo);
-            }
-            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, rbo);
-            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Depth24Stencil8, m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y);
-            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
-            GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, rbo);
-
-            DrawBuffersEnum[] attachments = { DrawBuffersEnum.ColorAttachment0, DrawBuffersEnum.ColorAttachment1 };
-            GL.DrawBuffers(2, attachments);
-
-            if (GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != FramebufferErrorCode.FramebufferComplete)
-                Console.WriteLine("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-
-            return new FrameBuffer(width, height, fbo, textureColorbuffer, rbo);
+            renderPasses.Add(renderPass);
         }
-        internal static void FreeFrameBuffer(FrameBuffer frameBuffer)
-        {
-            GL.DeleteFramebuffer(frameBuffer.FrameBufferObject);
-            GL.DeleteTexture(frameBuffer.ColorAttach0);
-            GL.DeleteRenderbuffer(frameBuffer.RenderBufferObject);
-        }
-        internal static FrameBuffer GetScreenFrameBuffer()
-        {
-            return new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, 0, 0, 0);
-        }
-
-        static Shader postProcess = null;
+        
+        static CommandBuffer renderPassCommandBuffer = new CommandBuffer();
         private static void Update()
         {
+            renderPasses.Sort();
+
+            for (int i = 0; i < renderPasses.Count; i++)
+            {
+                renderPasses[i].FrameSetup();
+            }
+
             //bind RT
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, InitialFrameBuffer.FrameBufferObject);
             GL.Viewport(0, 0, InitialFrameBuffer.Width, InitialFrameBuffer.Height);
@@ -396,18 +346,50 @@ namespace JLGraphics
                 RenderCamera(Cameras[cameraIndex]);
             }
 
-            //do rest of render queue
-
-            //do post processing
-            var pp = CreateFrameBuffer(InitialFrameBuffer.Width, InitialFrameBuffer.Height, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
-            if(postProcess == null)
+            //opaque render pass
+            int renderPassIndex;
+            for (renderPassIndex = 0; renderPassIndex < renderPasses.Count; renderPassIndex++)
             {
-                postProcess = new Shader("PostProcess", "./Shaders/PostProcess.frag", "./Shaders/Passthrough.vert");
+                if (renderPasses[renderPassIndex].Queue > (int)RenderQueue.AfterTransparents - 1)
+                {
+                    break;
+                }
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, InitialFrameBuffer);
+                renderPassCommandBuffer.Invoke();
             }
-            Blit(InitialFrameBuffer, pp, postProcess);
-            Blit(pp, GetScreenFrameBuffer(), null);
 
-            FreeFrameBuffer(pp);
+            //////////////////////
+            //draw transparents
+            //code here
+            //////////////////////
+
+            //transparent render pass
+            for (; renderPassIndex < renderPasses.Count; renderPassIndex++)
+            {
+                if (renderPasses[renderPassIndex].Queue > (int)RenderQueue.AfterPostProcessing - 1)
+                {
+                    break;
+                }
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, InitialFrameBuffer);
+                renderPassCommandBuffer.Invoke();
+            }
+
+            //post processing
+            //opaque render pass
+            for (; renderPassIndex < renderPasses.Count; renderPassIndex++)
+            {
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, InitialFrameBuffer);
+                renderPassCommandBuffer.Invoke();
+            }
+
+            //blit render buffer to screen
+            Blit(InitialFrameBuffer, null, null);
+
+            //frame cleanup
+            for (int i = 0; i < renderPasses.Count; i++)
+            {
+                renderPasses[i].FrameCleanup();
+            }
 
             Window.SwapBuffers();
         }
