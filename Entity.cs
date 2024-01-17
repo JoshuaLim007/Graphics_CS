@@ -41,42 +41,24 @@ namespace JLGraphics
         public bool Enabled { get; set; } = true;
         public Transform Transform { get; private set; } = null;
 
-
-        internal static List<Entity> AllEntities { get; } = new List<Entity>();
-
-
-        internal static List<Renderer> AllRenderers { get; } = new List<Renderer>();
-
-
-        internal static List<IUpdate> AllUpdates { get; } = new List<IUpdate>();
-        internal static List<IFixedUpdate> AllFixedUpdates { get; } = new List<IFixedUpdate>();
-        internal static List<IStart> StartQueue { get; } = new List<IStart>();
-        internal static List<IOnRender> AllOnRenders { get; } = new List<IOnRender>();
-        internal static void ClearEntityCache()
-        {
-            AllUpdates.Clear();
-            AllFixedUpdates.Clear();
-            StartQueue.Clear();
-            AllOnRenders.Clear();
-        }
         public static Entity FindObjectByName(string name)
         {
-            for (int i = 0; i < AllEntities.Count; i++)
+            for (int i = 0; i < GlobalInstance<Entity>.Values.Count; i++)
             {
-                if (AllEntities[i].Name == name)
+                if (GlobalInstance<Entity>.Values[i].Name == name)
                 {
-                    return AllEntities[i];
+                    return GlobalInstance<Entity>.Values[i];
                 }
             }
             return null;
         }
         public static Entity FindObjectOfType<T>() where T: Component
         {
-            for (int i = 0; i < AllEntities.Count; i++)
+            for (int i = 0; i < GlobalInstance<Entity>.Values.Count; i++)
             {
-                if (AllEntities[i].HasComponent<T>())
+                if (GlobalInstance<Entity>.Values[i].HasComponent<T>())
                 {
-                    return AllEntities[i];
+                    return GlobalInstance<Entity>.Values[i];
                 }
             }
             return null;
@@ -87,7 +69,7 @@ namespace JLGraphics
         {
             Transform = new Transform(parent, position, rotation, scale);
             AddComponent(Transform);
-            AllEntities.Add(this);
+            GlobalInstance<Entity>.Values.Add(this);
         }
         public Entity()
         {
@@ -135,23 +117,28 @@ namespace JLGraphics
             m_components.Add(instance);
             if(typeof(IUpdate).IsAssignableFrom(typeof(T)))
             {
-                AllUpdates.Add((IUpdate)instance);
+                //AllUpdates.Add((IUpdate)instance);
+                GlobalInstance<IUpdate>.Values.Add(instance as IUpdate);
             }
             if (typeof(IFixedUpdate).IsAssignableFrom(typeof(T)))
             {
-                AllFixedUpdates.Add((IFixedUpdate)instance);
+                //AllFixedUpdates.Add((IFixedUpdate)instance);
+                GlobalInstance<IFixedUpdate>.Values.Add(instance as IFixedUpdate);
             }
             if (typeof(IStart).IsAssignableFrom(typeof(T)))
             {
-                StartQueue.Add((IStart)instance);
+                //StartQueue.Add((IStart)instance);
+                GlobalInstance<IStart>.Values.Add(instance as IStart);
             }
             if (typeof(IOnRender).IsAssignableFrom(typeof(T)))
             {
-                AllOnRenders.Add((IOnRender)instance);
+                //AllOnRenders.Add((IOnRender)instance);
+                GlobalInstance<IOnRender>.Values.Add(instance as IOnRender);
             }
             if (typeof(T) == typeof(Renderer))
             {
-                AllRenderers.Add(instance as Renderer);
+                GlobalInstance<Renderer>.Values.Add(instance as Renderer);
+                //AllRenderers.Add(instance as Renderer);
             }
             instance.Entity = this;
             return this;

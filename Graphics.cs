@@ -41,7 +41,7 @@ namespace JLGraphics
         private static int m_shaderMeshBindCount = 0;
         private static int m_verticesCount = 0;
         private static bool m_isInit = false;
-        private static List<Entity> AllInstancedObjects => Entity.AllEntities;
+        private static List<Entity> AllInstancedObjects => GlobalInstance<Entity>.Values;
 
         public static Vector2i OutputResolution => m_nativeWindowSettings.Size;
 
@@ -192,23 +192,23 @@ namespace JLGraphics
 
         private static void InvokeNewStarts()
         {
-            for (int i = 0; i < Entity.StartQueue.Count; i++)
+            for (int i = 0; i < GlobalInstance<IStart>.Count; i++)
             {
-                var current = Entity.StartQueue[i];
+                var current = GlobalInstance<IStart>.Values[i];
                 if (!current.IsActiveAndEnabled())
                 {
                     continue;
                 }
                 current.Start();
             }
-            Entity.StartQueue.Clear();
+            GlobalInstance<IStart>.Clear();
         }
 
         private static void FixedUpdate()
         {
-            for (int i = 0; i < Entity.AllFixedUpdates.Count; i++)
+            for (int i = 0; i < GlobalInstance<IFixedUpdate>.Count; i++)
             {
-                var current = Entity.AllFixedUpdates[i];
+                var current = GlobalInstance<IFixedUpdate>.Values[i];
                 if (current.IsActiveAndEnabled())
                 {
                     current.FixedUpdate();
@@ -218,9 +218,9 @@ namespace JLGraphics
         
         static void InvokeUpdates()
         {
-            for (int i = 0; i < Entity.AllUpdates.Count; i++)
+            for (int i = 0; i < GlobalInstance<IUpdate>.Count; i++)
             {
-                var current = Entity.AllUpdates[i];
+                var current = GlobalInstance<IUpdate>.Values[i];
                 if (!current.IsActiveAndEnabled())
                 {
                     continue;
@@ -231,9 +231,9 @@ namespace JLGraphics
         static void InvokeOnRenders(Camera camera)
         {
             //invoke render event
-            for (int i = 0; i < Entity.AllOnRenders.Count; i++)
+            for (int i = 0; i < GlobalInstance<IOnRender>.Count; i++)
             {
-                var current = Entity.AllOnRenders[i];
+                var current = GlobalInstance<IOnRender>.Values[i];
                 if (!current.IsActiveAndEnabled())
                 {
                     continue;
@@ -411,9 +411,9 @@ namespace JLGraphics
             //apply static batching
 
             //render each renderer
-            for (int i = 0; i < Entity.AllRenderers.Count; i++)
+            for (int i = 0; i < GlobalInstance<Renderer>.Count; i++)
             {
-                var current = Entity.AllRenderers[i];
+                var current = GlobalInstance<Renderer>.Values[i];
                 if (current == null || !current.Enabled || current.Material == null)
                 {
                     continue;

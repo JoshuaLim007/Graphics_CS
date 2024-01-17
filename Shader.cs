@@ -229,6 +229,15 @@ namespace JLGraphics
                 GL.Uniform4(m_shaderInstances[i].GetUniformLocation(id), value);
             }
         }
+        public static void SetGlobalVector4(string id, Vector4[] value)
+        {
+            float[] elements = new float[value.Length * 4];
+            for (int i = 0; i < m_shaderInstances.Count; i++)
+            {
+                GL.UseProgram(m_shaderInstances[i].ProgramId);
+                GL.Uniform4(m_shaderInstances[i].GetUniformLocation(id), elements.Length, elements);
+            }
+        }
         public static void SetGlobalVector3(string id, Vector3 value)
         {
             for (int i = 0; i < m_shaderInstances.Count; i++)
@@ -237,6 +246,7 @@ namespace JLGraphics
                 GL.Uniform3(m_shaderInstances[i].GetUniformLocation(id), value);
             }
         }
+
         public static void SetGlobalVector2(string id, Vector2 value)
         {
             for (int i = 0; i < m_shaderInstances.Count; i++)
