@@ -13,18 +13,19 @@ namespace JLGraphics
         public Light()
         {
             GlobalInstance<Light>.Values.Add(this);
+            Temperature = temperature;
         }
+        public float Intensity { get; set; } = 1.0f;
+        public Vector3 Tint { get; set; } = Vector3.One;
 
-        public float Intensity { get; set; }
-        public Vector3 Tint { get; set; }
-
-        private float temp;
-        protected Vector3 color { get; private set; }
+        private float temperature = 5000;
+        private Vector3 blackBodyColor;
+        public Vector3 Color => blackBodyColor * Tint * Intensity;
         public float Temperature {
-            get { return temp; }
+            get { return temperature; }
             set { 
-                temp = value;
-                color = GetBlackBodyColor(temp);
+                temperature = value;
+                blackBodyColor = GetBlackBodyColor(temperature);
             }
         }
         public static Vector3 GetBlackBodyColor(float temp)
@@ -46,10 +47,11 @@ namespace JLGraphics
     }
     public class DirectionalLight : Light
     {
-
     }
     public class PointLight : Light
     {
-
+        public float AttenConstant { get; set; } = 0.1f;
+        public float AttenLinear { get; set; } = 0.25f;
+        public float AttenExp { get; set; } = 0.75f;
     }
 }

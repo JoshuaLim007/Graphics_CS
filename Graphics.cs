@@ -25,6 +25,7 @@ namespace JLGraphics
     }
     public static class Graphics
     {
+        public const int MAXPOINTLIGHTS = 8;
         private static GameWindowSettings m_gameWindowSettings;
         private static NativeWindowSettings m_nativeWindowSettings;
         public static GameWindow Window { get; private set; }
@@ -127,7 +128,10 @@ namespace JLGraphics
                 time1 = time2;
             };
         }
-
+        public static ShaderFile defaultVertShaderFile { get; private set; }
+        public static ShaderFile defaultFragShaderFile { get; private set; }
+        public static ShaderFile passthroughVertShaderFile { get; private set; }
+        public static ShaderFile passthroughFragShaderFile { get; private set; }
         /// <param name="windowName"></param>
         /// <param name="windowResolution"></param>
         /// <param name="renderFrequency"></param>
@@ -154,11 +158,21 @@ namespace JLGraphics
             m_nativeWindowSettings.APIVersion = Version.Parse("4.1");
 
             InitWindow(updateFrequency, 0);
+            defaultVertShaderFile = new ShaderFile("Default Vertex Shader", "./Shaders/vertex.glsl", ShaderType.VertexShader);
+            defaultFragShaderFile = new ShaderFile("Default Frag Shader", "./Shaders/fragment.glsl", ShaderType.FragmentShader);
+            passthroughVertShaderFile = new ShaderFile("Default Passthrough Vertex Shader", "./Shaders/Passthrough.vert", ShaderType.VertexShader);
+            passthroughFragShaderFile = new ShaderFile("Default Passthrough Frag Shader", "./Shaders/CopyToScreen.frag", ShaderType.FragmentShader);
 
-            DefaultMaterial = new Shader("Default", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
+            defaultVertShaderFile.CompileShader();
+            defaultFragShaderFile.CompileShader();
+            passthroughVertShaderFile.CompileShader();
+            passthroughFragShaderFile.CompileShader();
+
+            DefaultMaterial = new Shader("Default", defaultFragShaderFile, defaultVertShaderFile);
+
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
-            PassthroughShader = new Shader("PassthroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
+            PassthroughShader = new Shader("PassthroughShader", passthroughFragShaderFile, passthroughVertShaderFile);
             MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
         }
         public static void Free()
@@ -345,6 +359,7 @@ namespace JLGraphics
             InvokeUpdates();
             for (int cameraIndex = 0; cameraIndex < Cameras.Count && !DisableRendering; cameraIndex++)
             {
+                SetupLights(Cameras[cameraIndex]);
                 RenderCamera(Cameras[cameraIndex]);
             }
 
@@ -397,6 +412,50 @@ namespace JLGraphics
 
         }
 
+        static void SetupLights(Camera camera)
+        {
+            List<PointLight> pointLights = new List<PointLight>();
+            var lights = GlobalInstance<Light>.Values;
+            for (int i = 0; i < lights.Count; i++)
+            {
+                switch (lights[i])
+                {
+                    case DirectionalLight t0:
+                        Shader.SetGlobalVector3("DirectionalLight.Color", t0.Color);
+                        Shader.SetGlobalVector3("DirectionalLight.Direction", t0.Transform.Forward);
+                        break;
+                    case PointLight t0:
+                        pointLights.Add(t0);
+                        break;
+                }
+            }
+
+            //point light frustum culling?
+
+            //render closer point lights first
+            pointLights.Sort((a, b) =>
+            {
+                var distance0 = (a.Transform.Position - camera.Transform.Position).LengthSquared;
+                var distance1 = (b.Transform.Position - camera.Transform.Position).LengthSquared;
+                if(distance0 < distance1)
+                {
+                    return -1;
+                }
+                else
+                {
+                    return 1;
+                }
+            });
+            for (int i = 0; i < MathF.Min(pointLights.Count, MAXPOINTLIGHTS); i++)
+            {
+                Shader.SetGlobalVector3("PointLights[" + i + "].Position", pointLights[i].Transform.Position);
+                Shader.SetGlobalVector3("PointLights[" + i + "].Color", pointLights[i].Color);
+                Shader.SetGlobalFloat("PointLights[" + i + "].Constant", pointLights[i].AttenConstant);
+                Shader.SetGlobalFloat("PointLights[" + i + "].Linear", pointLights[i].AttenLinear);
+                Shader.SetGlobalFloat("PointLights[" + i + "].Exp", pointLights[i].AttenExp);
+            }
+            Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
+        }
         static void RenderCamera(Camera camera)
         {
             Mesh? previousMesh = null;

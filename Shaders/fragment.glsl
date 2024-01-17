@@ -9,6 +9,20 @@ in VS_OUT{
 	vec3 Tangent;
 } fs_in;
 
+uniform struct POINT_LIGHT {
+	vec3 Position;
+	vec3 Color;
+	float Constant;
+	float Linear;
+	float Exp;
+} PointLights[MAX_POINT_LIGHTS];
+uniform int PointLightCount;
+
+uniform struct DIRECT_LIGHT {
+	vec3 Direction;
+	vec3 Color;
+} DirectionalLight;
+
 //out to render texture
 layout(location = 0) out vec4 frag;
 
@@ -23,12 +37,6 @@ uniform int textureMask;		//texture masks
 uniform vec3 SkyColor;
 uniform vec3 HorizonColor;
 uniform vec3 GroundColor;
-
-//lights
-uniform vec3[MAX_POINT_LIGHTS] PointLightPositions;
-uniform vec3[MAX_POINT_LIGHTS] PointLightColors;
-uniform vec3 DirectionalLightDirection;
-uniform vec3 DirectionalLightColor;
 
 //scalars
 uniform float Smoothness;
@@ -49,37 +57,85 @@ uniform mat4 ModelMatrix;
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
 
+vec4 GetDirectionalLight(vec3 normal, vec3 reflectedVector) {
+
+	//diffuse color
+	float shade = min(max(dot(normal, DirectionalLight.Direction), 0), 1);
+	vec3 sunColor = DirectionalLight.Color * shade;
+
+	//specular color
+	float specular = max(dot(reflectedVector, DirectionalLight.Direction), 0);
+	specular = pow(specular, 32);
+	specular = smoothstep(0.3, 1., specular) * 24;
+	vec4 specColor = vec4(DirectionalLight.Color, 0) * specular * shade;
+
+	//combined color
+	vec4 c = vec4(sunColor, 0) + specColor;
+	return c;
+}
+
+vec4 GetPointLight(vec3 worldPosition, vec3 normal, vec3 reflectedVector) {
+	float lightFactor = 1.0f;
+	vec4 col = vec4(0, 0, 0, 0);
+	for (int i = 0; i < PointLightCount; i++)
+	{
+		float constant = PointLights[i].Constant;
+
+		vec3 dirFromLight = PointLights[i].Position - worldPosition;
+		float dist = length(dirFromLight);
+		dirFromLight = normalize(dirFromLight);
+
+		//diffuse color
+		float atten = (constant 
+			+ PointLights[i].Exp * dist * dist
+			+ PointLights[i].Linear * dist
+		);
+		float shade = min(max(dot(normal, dirFromLight), 0), 1) / atten;
+		vec3 lCol = PointLights[i].Color * lightFactor * shade;
+
+		//specular color
+		float specular = min(max(dot(reflectedVector, dirFromLight), 0), 1);
+		specular = pow(specular, 32);
+		specular = smoothstep(0.3, 1., specular) * 24;
+		vec4 specColor = vec4(PointLights[i].Color * lightFactor, 0) * specular * shade;
+
+		//combined color
+		col += vec4(lCol, 0) + specColor;
+	}
+	return col;
+}
+
+vec4 GetAmbientColor(vec3 normal) {
+	float skyMix = dot(normal, vec3(0, 1, 0));
+	float horizonMix = 1 - abs(skyMix);
+	float floorMix = clamp(-skyMix, 0, 1);
+	skyMix = clamp(skyMix, 0, 1);
+
+	vec3 mixValues = vec3(skyMix, horizonMix, floorMix);
+	mixValues = normalize(mixValues);
+	vec3 finalCol = SkyColor * mixValues.x + HorizonColor * mixValues.y + GroundColor * mixValues.z;
+	return vec4(finalCol, 0);
+}
+
 void main(){
 
 	vec3 viewVector = normalize(fs_in.Position.xyz - CameraWorldSpacePos.xyz);
-	vec3 sunDirection = normalize(vec3(1,1,1));
 
 	vec4 color = vec4(1,1,1,1);
 	vec4 bump = vec4(0,0,1,0);
 
 	mat3 TBN = mat3(fs_in.Tangent, cross(fs_in.Normal, fs_in.Tangent), fs_in.Normal);
 
-	if(textureMask > 0){
-		color = texture(AlbedoTex, fs_in.TexCoord);
-	}
-	if(textureMask > 1){
-		bump = texture(NormalTex, fs_in.TexCoord) * 2 - 1;
-	}
-
+	color = texture(AlbedoTex, fs_in.TexCoord);
+	bump = texture(NormalTex, fs_in.TexCoord) * 2 - 1;
 	bump.xyz = normalize(mix(TBN * vec3(0,0,1), TBN * bump.xyz, .5));
-
-
 	vec3 normal = bump.xyz;
-	vec3 shade = vec3(max(dot(normal, sunDirection), 0)) * vec3(20,17,12) * 0.5f;
 	vec3 reflectedVector = reflect(viewVector, normal);
-	float specular = max(dot(reflectedVector, sunDirection), 0);
-	specular = pow(specular, 32);
-	specular = smoothstep(0.3, 1., specular) * 32;
-	vec4 c = vec4((color.xyz) * (shade + vec3(0.2,0.35,0.5) * 0.5f),0) + specular;
 
-	c.r *= AlbedoColor.r;
-	c.g *= AlbedoColor.g;
-	c.b *= AlbedoColor.b;
+	vec4 sunColor = GetDirectionalLight(normal, reflectedVector);
+	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
+
+	vec4 c = (color * vec4(AlbedoColor, 0)) * (sunColor + pointLightColor + GetAmbientColor(normal));
 
 	frag = c;
 }
