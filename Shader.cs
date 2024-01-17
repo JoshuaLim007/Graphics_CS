@@ -65,7 +65,9 @@ namespace JLGraphics
         private ShaderFile VertShaderFile { get; }
 
         private int textureMask = 0;
-        private Texture[] textures = new Texture[32];
+        const int TotalTextures = 32;
+        private Texture[] textures = new Texture[TotalTextures];
+        private string[] textureUniformNames = new string[TotalTextures];
 
         public Texture GetTexture(int textureIndex)
         {
@@ -77,7 +79,8 @@ namespace JLGraphics
             GL.UseProgram(ProgramId);
 
             textures[textureIndex] = texture;
-            
+            textureUniformNames[textureIndex] = uniformName;
+
             if (texture != null)
             {
                 textureMask |= 1 << textureIndex;
@@ -98,6 +101,7 @@ namespace JLGraphics
             GL.UseProgram(ProgramId);
 
             textures[textureIndex] = (Texture)texturePtr;
+            textureUniformNames[textureIndex] = uniformName;
 
             if (texturePtr != 0)
             {
@@ -119,34 +123,6 @@ namespace JLGraphics
         
         int CreateProgramID()
         {
-            //int vshader = GL.CreateShader(ShaderType.VertexShader);
-            //int fshader = GL.CreateShader(ShaderType.FragmentShader);
-            //if (!File.Exists(fragmentShader))
-            //{
-            //    Console.WriteLine("Fragment Shader not found: " + fragmentShader);
-            //    return 0;
-            //}
-            //if (!File.Exists(vertexShader))
-            //{
-            //    Console.WriteLine("Vertex Shader not found: " + vertexShader);
-            //    return 0;
-            //}
-
-            ////read the shader datas
-            //GL.ShaderSource(vshader, File.ReadAllText(vertexShader));
-            //GL.ShaderSource(fshader, File.ReadAllText(fragmentShader));
-
-            //compile the shaders
-            //GL.CompileShader(vshader);
-            //GL.CompileShader(fshader);
-
-            //string d = GL.GetShaderInfoLog(vshader);
-            //if (d != "")
-            //    Console.WriteLine(d);
-            //d = GL.GetShaderInfoLog(fshader);
-            //if (d != "")
-            //    Console.WriteLine(d);
-
             int program = GL.CreateProgram();
 
             //attach shaders
@@ -166,6 +142,20 @@ namespace JLGraphics
 
             return program;
         }
+        void CopyUniforms(Shader other)
+        {
+            m_uniformValues = new List<UniformValue>(other.m_uniformValues);
+            Array.Copy(other.textures, textures, TotalTextures);
+            Array.Copy(other.textureUniformNames, textureUniformNames, TotalTextures);
+            for (int i = 0; i < TotalTextures; i++)
+            {
+                if (textures[i] != null)
+                {
+                    SetTexture(i, textureUniformNames[i], textures[i]);
+                }
+            }
+            textureMask = other.textureMask;
+        }
         public Shader(Shader shader)
         {
             FragShaderFile = shader.FragShaderFile;
@@ -173,6 +163,7 @@ namespace JLGraphics
 
             Name = shader.Name + "_clone";
             ProgramId = CreateProgramID();
+            CopyUniforms(shader);
             myWeakRef = new WeakReference<Shader>(this);
             AllShaders.Add(myWeakRef);
         }
@@ -192,7 +183,7 @@ namespace JLGraphics
             myWeakRef = null;
             GL.DeleteShader(ProgramId);
         }
-        public static Shader FindShader(string name)
+        public static Shader FindShaderInstance(string name)
         {
             for (int i = 0; i < AllShaders.Count; i++)
             {
@@ -284,7 +275,7 @@ namespace JLGraphics
 
 
         private Dictionary<string, int> m_cachedUniformValueIndex = new Dictionary<string, int>();
-        private readonly List<UniformValue> m_uniformValues = new List<UniformValue>();
+        private List<UniformValue> m_uniformValues = new List<UniformValue>();
 
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {

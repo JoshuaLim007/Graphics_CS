@@ -39,7 +39,8 @@ namespace JLGraphics
         public static bool DisableRendering { get; set; } = false;
 
         private static int m_drawCount = 0;
-        private static int m_shaderMeshBindCount = 0;
+        private static int m_meshBindCount = 0;
+        private static int m_shaderBindCount = 0;
         private static int m_verticesCount = 0;
         private static bool m_isInit = false;
         private static List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
@@ -90,6 +91,7 @@ namespace JLGraphics
                     Window.UpdateFrequency = updateFreq;
                 }
             };
+
             int setFrame = 0;
             Window.RenderFrame += delegate (FrameEventArgs eventArgs)
             {
@@ -97,14 +99,13 @@ namespace JLGraphics
                 DeltaTime = (time2.Ticks - time1.Ticks) / 10000000f;
                 SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
                 ElapsedTime += DeltaTime;
-
                 if (statsInterval > 0.5f)
                 {
                     string stats = "";
 
                     stats += " | fixed delta time: " + FixedDeltaTime;
                     stats += " | draw count: " + m_drawCount;
-                    stats += " | shader mesh bind count: " + m_shaderMeshBindCount;
+                    stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
                     stats += " | vertices: " + m_verticesCount;
                     stats += " | total world objects: " + AllInstancedObjects.Count;
                     stats += " | fps: " + 1 / SmoothDeltaTime;
@@ -369,7 +370,8 @@ namespace JLGraphics
 
             //draw opaques (first pass) (forward rendering)
             m_drawCount = 0;
-            m_shaderMeshBindCount = 0;
+            m_shaderBindCount = 0;
+            m_meshBindCount = 0;
             m_verticesCount = 0;
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
@@ -500,22 +502,19 @@ namespace JLGraphics
 
                 //bind shader and mesh
                 //don't bind if the previous mesh and previous material are the same
-                if (meshData != previousMesh || material != previousMaterial)
+                if (meshData != previousMesh)
                 {
-                    //unbind previous mesh and shader
+                    m_meshBindCount++;
                     GL.BindVertexArray(0);
-                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
-                    Shader.Unbind();
-
-                    m_shaderMeshBindCount++;
-
-                    //bind new stuff
                     GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
                     GL.BindVertexArray(meshData.VertexArrayObject);
-                    material.UseProgram();
-
-                    previousMaterial = current.Material;
                     previousMesh = meshData;
+                }
+                if (material != previousMaterial)
+                {
+                    m_shaderBindCount++;
+                    material.UseProgram();
+                    previousMaterial = material;
                 }
 
                 m_verticesCount += meshData.VertexCount;
