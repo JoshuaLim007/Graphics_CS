@@ -3,7 +3,7 @@ using StbImageSharp;
 
 namespace JLGraphics
 {
-    public class Texture
+    public class Texture : IDisposable
     {
         public PixelFormat pixelFormat { get; set; } = PixelFormat.Rgba;
         public PixelInternalFormat internalPixelFormat { get; set; } = PixelInternalFormat.Rgba;
@@ -42,7 +42,7 @@ namespace JLGraphics
             }
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
-        public virtual void Free()
+        public virtual void Dispose()
         {
             GL.DeleteTexture(GlTextureID);
         }

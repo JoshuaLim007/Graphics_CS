@@ -2,6 +2,7 @@
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System.IO;
+using System.Xml.Linq;
 
 namespace JLGraphics
 {
@@ -15,6 +16,7 @@ namespace JLGraphics
         int compiledShader;
         public ShaderFile(string name, string path, ShaderType shaderType)
         {
+            Name = name;
             Path = path;
             ShaderType = shaderType;
             if (!File.Exists(path))
@@ -112,7 +114,8 @@ namespace JLGraphics
             GL.UseProgram(previousProgram);
         }
 
-        static readonly List<Shader> m_shaderInstances = new List<Shader>();
+        WeakReference<Shader> myWeakRef;
+        static List<WeakReference<Shader>> AllShaders = new List<WeakReference<Shader>>();
         
         int CreateProgramID()
         {
@@ -170,31 +173,38 @@ namespace JLGraphics
 
             Name = shader.Name + "_clone";
             ProgramId = CreateProgramID();
-            m_shaderInstances.Add(this);
+            myWeakRef = new WeakReference<Shader>(this);
+            AllShaders.Add(myWeakRef);
         }
 
-        public Shader(string name, ShaderFile fragmentShader, ShaderFile vertexShader)
+        public Shader(string name, ShaderFile fragmentShader, ShaderFile vertexShader) 
         {
+            this.Name = name;
             FragShaderFile = fragmentShader;
             VertShaderFile = vertexShader;
-            Name = name;
             ProgramId = CreateProgramID();
-            m_shaderInstances.Add(this);
+            myWeakRef = new WeakReference<Shader>(this);
+            AllShaders.Add(myWeakRef);
         }
         ~Shader()
         {
-            m_shaderInstances.Remove(this);
+            AllShaders.Remove(myWeakRef);
+            myWeakRef = null;
             GL.DeleteShader(ProgramId);
         }
         public static Shader FindShader(string name)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                if(m_shaderInstances[i].Name != name)
+                if(!AllShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
-                return m_shaderInstances[i];
+                if (shader.Name != name)
+                {
+                    continue;
+                }
+                return shader;
             }
             return null;
         }
@@ -278,60 +288,88 @@ namespace JLGraphics
 
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.UniformMatrix4(m_shaderInstances[i].GetUniformLocation(id), false, ref matrix4);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.UniformMatrix4(shader.GetUniformLocation(id), false, ref matrix4);
             }
         }
         public static void SetGlobalVector4(string id, Vector4 value)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.Uniform4(m_shaderInstances[i].GetUniformLocation(id), value);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.Uniform4(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalVector4(string id, Vector4[] value)
         {
             float[] elements = new float[value.Length * 4];
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.Uniform4(m_shaderInstances[i].GetUniformLocation(id), elements.Length, elements);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.Uniform4(shader.GetUniformLocation(id), elements.Length, elements);
             }
         }
         public static void SetGlobalVector3(string id, Vector3 value)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.Uniform3(m_shaderInstances[i].GetUniformLocation(id), value);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.Uniform3(shader.GetUniformLocation(id), value);
             }
         }
 
         public static void SetGlobalVector2(string id, Vector2 value)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.Uniform2(m_shaderInstances[i].GetUniformLocation(id), value);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.Uniform2(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalFloat(string id, float value)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.Uniform1(m_shaderInstances[i].GetUniformLocation(id), value);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.Uniform1(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalInt(string id, int value)
         {
-            for (int i = 0; i < m_shaderInstances.Count; i++)
+            for (int i = 0; i < AllShaders.Count; i++)
             {
-                GL.UseProgram(m_shaderInstances[i].ProgramId);
-                GL.Uniform1(m_shaderInstances[i].GetUniformLocation(id), value);
+                if (!AllShaders[i].TryGetTarget(out var shader))
+                {
+                    continue;
+                }
+                GL.UseProgram(shader.ProgramId);
+                GL.Uniform1(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalBool(string id, bool value)

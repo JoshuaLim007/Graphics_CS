@@ -6,9 +6,13 @@ using System.Threading.Tasks;
 
 namespace JLGraphics
 {
-    internal sealed class GlobalInstance<T>
+    public interface IGlobalScope
     {
-        private GlobalInstance() { }
+
+    }
+    internal sealed class InternalGlobalScope<T> where T : IGlobalScope
+    {
+        private InternalGlobalScope() { }
         internal static List<T> Values { get; private set; } = new List<T>();
         internal static T Value
         {

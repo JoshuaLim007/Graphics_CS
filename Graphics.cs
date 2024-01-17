@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Compute.OpenCL;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -26,11 +27,10 @@ namespace JLGraphics
     public static class Graphics
     {
         public const int MAXPOINTLIGHTS = 8;
-        private static GameWindowSettings m_gameWindowSettings;
-        private static NativeWindowSettings m_nativeWindowSettings;
-        public static GameWindow Window { get; private set; }
-        public static List<Camera> Cameras { get; set; }
-        public static Shader DefaultMaterial { get; private set; }
+        private static GameWindowSettings m_gameWindowSettings = null;
+        private static NativeWindowSettings m_nativeWindowSettings = null;
+        public static GameWindow Window { get; private set; } = null;
+        public static Shader DefaultMaterial { get; private set; } = null;
 
         internal static float FixedDeltaTime { get; set; } = 0;
         internal static float DeltaTime { get; private set; } = 0;
@@ -42,8 +42,8 @@ namespace JLGraphics
         private static int m_shaderMeshBindCount = 0;
         private static int m_verticesCount = 0;
         private static bool m_isInit = false;
-        private static List<Entity> AllInstancedObjects => GlobalInstance<Entity>.Values;
-
+        private static List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
+        private static List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
         public static Vector2i OutputResolution => m_nativeWindowSettings.Size;
 
         internal static void Main()
@@ -128,10 +128,10 @@ namespace JLGraphics
                 time1 = time2;
             };
         }
-        public static ShaderFile defaultVertShaderFile { get; private set; }
-        public static ShaderFile defaultFragShaderFile { get; private set; }
-        public static ShaderFile passthroughVertShaderFile { get; private set; }
-        public static ShaderFile passthroughFragShaderFile { get; private set; }
+        public static ShaderFile defaultVertShaderFile { get; private set; } = null;
+        public static ShaderFile defaultFragShaderFile { get; private set; } = null;
+        public static ShaderFile passthroughVertShaderFile { get; private set; } = null;
+        public static ShaderFile passthroughFragShaderFile { get; private set; } = null;
         /// <param name="windowName"></param>
         /// <param name="windowResolution"></param>
         /// <param name="renderFrequency"></param>
@@ -140,7 +140,6 @@ namespace JLGraphics
         {
             m_isInit = true;
             StbImage.stbi_set_flip_vertically_on_load(1);
-            Cameras = new List<Camera>();
 
             FixedDeltaTime = 1.0f / updateFrequency;
 
@@ -174,10 +173,27 @@ namespace JLGraphics
             FullScreenQuad = CreateFullScreenQuad();
             PassthroughShader = new Shader("PassthroughShader", passthroughFragShaderFile, passthroughVertShaderFile);
             MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
+            renderPassCommandBuffer = new CommandBuffer();
         }
         public static void Free()
         {
-            MainFrameBuffer.Free();
+            Window.Close();
+            PassthroughShader = null;
+            MainFrameBuffer = null;
+            renderPassCommandBuffer = null;
+            DefaultMaterial = null;
+            defaultVertShaderFile = null;
+            defaultFragShaderFile = null;
+            passthroughVertShaderFile = null;
+            passthroughFragShaderFile = null;
+            m_gameWindowSettings = null;
+            m_nativeWindowSettings = null;
+            Window = null;
+            for (int i = 0; i < renderPasses.Count; i++)
+            {
+                renderPasses[i].Dispose();
+            }
+            renderPasses = null;
             GL.DeleteVertexArray(FullScreenQuad);
             m_isInit = false;
         }
@@ -194,35 +210,35 @@ namespace JLGraphics
         private static void Resize(ResizeEventArgs args)
         {
             m_nativeWindowSettings.Size = new Vector2i(args.Width, args.Height);
-            MainFrameBuffer.Free();
+            MainFrameBuffer.Dispose();
             MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
             GL.Viewport(0, 0, args.Width, args.Height);
-            for (int i = 0; i < Cameras.Count; i++)
+            for (int i = 0; i < AllCameras.Count; i++)
             {
-                Cameras[i].Width = args.Width;
-                Cameras[i].Height = args.Height;
+                AllCameras[i].Width = args.Width;
+                AllCameras[i].Height = args.Height;
             }
         }
 
         private static void InvokeNewStarts()
         {
-            for (int i = 0; i < GlobalInstance<IStart>.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<IStart>.Count; i++)
             {
-                var current = GlobalInstance<IStart>.Values[i];
+                var current = InternalGlobalScope<IStart>.Values[i];
                 if (!current.IsActiveAndEnabled())
                 {
                     continue;
                 }
                 current.Start();
             }
-            GlobalInstance<IStart>.Clear();
+            InternalGlobalScope<IStart>.Clear();
         }
 
         private static void FixedUpdate()
         {
-            for (int i = 0; i < GlobalInstance<IFixedUpdate>.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<IFixedUpdate>.Count; i++)
             {
-                var current = GlobalInstance<IFixedUpdate>.Values[i];
+                var current = InternalGlobalScope<IFixedUpdate>.Values[i];
                 if (current.IsActiveAndEnabled())
                 {
                     current.FixedUpdate();
@@ -232,9 +248,9 @@ namespace JLGraphics
         
         static void InvokeUpdates()
         {
-            for (int i = 0; i < GlobalInstance<IUpdate>.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<IUpdate>.Count; i++)
             {
-                var current = GlobalInstance<IUpdate>.Values[i];
+                var current = InternalGlobalScope<IUpdate>.Values[i];
                 if (!current.IsActiveAndEnabled())
                 {
                     continue;
@@ -245,9 +261,9 @@ namespace JLGraphics
         static void InvokeOnRenders(Camera camera)
         {
             //invoke render event
-            for (int i = 0; i < GlobalInstance<IOnRender>.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<IOnRender>.Count; i++)
             {
-                var current = GlobalInstance<IOnRender>.Values[i];
+                var current = InternalGlobalScope<IOnRender>.Values[i];
                 if (!current.IsActiveAndEnabled())
                 {
                     continue;
@@ -276,8 +292,7 @@ namespace JLGraphics
 
         static int FullScreenQuad = 0;
         static Shader PassthroughShader = null;
-
-        static RenderTexture MainFrameBuffer;
+        static RenderTexture MainFrameBuffer = null;
         internal static int CreateFullScreenQuad()
         {
             int[] quad_VertexArrayID = new int[1];
@@ -332,12 +347,15 @@ namespace JLGraphics
         {
             renderPasses.Add(renderPass);
         }
-        
-        static CommandBuffer renderPassCommandBuffer = new CommandBuffer();
+        public static void DequeueRenderPass(RenderPass renderPass)
+        {
+            renderPasses.Remove(renderPass);
+        }
+
+        static CommandBuffer renderPassCommandBuffer;
         private static void Update()
         {
             InvokeNewStarts();
-
             renderPasses.Sort();
 
             for (int i = 0; i < renderPasses.Count; i++)
@@ -357,12 +375,11 @@ namespace JLGraphics
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
             GL.Enable(EnableCap.DepthTest);
             InvokeUpdates();
-            for (int cameraIndex = 0; cameraIndex < Cameras.Count && !DisableRendering; cameraIndex++)
+            for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
             {
-                SetupLights(Cameras[cameraIndex]);
-                RenderCamera(Cameras[cameraIndex]);
+                SetupLights(AllCameras[cameraIndex]);
+                RenderCamera(AllCameras[cameraIndex]);
             }
-
             //opaque render pass
             int renderPassIndex;
             for (renderPassIndex = 0; renderPassIndex < renderPasses.Count; renderPassIndex++)
@@ -415,7 +432,7 @@ namespace JLGraphics
         static void SetupLights(Camera camera)
         {
             List<PointLight> pointLights = new List<PointLight>();
-            var lights = GlobalInstance<Light>.Values;
+            var lights = InternalGlobalScope<Light>.Values;
             for (int i = 0; i < lights.Count; i++)
             {
                 switch (lights[i])
@@ -456,6 +473,7 @@ namespace JLGraphics
             }
             Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
+
         static void RenderCamera(Camera camera)
         {
             Mesh? previousMesh = null;
@@ -470,9 +488,9 @@ namespace JLGraphics
             //apply static batching
 
             //render each renderer
-            for (int i = 0; i < GlobalInstance<Renderer>.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<Renderer>.Count; i++)
             {
-                var current = GlobalInstance<Renderer>.Values[i];
+                var current = InternalGlobalScope<Renderer>.Values[i];
                 if (current == null || !current.Enabled || current.Material == null)
                 {
                     continue;

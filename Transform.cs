@@ -91,13 +91,14 @@ namespace JLGraphics
             return Enabled;
         }
 
-        public Matrix4 LocalToWorldMatrix => Matrix4.Invert(WorldToLocalMatrix);
-        public Transform(Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
+        protected override void SetArgs(params object[] args)
         {
-            Parent = parent;
-            Position = position;
-            Rotation = rotation;
-            Scale = scale;
+            Parent = (Transform)args[0];
+            Position = (Vector3)args[1];
+            Rotation = (Quaternion)args[2];
+            Scale = (Vector3)args[3];
         }
+
+        public Matrix4 LocalToWorldMatrix => Matrix4.Invert(WorldToLocalMatrix);
     }
 }

@@ -47,7 +47,7 @@ namespace JLGraphics
                 Console.WriteLine("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         }
-        public override void Free()
+        public override void Dispose()
         {
             GL.DeleteFramebuffer(FrameBufferObject);
             GL.DeleteTexture(GlTextureID);

@@ -30,7 +30,7 @@ namespace JLGraphics
             }
         }
     }
-    public abstract class RenderPass : IComparable<RenderPass>
+    public abstract class RenderPass : IComparable<RenderPass>, IDisposable
     {
         public RenderPass(RenderQueue queue, int queueOffset)
         {
@@ -55,5 +55,6 @@ namespace JLGraphics
                 return 1;
             }
         }
+        public virtual void Dispose() { }
     }
 }

@@ -10,9 +10,12 @@ namespace JLGraphics
 {
     public class Renderer : Component
     {
-        public Shader Material { get; set; }
-        public Mesh Mesh { get; set; }
+        public Shader Material { get; set; } = null;
+        public Mesh Mesh { get; set; } = null;
+        public Renderer()
+        {
 
+        }
         public Renderer(Shader material, Mesh mesh)
         {
             Mesh = mesh;

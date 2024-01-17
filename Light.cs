@@ -10,10 +10,15 @@ namespace JLGraphics
 {
     public abstract class Light : Component
     {
-        public Light()
+        protected Light()
         {
-            GlobalInstance<Light>.Values.Add(this);
+            InternalGlobalScope<Light>.Values.Add(this);
             Temperature = temperature;
+        }
+        internal override void InternalImmediateDestroy()
+        {
+            base.InternalImmediateDestroy();
+            InternalGlobalScope<Light>.Values.Remove(this);
         }
         public float Intensity { get; set; } = 1.0f;
         public Vector3 Tint { get; set; } = Vector3.One;

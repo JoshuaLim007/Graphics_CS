@@ -14,51 +14,31 @@ namespace JLGraphics
         None = 0,
         StaticDraw = 0b1,
     }
-    public interface IComponentEvent {
-        public bool IsActiveAndEnabled();
-    }
-    public interface IUpdate : IComponentEvent
-    {
-        public void Update();
-    }
-    public interface IFixedUpdate : IComponentEvent
-    {
-        public void FixedUpdate();
-    }
-    public interface IStart : IComponentEvent
-    {
-        public void Start();
-    }
-    public interface IOnRender : IComponentEvent
-    {
-        public void OnRender(Camera camera);
-    }
     
-    public sealed class Entity
+    public sealed class Entity : NamedObject
     {
         public StaticFlags StaticFlag { get; set; } = StaticFlags.None;
-        public string Name { get; set; } = "";
         public bool Enabled { get; set; } = true;
         public Transform Transform { get; private set; } = null;
 
         public static Entity FindObjectByName(string name)
         {
-            for (int i = 0; i < GlobalInstance<Entity>.Values.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<Entity>.Values.Count; i++)
             {
-                if (GlobalInstance<Entity>.Values[i].Name == name)
+                if (InternalGlobalScope<Entity>.Values[i].Name == name)
                 {
-                    return GlobalInstance<Entity>.Values[i];
+                    return InternalGlobalScope<Entity>.Values[i];
                 }
             }
             return null;
         }
-        public static Entity FindObjectOfType<T>() where T: Component
+        public static T FindObjectOfType<T>() where T: Component
         {
-            for (int i = 0; i < GlobalInstance<Entity>.Values.Count; i++)
+            for (int i = 0; i < InternalGlobalScope<Entity>.Values.Count; i++)
             {
-                if (GlobalInstance<Entity>.Values[i].HasComponent<T>())
+                if (InternalGlobalScope<Entity>.Values[i].HasComponent<T>(out var instance))
                 {
-                    return GlobalInstance<Entity>.Values[i];
+                    return instance;
                 }
             }
             return null;
@@ -67,23 +47,23 @@ namespace JLGraphics
         private List<Component> m_components = new List<Component>();
         private void Init(Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
         {
-            Transform = new Transform(parent, position, rotation, scale);
-            AddComponent(Transform);
-            GlobalInstance<Entity>.Values.Add(this);
+            AddComponent<Transform>(out var t, parent, position, rotation, scale);
+            Transform = t;
+            InternalGlobalScope<Entity>.Values.Add(this);
         }
-        public Entity()
+        internal Entity(string Name) : base(Name)
         {
             Init(null, Vector3.Zero, Quaternion.Identity, Vector3.One);
         }
-        public Entity(Transform parent)
+        internal Entity(string Name, Transform parent) : base(Name)
         {
             Init(parent, Vector3.Zero, Quaternion.Identity, Vector3.One);
         }
-        public Entity(Vector3 position, Quaternion rotation, Vector3 scale)
+        internal Entity(string Name, Vector3 position, Quaternion rotation, Vector3 scale) : base(Name)
         {
             Init(null, position, rotation, scale);
         }
-        public Entity(Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
+        internal Entity(string Name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale) : base(Name)
         {
             Init(parent, position, rotation, scale);
         }
@@ -112,47 +92,73 @@ namespace JLGraphics
             }
             return null;
         }
-        public Entity AddComponent<T>(T instance) where T : Component
+        public Entity AddComponent<T>(params object[] args) where T : Component, new()
         {
+            T instance = new T();
+            instance.OnAddComponentEvent(this, args);
             m_components.Add(instance);
-            if(typeof(IUpdate).IsAssignableFrom(typeof(T)))
-            {
-                //AllUpdates.Add((IUpdate)instance);
-                GlobalInstance<IUpdate>.Values.Add(instance as IUpdate);
-            }
-            if (typeof(IFixedUpdate).IsAssignableFrom(typeof(T)))
-            {
-                //AllFixedUpdates.Add((IFixedUpdate)instance);
-                GlobalInstance<IFixedUpdate>.Values.Add(instance as IFixedUpdate);
-            }
-            if (typeof(IStart).IsAssignableFrom(typeof(T)))
-            {
-                //StartQueue.Add((IStart)instance);
-                GlobalInstance<IStart>.Values.Add(instance as IStart);
-            }
-            if (typeof(IOnRender).IsAssignableFrom(typeof(T)))
-            {
-                //AllOnRenders.Add((IOnRender)instance);
-                GlobalInstance<IOnRender>.Values.Add(instance as IOnRender);
-            }
-            if (typeof(T) == typeof(Renderer))
-            {
-                GlobalInstance<Renderer>.Values.Add(instance as Renderer);
-                //AllRenderers.Add(instance as Renderer);
-            }
-            instance.Entity = this;
             return this;
         }
-        public bool HasComponent<T>() where T : Component
+        public Entity AddComponent<T>(out T instance, params object[] args) where T : Component, new()
+        {
+            instance = new T();
+            instance.OnAddComponentEvent(this, args);
+            m_components.Add(instance);
+            return this;
+        }
+        public bool HasComponent<T>(out T instance) where T : Component
         {
             for (int i = 0; i < m_components.Count; i++)
             {
                 if (m_components[i].GetType() == typeof(T))
                 {
+                    instance = (T)m_components[i];
                     return true;
                 }
             }
+            instance = null;
             return false;
+        }
+        
+
+        public static void Destroy<T>(ref T toDestroy) where T : Object
+        {
+            if (typeof(T) == typeof(Component))
+            {
+                Component? component = toDestroy as Component;
+                component?.Entity.m_components.Remove(component);
+            }
+            if (typeof(T) == typeof(Renderer))
+            {
+                InternalGlobalScope<Renderer>.Values.Remove(toDestroy as Renderer);
+            }
+            toDestroy.CallDestroy();
+            toDestroy = null;
+        }
+        public static Entity Create(string Name)
+        {
+            return new Entity(Name);
+        }
+        public static Entity Create(string Name, Transform parent)
+        {
+            return new Entity(Name, parent);
+        }
+        public static Entity Create(string Name, Vector3 position, Quaternion rotation, Vector3 scale)
+        {
+            return new Entity(Name, position, rotation, scale);
+        }
+        public static Entity Create(string Name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
+        {
+            return new Entity(Name, parent, position, rotation, scale);
+        }
+        
+        internal override void InternalImmediateDestroy()
+        {
+            for (int i = 0; i < m_components.Count; i++)
+            {
+                m_components[i].CallDestroy();
+            }
+            InternalGlobalScope<Entity>.Values.Remove(this);
         }
     }
 }
