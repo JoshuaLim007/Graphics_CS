@@ -1,8 +1,6 @@
-﻿using Assimp;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System.IO;
-using System.Xml.Linq;
 
 namespace JLGraphics
 {
@@ -162,7 +160,7 @@ namespace JLGraphics
             VertShaderFile = shader.VertShaderFile;
 
             Name = shader.Name + "_clone";
-            ProgramId = CreateProgramID();
+            ProgramId = shader.ProgramId;
             CopyUniforms(shader);
             myWeakRef = new WeakReference<Shader>(this);
             AllShaders.Add(myWeakRef);
@@ -204,14 +202,16 @@ namespace JLGraphics
         /// Expensive, try to batch this with other meshes with same materials.
         /// Applies material unique uniforms.
         /// </summary>
-        public void UseProgram()
+        internal void UseProgram()
         {
             GL.UseProgram(ProgramId);
-
+        }
+        internal void UpdateUniforms()
+        {
             //apply all material specific uniforms
             for (int i = 0; i < 32; i++)
             {
-                if(((textureMask >> i) & 1) == 1)
+                if (((textureMask >> i) & 1) == 1)
                 {
                     GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
                     GL.BindTexture(TextureTarget.Texture2D, textures[i].GlTextureID);
@@ -255,7 +255,7 @@ namespace JLGraphics
                 }
             }
         }
-        public static void Unbind()
+        internal static void Unbind()
         {
             GL.UseProgram(0);
             GL.BindTexture(TextureTarget.Texture2D, 0);
@@ -285,8 +285,9 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                GL.UseProgram(shader.ProgramId);
-                GL.UniformMatrix4(shader.GetUniformLocation(id), false, ref matrix4);
+                shader.SetMat4(id, matrix4);
+                //GL.UseProgram(shader.ProgramId);
+                //GL.UniformMatrix4(shader.GetUniformLocation(id), false, ref matrix4);
             }
         }
         public static void SetGlobalVector4(string id, Vector4 value)
@@ -297,21 +298,9 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                GL.UseProgram(shader.ProgramId);
-                GL.Uniform4(shader.GetUniformLocation(id), value);
-            }
-        }
-        public static void SetGlobalVector4(string id, Vector4[] value)
-        {
-            float[] elements = new float[value.Length * 4];
-            for (int i = 0; i < AllShaders.Count; i++)
-            {
-                if (!AllShaders[i].TryGetTarget(out var shader))
-                {
-                    continue;
-                }
-                GL.UseProgram(shader.ProgramId);
-                GL.Uniform4(shader.GetUniformLocation(id), elements.Length, elements);
+                shader.SetVector4(id, value);
+                //GL.UseProgram(shader.ProgramId);
+                //GL.Uniform4(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalVector3(string id, Vector3 value)
@@ -322,8 +311,9 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                GL.UseProgram(shader.ProgramId);
-                GL.Uniform3(shader.GetUniformLocation(id), value);
+                shader.SetVector3(id, value);
+                //GL.UseProgram(shader.ProgramId);
+                //GL.Uniform3(shader.GetUniformLocation(id), value);
             }
         }
 
@@ -335,8 +325,9 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                GL.UseProgram(shader.ProgramId);
-                GL.Uniform2(shader.GetUniformLocation(id), value);
+                shader.SetVector2(id, value);
+                //GL.UseProgram(shader.ProgramId);
+                //GL.Uniform2(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalFloat(string id, float value)
@@ -347,8 +338,9 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                GL.UseProgram(shader.ProgramId);
-                GL.Uniform1(shader.GetUniformLocation(id), value);
+                shader.SetFloat(id, value);
+                //GL.UseProgram(shader.ProgramId);
+                //GL.Uniform1(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalInt(string id, int value)
@@ -359,8 +351,9 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                GL.UseProgram(shader.ProgramId);
-                GL.Uniform1(shader.GetUniformLocation(id), value);
+                shader.SetInt(id, value);
+                //GL.UseProgram(shader.ProgramId);
+                //GL.Uniform1(shader.GetUniformLocation(id), value);
             }
         }
         public static void SetGlobalBool(string id, bool value)
@@ -371,6 +364,16 @@ namespace JLGraphics
 
         private void mAddUniform(in UniformValue uniformValue)
         {
+            //for (int i = 0; i < m_uniformValues.Count; i++)
+            //{
+            //    if (m_uniformValues[i].id == uniformValue.id)
+            //    {
+            //        m_uniformValues[i] = uniformValue;
+            //        return;
+            //    }
+            //}
+            //m_uniformValues.Add(uniformValue);
+
             if (m_cachedUniformValueIndex.ContainsKey(uniformValue.id))
             {
                 m_uniformValues[m_cachedUniformValueIndex[uniformValue.id]] = uniformValue;

@@ -334,6 +334,7 @@ namespace JLGraphics
             blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
             blitShader.SetTexture(0, "MainTex", src.GlTextureID);
             blitShader.UseProgram();
+            blitShader.UpdateUniforms();
 
             GL.BindVertexArray(FullScreenQuad);
             GL.Disable(EnableCap.DepthTest);
@@ -513,7 +514,11 @@ namespace JLGraphics
                 if (material != previousMaterial)
                 {
                     m_shaderBindCount++;
-                    material.UseProgram();
+                    if(material.ProgramId != previousMaterial?.ProgramId)
+                    {
+                        material.UseProgram();
+                    }
+                    material.UpdateUniforms();
                     previousMaterial = material;
                 }
 
