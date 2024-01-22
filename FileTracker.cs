@@ -19,6 +19,9 @@ namespace JLUtility
         {
             var dirPath = Path.GetFullPath(fileObject.Path);
             dirPath = Path.GetDirectoryName(dirPath);
+            var file = Path.GetFileName(fileObject.Path);
+            Console.WriteLine("FileWatcher: Added directory: " + dirPath);
+            Console.WriteLine("FileWatcher: Added file: " + file);
 
             if (TryGetValue(dirPath, out var watcher))
             {
