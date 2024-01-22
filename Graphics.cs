@@ -48,7 +48,15 @@ namespace JLGraphics
         private static List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
         public static Vector2i OutputResolution => m_nativeWindowSettings.Size;
         static FileTracker fileTracker;
-
+        public static bool GetFileTracker(out FileTracker fileTracker)
+        {
+            fileTracker = Graphics.fileTracker;
+            if(fileTracker == null)
+            {
+                return false;
+            }
+            return true;
+        }
         private static void InitWindow(float updateFrequency, int msaaSamples)
         {
             m_nativeWindowSettings.NumberOfSamples = msaaSamples;
