@@ -135,7 +135,7 @@ void main(){
 	vec4 sunColor = GetDirectionalLight(normal, reflectedVector);
 	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
 
-	vec4 c = (color * vec4(AlbedoColor, 0)) * (sunColor + pointLightColor + GetAmbientColor(normal));
+	vec4 c = (color * vec4(AlbedoColor, 0)) * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor,0);
 
 	frag = c;
 }
