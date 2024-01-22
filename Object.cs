@@ -28,20 +28,7 @@ namespace JLGraphics
     {
         public void OnRender(Camera camera);
     }
-    public static class ExtensionMethods
-    {
-        // Deep clone
-        public static T DeepClone<T>(this T a)
-        {
-            using (MemoryStream stream = new MemoryStream())
-            {
-                BinaryFormatter formatter = new BinaryFormatter();
-                formatter.Serialize(stream, a);
-                stream.Position = 0;
-                return (T)formatter.Deserialize(stream);
-            }
-        }
-    }
+
     public abstract class Object : IGlobalScope
     {
         protected virtual void SetArgs(params object[] args) { }
@@ -130,12 +117,16 @@ namespace JLGraphics
             return !(a == b);
         }
     }
-    public abstract class NamedObject : Object
+    public abstract class NamedObject : Object, IName
     {
         public NamedObject(string name)
         {
             Name = name;
         }
+        public string Name { get; set; }
+    }
+    public interface IName 
+    {
         public string Name { get; set; }
     }
 }

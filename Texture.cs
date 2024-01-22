@@ -20,8 +20,8 @@ namespace JLGraphics
         {
             GlTextureID = GL.GenTexture();
         }
-        public static implicit operator int(Texture texture) => texture.GlTextureID;
         public static explicit operator Texture(int ptr) => new Texture() {GlTextureID = ptr};
+        public static explicit operator int(Texture texture) => texture.GlTextureID;
         protected virtual IntPtr GetPixelData()
         {
             return IntPtr.Zero;

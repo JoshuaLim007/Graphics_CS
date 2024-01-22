@@ -5,6 +5,7 @@ using System.IO;
 using System.Xml.Linq;
 using System.ComponentModel.Design.Serialization;
 using JLUtility;
+using ObjLoader.Loader.Data.VertexData;
 
 namespace JLGraphics
 {
@@ -14,8 +15,10 @@ namespace JLGraphics
         public static implicit operator int(ShaderFile d) => d.compiledShader;
         
         int compiledShader;
+        string path;
         internal ShaderFile(string path, ShaderType shaderType) : base(path)
         {
+            this.path = path;
             ShaderType = shaderType;
             if (!File.Exists(path))
             {
@@ -26,12 +29,12 @@ namespace JLGraphics
             compiledShader = GL.CreateShader(ShaderType);
             FileChangeCallback.Add(()=> {
                 GL.DeleteShader(compiledShader);
-                compiledShader = GL.CreateShader(ShaderType);
-                CompileShader(); 
+                compiledShader = GL.CreateShader(shaderType);
+                CompileShader();
             });
         }
         internal void CompileShader() { 
-        
+            Console.WriteLine("Compiling Shader: " + path);
             if (!File.Exists(Path))
             {
                 Console.WriteLine("Shader not found: " + Path);
@@ -57,6 +60,7 @@ namespace JLGraphics
     }
     public sealed class ShaderProgram : IDisposable
     {
+        internal bool Disposed { get; private set; } = false;
         internal ShaderFile Frag { get; }
         internal ShaderFile Vert { get; }
 
@@ -64,25 +68,47 @@ namespace JLGraphics
         public FileObject VertFile => Vert;
 
         string Name { get; }
-        public int ProgramId { get; private set; } = 0;
-        public static implicit operator int(ShaderProgram d) => d.ProgramId;
+        public int Id { get; private set; } = 0;
+        public static implicit operator int(ShaderProgram d) => d.Id;
         static List<ShaderProgram> shaderPrograms = new List<ShaderProgram>();
-        public Action OnReloadShader { get; set; }
-        void OnShaderRecompile()
+        internal Action OnShaderReload { get; set; } = null;
+        internal Action OnDispose { get; set; } = null;
+        void OnFragFileChangeShaderRecompile()
         {
-            GL.DeleteProgram(ProgramId);
-            ProgramId = GL.CreateProgram();
+            GL.DeleteProgram(Id);
+            Id = GL.CreateProgram();
+            //recompile vert shader
+            Vert.CompileShader();
             UpdateProgram();
-            OnReloadShader?.Invoke();
+            OnShaderReload?.Invoke();
+        }
+        void OnVertFileChangeShaderRecompile()
+        {
+            GL.DeleteProgram(Id);
+            Id = GL.CreateProgram();
+            //recompile frag shader
+            Frag.CompileShader();
+            UpdateProgram();
+            OnShaderReload?.Invoke();
         }
         public ShaderProgram(string name, string fragPath, string vertPath)
         {
             Name = name;
             Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
             Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
-            Vert.FileChangeCallback.Add(OnShaderRecompile);
-            Frag.FileChangeCallback.Add(OnShaderRecompile);
-            ProgramId = GL.CreateProgram();
+            Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
+            Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
+            Id = GL.CreateProgram();
+            shaderPrograms.Add(this);
+        }
+        public ShaderProgram(ShaderProgram shaderProgram)
+        {
+            Name = shaderProgram.Name;
+            Vert = new ShaderFile(shaderProgram.VertFile.Path, ShaderType.VertexShader);
+            Frag = new ShaderFile(shaderProgram.FragFile.Path, ShaderType.FragmentShader);
+            Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
+            Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
+            Id = GL.CreateProgram();
             shaderPrograms.Add(this);
         }
         public ShaderProgram FindShaderProgram(string name)
@@ -105,33 +131,39 @@ namespace JLGraphics
         }
         void UpdateProgram()
         {
+            Console.WriteLine("\tLinking shader to program " + Id + ", " + Name);
             //attach shaders
-            GL.AttachShader(ProgramId, Frag);
-            GL.AttachShader(ProgramId, Vert);
+            GL.AttachShader(Id, Frag);
+            GL.AttachShader(Id, Vert);
 
             //link to program
-            GL.LinkProgram(ProgramId);
+            GL.LinkProgram(Id);
 
             //detach shaders
-            GL.DetachShader(ProgramId, Frag);
-            GL.DetachShader(ProgramId, Vert);
+            GL.DetachShader(Id, Frag);
+            GL.DetachShader(Id, Vert);
 
-            var d = GL.GetProgramInfoLog(ProgramId);
+            var d = GL.GetProgramInfoLog(Id);
             if (d != "")
                 Console.WriteLine(d);
         }
         public void Dispose()
         {
+            OnDispose.Invoke();
+            Disposed = true;
             Frag.Dispose();
             Vert.Dispose();
-            GL.DeleteProgram(ProgramId);
+            GL.DeleteProgram(Id);
+            shaderPrograms.Remove(this);
         }
     }
-    public sealed class Shader
+    public sealed class Shader : IName
     {
-        public ShaderProgram ProgramId { get; }
+        public ShaderProgram Program { get; private set; }
+        public string Name { get; set; }
 
         private int textureMask = 0;
+        private int nullTextureMask = 0;
         const int TotalTextures = 32;
         private Texture[] textures = new Texture[TotalTextures];
         private string[] textureUniformNames = new string[TotalTextures];
@@ -143,7 +175,7 @@ namespace JLGraphics
         public void SetTexture(int textureIndex, string uniformName, Texture texture)
         {
             var previousProgram = GL.GetInteger(GetPName.CurrentProgram);
-            GL.UseProgram(ProgramId);
+            GL.UseProgram(Program);
 
             textures[textureIndex] = texture;
             textureUniformNames[textureIndex] = uniformName;
@@ -155,9 +187,9 @@ namespace JLGraphics
             else
             {
                 textureMask &= ~(1 << textureIndex);
+                nullTextureMask |= 1 << textureIndex;
             }
-
-            var texLoc = GL.GetUniformLocation(ProgramId, uniformName);
+            var texLoc = GL.GetUniformLocation(Program, uniformName);
             GL.Uniform1(texLoc, textureIndex);
 
             GL.UseProgram(previousProgram);
@@ -165,7 +197,7 @@ namespace JLGraphics
         public void SetTexture(int textureIndex, string uniformName, int texturePtr)
         {
             var previousProgram = GL.GetInteger(GetPName.CurrentProgram);
-            GL.UseProgram(ProgramId);
+            GL.UseProgram(Program);
 
             textures[textureIndex] = (Texture)texturePtr;
             textureUniformNames[textureIndex] = uniformName;
@@ -177,9 +209,9 @@ namespace JLGraphics
             else
             {
                 textureMask &= ~(1 << textureIndex);
+                nullTextureMask |= 1 << textureIndex;
             }
-
-            var texLoc = GL.GetUniformLocation(ProgramId, uniformName);
+            var texLoc = GL.GetUniformLocation(Program, uniformName);
             GL.Uniform1(texLoc, textureIndex);
 
             GL.UseProgram(previousProgram);
@@ -188,11 +220,8 @@ namespace JLGraphics
         WeakReference<Shader> myWeakRef;
         static List<WeakReference<Shader>> AllInstancedShaders = new List<WeakReference<Shader>>();
         
-        void CopyUniforms(Shader other)
+        void BindAllTextures()
         {
-            m_uniformValues = new List<UniformValue>(other.m_uniformValues);
-            Array.Copy(other.textures, textures, TotalTextures);
-            Array.Copy(other.textureUniformNames, textureUniformNames, TotalTextures);
             for (int i = 0; i < TotalTextures; i++)
             {
                 if (textures[i] != null)
@@ -200,32 +229,63 @@ namespace JLGraphics
                     SetTexture(i, textureUniformNames[i], textures[i]);
                 }
             }
+        }
+        void CopyUniforms(Shader other)
+        {
+            m_uniformValues = new List<UniformValue>(other.m_uniformValues);
+            Array.Copy(other.textures, textures, TotalTextures);
+            Array.Copy(other.textureUniformNames, textureUniformNames, TotalTextures);
+            BindAllTextures();
             textureMask = other.textureMask;
         }
         public Shader(Shader shader)
         {
-            ProgramId = shader.ProgramId;
+            Name = shader.Name + "_clone";
+            Program = shader.Program;
             CopyUniforms(shader);
             myWeakRef = new WeakReference<Shader>(this);
             AllInstancedShaders.Add(myWeakRef);
+            init();
         }
 
-        public Shader(ShaderProgram shaderProgram) 
+        public Shader(string name, ShaderProgram shaderProgram) 
         {
-            ProgramId = shaderProgram;
+            Name = name;
+            Program = shaderProgram;
             myWeakRef = new WeakReference<Shader>(this);
             AllInstancedShaders.Add(myWeakRef);
+            init();
+        }
+        void ShaderReload()
+        {
+            Console.WriteLine("\tShader Reload.. Rebinding Textures, Setting uniforms for program " + Program.Id + " for material " + Name);
+            UseProgram();
+            BindAllTextures();
+            UpdateUniforms();
+            Unbind();
+            return;
+        }
+        void ShaderProgramDispose()
+        {
+            //if the shader program gets disposed, clone it and own the program
+            Program = new ShaderProgram(Program);
+            UseProgram();
+            BindAllTextures();
+            UpdateUniforms();
+            Unbind();
+            return;
+        }
+        void init()
+        {
+            Program.OnShaderReload += ShaderReload;
+            Program.OnDispose += ShaderProgramDispose;
         }
         ~Shader()
         {
+            Program.OnDispose -= ShaderProgramDispose;
+            Program.OnShaderReload -= ShaderReload;
             AllInstancedShaders.Remove(myWeakRef);
             myWeakRef = null;
-        }
-        void OnReloadShader()
-        {
-            UseProgram();
-            UpdateUniforms();
-            Shader.Unbind();
         }
         /// <summary>
         /// Expensive, try to batch this with other meshes with same materials.
@@ -233,17 +293,27 @@ namespace JLGraphics
         /// </summary>
         internal void UseProgram()
         {
-            GL.UseProgram(ProgramId);
+            GL.UseProgram(Program);
+        }
+        bool IntToBool(int val, int index)
+        {
+            return ((val >> index) & 1) == 1;
         }
         internal void UpdateUniforms()
         {
             //apply all material specific uniforms
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < TotalTextures; i++)
             {
-                if (((textureMask >> i) & 1) == 1)
+                if (IntToBool(textureMask, i))
                 {
                     GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
                     GL.BindTexture(TextureTarget.Texture2D, textures[i].GlTextureID);
+                }
+                else if(IntToBool(nullTextureMask, i))
+                {
+                    GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
+                    GL.BindTexture(TextureTarget.Texture2D, 0);
+                    GL.Disable(EnableCap.Texture2D);
                 }
             }
 
@@ -459,7 +529,7 @@ namespace JLGraphics
             }
             else
             {
-                int loc = GL.GetUniformLocation(ProgramId,id);
+                int loc = GL.GetUniformLocation(Program,id);
                 m_cachedUniformLocations.Add(id, loc);
                 return loc;
             }

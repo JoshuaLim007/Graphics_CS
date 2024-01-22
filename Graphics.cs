@@ -94,7 +94,9 @@ namespace JLGraphics
             Window.RenderFrame += delegate (FrameEventArgs eventArgs)
             {
                 time2 = DateTime.Now;
+#if DEBUG
                 fileTracker.ResolveFileTrackQueue();
+#endif
                 DeltaTime = (time2.Ticks - time1.Ticks) / 10000000f;
                 SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
                 ElapsedTime += DeltaTime;
@@ -175,11 +177,11 @@ namespace JLGraphics
             DefaultShaderProgram = defaultShader;
             PassthroughShaderProgram = passThroughShader;
 
-            DefaultMaterial = new Shader(defaultShader);
+            DefaultMaterial = new Shader("Default Material", defaultShader);
 
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
-            PassthroughShader = new Shader(passThroughShader);
+            PassthroughShader = new Shader("Default Passthrough", passThroughShader);
             MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
             renderPassCommandBuffer = new CommandBuffer();
         }
@@ -520,7 +522,7 @@ namespace JLGraphics
                 }
                 if (material != previousMaterial)
                 {
-                    if(material.ProgramId != previousMaterial?.ProgramId)
+                    if(material.Program != previousMaterial?.Program)
                     {
                         m_shaderBindCount++;
                         material.UseProgram();
