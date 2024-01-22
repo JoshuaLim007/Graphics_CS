@@ -349,6 +349,7 @@ namespace JLGraphics
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
             blitShader.SetTexture(0, "MainTex", src.GlTextureID);
+            blitShader.SetTexture(1, "DepthTex", RenderTexture.DepthBufferTextureId);
             blitShader.UseProgram();
             blitShader.UpdateUniforms();
 

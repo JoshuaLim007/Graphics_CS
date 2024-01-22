@@ -25,6 +25,7 @@ uniform struct DIRECT_LIGHT {
 
 //out to render texture
 layout(location = 0) out vec4 frag;
+layout(location = 1) out float depth;
 
 //textures
 uniform sampler2D AlbedoTex;	//rgba texture
@@ -138,4 +139,5 @@ void main(){
 	vec4 c = (color * vec4(AlbedoColor, 0)) * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor,0);
 
 	frag = c;
+	depth = gl_FragCoord.z;
 }

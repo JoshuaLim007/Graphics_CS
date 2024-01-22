@@ -2,6 +2,7 @@
 out vec4 FragColor;
 
 uniform sampler2D MainTex;
+uniform sampler2D DepthTex;
 uniform vec2 MainTex_Size;
 
 vec3 aces_tonemap(vec3 color){	
@@ -25,6 +26,7 @@ void main()
 
     //tonemap
     vec4 col = texture(MainTex, gl_FragCoord.xy / MainTex_Size);
+    float depth = texture(DepthTex, gl_FragCoord.xy / MainTex_Size).r;
     
     //reinhard tonemapping
     //col = col / (col + 1);
@@ -34,5 +36,5 @@ void main()
     float gamma = 2.2;
     col.rgb = pow(col.rgb, vec3(1.0/gamma));
 
-    FragColor = col;
+    FragColor = vec4(col);
 }
