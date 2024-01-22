@@ -8,12 +8,12 @@ using System.Xml.Linq;
 using OpenTK.Graphics.OpenGL4;
 using static JLGraphics.AssetLoader;
 using Assimp;
+using JLUtility;
 
 namespace JLGraphics
 {
-    public class Mesh
+    public class Mesh: FileObject
     {
-        public string Path { get; set; }
         public int ElementCount { get; private set; }
         public int ElementArrayBuffer { get; private set; }
         public int VertexArrayObject { get; private set; }
@@ -54,9 +54,8 @@ namespace JLGraphics
 
             VertexCount = (int)(Data.vertexData.Count() / (float)Data.elementsPerVertex);
         }
-        public Mesh(string path)
+        public Mesh(string path) : base(path)
         {
-            Path = path;
             var Data = MeshLoader.Load(path);
             ApplyMesh(Data[0]);
         }

@@ -1,22 +1,23 @@
-﻿using OpenTK.Compute.OpenCL;
+﻿using JLUtility;
+using OpenTK.Compute.OpenCL;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using StbImageSharp;
 using System;
+using System.Diagnostics;
 using All = OpenTK.Graphics.OpenGL4.All;
 
 namespace JLGraphics
 {
     public struct Time
     {
-        public static float UnscaledFixedDeltaTime { get => Graphics.FixedDeltaTime; set => Graphics.FixedDeltaTime = Math.Clamp(value, 0.002f, 1.0f); }
+        public static float FixedDeltaTime { get => Graphics.FixedDeltaTime; set => Graphics.FixedDeltaTime = Math.Clamp(value, 0.002f, 1.0f); }
         public static float UnscaledDeltaTime => Graphics.DeltaTime;
         public static float UnscaledSmoothDeltaTime => Graphics.SmoothDeltaTime;
 
 
-        public static float FixedDeltaTime => Graphics.FixedDeltaTime * TimeScale;
         public static float DeltaTime => Graphics.DeltaTime * TimeScale;
         public static float SmoothDeltaTime => Graphics.SmoothDeltaTime * TimeScale;
         public static float ElapsedTime => Graphics.ElapsedTime * TimeScale;
@@ -31,7 +32,6 @@ namespace JLGraphics
         private static NativeWindowSettings m_nativeWindowSettings = null;
         public static GameWindow Window { get; private set; } = null;
         public static Shader DefaultMaterial { get; private set; } = null;
-
         internal static float FixedDeltaTime { get; set; } = 0;
         internal static float DeltaTime { get; private set; } = 0;
         internal static float SmoothDeltaTime { get; private set; } = 0;
@@ -41,16 +41,14 @@ namespace JLGraphics
         private static int m_drawCount = 0;
         private static int m_meshBindCount = 0;
         private static int m_shaderBindCount = 0;
+        private static int m_materialUpdateCount = 0;
         private static int m_verticesCount = 0;
         private static bool m_isInit = false;
         private static List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
         private static List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
         public static Vector2i OutputResolution => m_nativeWindowSettings.Size;
+        static FileTracker fileTracker;
 
-        internal static void Main()
-        {
-            Console.WriteLine("Joshua Lim's Graphics API");
-        }
         private static void InitWindow(float updateFrequency, int msaaSamples)
         {
             m_nativeWindowSettings.NumberOfSamples = msaaSamples;
@@ -96,6 +94,7 @@ namespace JLGraphics
             Window.RenderFrame += delegate (FrameEventArgs eventArgs)
             {
                 time2 = DateTime.Now;
+                fileTracker.ResolveFileTrackQueue();
                 DeltaTime = (time2.Ticks - time1.Ticks) / 10000000f;
                 SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
                 ElapsedTime += DeltaTime;
@@ -106,6 +105,7 @@ namespace JLGraphics
                     stats += " | fixed delta time: " + FixedDeltaTime;
                     stats += " | draw count: " + m_drawCount;
                     stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
+                    stats += " | material update count: " + m_materialUpdateCount;
                     stats += " | vertices: " + m_verticesCount;
                     stats += " | total world objects: " + AllInstancedObjects.Count;
                     stats += " | fps: " + 1 / SmoothDeltaTime;
@@ -129,10 +129,9 @@ namespace JLGraphics
                 time1 = time2;
             };
         }
-        public static ShaderFile defaultVertShaderFile { get; private set; } = null;
-        public static ShaderFile defaultFragShaderFile { get; private set; } = null;
-        public static ShaderFile passthroughVertShaderFile { get; private set; } = null;
-        public static ShaderFile passthroughFragShaderFile { get; private set; } = null;
+        static ShaderProgram DefaultShaderProgram;
+        static ShaderProgram PassthroughShaderProgram;
+
         /// <param name="windowName"></param>
         /// <param name="windowResolution"></param>
         /// <param name="renderFrequency"></param>
@@ -158,21 +157,29 @@ namespace JLGraphics
             m_nativeWindowSettings.APIVersion = Version.Parse("4.1");
 
             InitWindow(updateFrequency, 0);
-            defaultVertShaderFile = new ShaderFile("Default Vertex Shader", "./Shaders/vertex.glsl", ShaderType.VertexShader);
-            defaultFragShaderFile = new ShaderFile("Default Frag Shader", "./Shaders/fragment.glsl", ShaderType.FragmentShader);
-            passthroughVertShaderFile = new ShaderFile("Default Passthrough Vertex Shader", "./Shaders/Passthrough.vert", ShaderType.VertexShader);
-            passthroughFragShaderFile = new ShaderFile("Default Passthrough Frag Shader", "./Shaders/CopyToScreen.frag", ShaderType.FragmentShader);
 
-            defaultVertShaderFile.CompileShader();
-            defaultFragShaderFile.CompileShader();
-            passthroughVertShaderFile.CompileShader();
-            passthroughFragShaderFile.CompileShader();
+            var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
+            var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
 
-            DefaultMaterial = new Shader("Default", defaultFragShaderFile, defaultVertShaderFile);
+#if DEBUG
+            fileTracker = new FileTracker();
+            fileTracker.AddFileObject(defaultShader.FragFile);
+            fileTracker.AddFileObject(defaultShader.VertFile);
+            fileTracker.AddFileObject(passThroughShader.FragFile);
+            fileTracker.AddFileObject(passThroughShader.VertFile);
+#endif
+
+            defaultShader.CompileProgram();
+            passThroughShader.CompileProgram();
+
+            DefaultShaderProgram = defaultShader;
+            PassthroughShaderProgram = passThroughShader;
+
+            DefaultMaterial = new Shader(defaultShader);
 
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
-            PassthroughShader = new Shader("PassthroughShader", passthroughFragShaderFile, passthroughVertShaderFile);
+            PassthroughShader = new Shader(passThroughShader);
             MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
             renderPassCommandBuffer = new CommandBuffer();
         }
@@ -183,18 +190,17 @@ namespace JLGraphics
             MainFrameBuffer = null;
             renderPassCommandBuffer = null;
             DefaultMaterial = null;
-            defaultVertShaderFile = null;
-            defaultFragShaderFile = null;
-            passthroughVertShaderFile = null;
-            passthroughFragShaderFile = null;
             m_gameWindowSettings = null;
             m_nativeWindowSettings = null;
             Window = null;
+            fileTracker = null;
             for (int i = 0; i < renderPasses.Count; i++)
             {
                 renderPasses[i].Dispose();
             }
             renderPasses = null;
+            DefaultShaderProgram.Dispose();
+            PassthroughShaderProgram.Dispose();
             GL.DeleteVertexArray(FullScreenQuad);
             m_isInit = false;
         }
@@ -372,6 +378,7 @@ namespace JLGraphics
             //draw opaques (first pass) (forward rendering)
             m_drawCount = 0;
             m_shaderBindCount = 0;
+            m_materialUpdateCount = 0;
             m_meshBindCount = 0;
             m_verticesCount = 0;
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -513,11 +520,12 @@ namespace JLGraphics
                 }
                 if (material != previousMaterial)
                 {
-                    m_shaderBindCount++;
                     if(material.ProgramId != previousMaterial?.ProgramId)
                     {
+                        m_shaderBindCount++;
                         material.UseProgram();
                     }
+                    m_materialUpdateCount++;
                     material.UpdateUniforms();
                     previousMaterial = material;
                 }

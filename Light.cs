@@ -56,7 +56,7 @@ namespace JLGraphics
     public class PointLight : Light
     {
         public float AttenConstant { get; set; } = 0.1f;
-        public float AttenLinear { get; set; } = 0.25f;
-        public float AttenExp { get; set; } = 0.75f;
+        public float AttenLinear { get; set; } = 0.2f;
+        public float AttenExp { get; set; } = 0.8f;
     }
 }

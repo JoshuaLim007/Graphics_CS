@@ -1,21 +1,21 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Compute.OpenCL;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System.IO;
+using System.Xml.Linq;
+using System.ComponentModel.Design.Serialization;
+using JLUtility;
 
 namespace JLGraphics
 {
-    public sealed class ShaderFile
+    internal sealed class ShaderFile : FileObject, IDisposable
     {
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public ShaderType ShaderType { get; }
+        internal ShaderType ShaderType { get; }
         public static implicit operator int(ShaderFile d) => d.compiledShader;
         
         int compiledShader;
-        public ShaderFile(string name, string path, ShaderType shaderType)
+        internal ShaderFile(string path, ShaderType shaderType) : base(path)
         {
-            Name = name;
-            Path = path;
             ShaderType = shaderType;
             if (!File.Exists(path))
             {
@@ -24,8 +24,13 @@ namespace JLGraphics
             }
             //read the shader datas
             compiledShader = GL.CreateShader(ShaderType);
+            FileChangeCallback.Add(()=> {
+                GL.DeleteShader(compiledShader);
+                compiledShader = GL.CreateShader(ShaderType);
+                CompileShader(); 
+            });
         }
-        public void CompileShader() { 
+        internal void CompileShader() { 
         
             if (!File.Exists(Path))
             {
@@ -43,24 +48,88 @@ namespace JLGraphics
                 Console.WriteLine(d);
                 return;
             }
-            for (int i = 0; i < OnCompileShader.Count; i++)
-            {
-                OnCompileShader[i].Invoke();
-            }
         }
-        public List<Action> OnCompileShader { get; private set; } = new List<Action>();
-        ~ShaderFile()
+        public void Dispose()
         {
             GL.DeleteShader(compiledShader);
+        }
+
+    }
+    public sealed class ShaderProgram : IDisposable
+    {
+        internal ShaderFile Frag { get; }
+        internal ShaderFile Vert { get; }
+
+        public FileObject FragFile => Frag;
+        public FileObject VertFile => Vert;
+
+        string Name { get; }
+        public int ProgramId { get; private set; } = 0;
+        public static implicit operator int(ShaderProgram d) => d.ProgramId;
+        static List<ShaderProgram> shaderPrograms = new List<ShaderProgram>();
+        public Action OnReloadShader { get; set; }
+        void OnShaderRecompile()
+        {
+            GL.DeleteProgram(ProgramId);
+            ProgramId = GL.CreateProgram();
+            UpdateProgram();
+            OnReloadShader?.Invoke();
+        }
+        public ShaderProgram(string name, string fragPath, string vertPath)
+        {
+            Name = name;
+            Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
+            Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
+            Vert.FileChangeCallback.Add(OnShaderRecompile);
+            Frag.FileChangeCallback.Add(OnShaderRecompile);
+            ProgramId = GL.CreateProgram();
+            shaderPrograms.Add(this);
+        }
+        public ShaderProgram FindShaderProgram(string name)
+        {
+            for (int i = 0; i < shaderPrograms.Count; i++)
+            {
+                if (shaderPrograms[i].Name == name)
+                {
+                    return this;
+                }
+            }
+            return null;
+        }
+        public void CompileProgram()
+        {
+            Frag.CompileShader();
+            Vert.CompileShader();
+            UpdateProgram();
+            //UpdateProgram called via callback
+        }
+        void UpdateProgram()
+        {
+            //attach shaders
+            GL.AttachShader(ProgramId, Frag);
+            GL.AttachShader(ProgramId, Vert);
+
+            //link to program
+            GL.LinkProgram(ProgramId);
+
+            //detach shaders
+            GL.DetachShader(ProgramId, Frag);
+            GL.DetachShader(ProgramId, Vert);
+
+            var d = GL.GetProgramInfoLog(ProgramId);
+            if (d != "")
+                Console.WriteLine(d);
+        }
+        public void Dispose()
+        {
+            Frag.Dispose();
+            Vert.Dispose();
+            GL.DeleteProgram(ProgramId);
         }
     }
     public sealed class Shader
     {
-        public string Name { get; }
-        public int ProgramId { get; }
-        
-        private ShaderFile FragShaderFile { get; }
-        private ShaderFile VertShaderFile { get; }
+        public ShaderProgram ProgramId { get; }
 
         private int textureMask = 0;
         const int TotalTextures = 32;
@@ -117,29 +186,8 @@ namespace JLGraphics
         }
 
         WeakReference<Shader> myWeakRef;
-        static List<WeakReference<Shader>> AllShaders = new List<WeakReference<Shader>>();
+        static List<WeakReference<Shader>> AllInstancedShaders = new List<WeakReference<Shader>>();
         
-        int CreateProgramID()
-        {
-            int program = GL.CreateProgram();
-
-            //attach shaders
-            GL.AttachShader(program, VertShaderFile);
-            GL.AttachShader(program, FragShaderFile);
-
-            //link to program
-            GL.LinkProgram(program);
-
-            //detach shaders
-            GL.DetachShader(program, VertShaderFile);
-            GL.DetachShader(program, FragShaderFile);
-
-            var d = GL.GetProgramInfoLog(program);
-            if (d != "")
-                Console.WriteLine(d);
-
-            return program;
-        }
         void CopyUniforms(Shader other)
         {
             m_uniformValues = new List<UniformValue>(other.m_uniformValues);
@@ -156,48 +204,29 @@ namespace JLGraphics
         }
         public Shader(Shader shader)
         {
-            FragShaderFile = shader.FragShaderFile;
-            VertShaderFile = shader.VertShaderFile;
-
-            Name = shader.Name + "_clone";
             ProgramId = shader.ProgramId;
             CopyUniforms(shader);
             myWeakRef = new WeakReference<Shader>(this);
-            AllShaders.Add(myWeakRef);
+            AllInstancedShaders.Add(myWeakRef);
         }
 
-        public Shader(string name, ShaderFile fragmentShader, ShaderFile vertexShader) 
+        public Shader(ShaderProgram shaderProgram) 
         {
-            this.Name = name;
-            FragShaderFile = fragmentShader;
-            VertShaderFile = vertexShader;
-            ProgramId = CreateProgramID();
+            ProgramId = shaderProgram;
             myWeakRef = new WeakReference<Shader>(this);
-            AllShaders.Add(myWeakRef);
+            AllInstancedShaders.Add(myWeakRef);
         }
         ~Shader()
         {
-            AllShaders.Remove(myWeakRef);
+            AllInstancedShaders.Remove(myWeakRef);
             myWeakRef = null;
-            GL.DeleteShader(ProgramId);
         }
-        public static Shader FindShaderInstance(string name)
+        void OnReloadShader()
         {
-            for (int i = 0; i < AllShaders.Count; i++)
-            {
-                if(!AllShaders[i].TryGetTarget(out var shader))
-                {
-                    continue;
-                }
-                if (shader.Name != name)
-                {
-                    continue;
-                }
-                return shader;
-            }
-            return null;
+            UseProgram();
+            UpdateUniforms();
+            Shader.Unbind();
         }
-
         /// <summary>
         /// Expensive, try to batch this with other meshes with same materials.
         /// Applies material unique uniforms.
@@ -279,9 +308,9 @@ namespace JLGraphics
 
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {
-            for (int i = 0; i < AllShaders.Count; i++)
+            for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
-                if (!AllShaders[i].TryGetTarget(out var shader))
+                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
@@ -292,9 +321,9 @@ namespace JLGraphics
         }
         public static void SetGlobalVector4(string id, Vector4 value)
         {
-            for (int i = 0; i < AllShaders.Count; i++)
+            for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
-                if (!AllShaders[i].TryGetTarget(out var shader))
+                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
@@ -305,9 +334,9 @@ namespace JLGraphics
         }
         public static void SetGlobalVector3(string id, Vector3 value)
         {
-            for (int i = 0; i < AllShaders.Count; i++)
+            for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
-                if (!AllShaders[i].TryGetTarget(out var shader))
+                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
@@ -319,9 +348,9 @@ namespace JLGraphics
 
         public static void SetGlobalVector2(string id, Vector2 value)
         {
-            for (int i = 0; i < AllShaders.Count; i++)
+            for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
-                if (!AllShaders[i].TryGetTarget(out var shader))
+                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
@@ -332,9 +361,9 @@ namespace JLGraphics
         }
         public static void SetGlobalFloat(string id, float value)
         {
-            for (int i = 0; i < AllShaders.Count; i++)
+            for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
-                if (!AllShaders[i].TryGetTarget(out var shader))
+                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
@@ -345,9 +374,9 @@ namespace JLGraphics
         }
         public static void SetGlobalInt(string id, int value)
         {
-            for (int i = 0; i < AllShaders.Count; i++)
+            for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
-                if (!AllShaders[i].TryGetTarget(out var shader))
+                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
                 {
                     continue;
                 }
@@ -364,16 +393,6 @@ namespace JLGraphics
 
         private void mAddUniform(in UniformValue uniformValue)
         {
-            //for (int i = 0; i < m_uniformValues.Count; i++)
-            //{
-            //    if (m_uniformValues[i].id == uniformValue.id)
-            //    {
-            //        m_uniformValues[i] = uniformValue;
-            //        return;
-            //    }
-            //}
-            //m_uniformValues.Add(uniformValue);
-
             if (m_cachedUniformValueIndex.ContainsKey(uniformValue.id))
             {
                 m_uniformValues[m_cachedUniformValueIndex[uniformValue.id]] = uniformValue;
@@ -445,6 +464,5 @@ namespace JLGraphics
                 return loc;
             }
         }
-
     }
 }
