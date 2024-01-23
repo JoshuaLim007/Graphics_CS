@@ -7,6 +7,7 @@ using OpenTK.Windowing.Desktop;
 using StbImageSharp;
 using System;
 using System.Diagnostics;
+using System.Xml.Serialization;
 using All = OpenTK.Graphics.OpenGL4.All;
 
 namespace JLGraphics
@@ -129,6 +130,13 @@ namespace JLGraphics
 
                 if (setFrame != 0)
                 {
+                    m_drawCount = 0;
+                    m_shaderBindCount = 0;
+                    m_materialUpdateCount = 0;
+                    m_meshBindCount = 0;
+                    m_verticesCount = 0;
+
+                    InvokeNewStarts();
                     Update();
                 }
                 else
@@ -348,8 +356,8 @@ namespace JLGraphics
 
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
-            blitShader.SetTexture(0, "MainTex", src.GlTextureID);
-            blitShader.SetTexture(1, "DepthTex", RenderTexture.DepthBufferTextureId);
+            blitShader.SetTexture("MainTex", src.GlTextureID);
+            //blitShader.SetTexture("DepthTex", src.DepthBufferTextureId);
             blitShader.UseProgram();
             blitShader.UpdateUniforms();
 
@@ -370,72 +378,60 @@ namespace JLGraphics
         {
             renderPasses.Remove(renderPass);
         }
-
+        static int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
+        {
+            int renderPassIndex;
+            for (renderPassIndex = startingIndex; renderPassIndex < renderPasses.Count; renderPassIndex++)
+            {
+                if (renderPasses[renderPassIndex].Queue > (renderQueueEnd - 1))
+                {
+                    return renderPassIndex;
+                }
+                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
+                renderPassCommandBuffer.Invoke();
+            }
+            return renderPassIndex;
+        }
         static CommandBuffer renderPassCommandBuffer;
         private static void Update()
         {
-            InvokeNewStarts();
             renderPasses.Sort();
-
             for (int i = 0; i < renderPasses.Count; i++)
             {
                 renderPasses[i].FrameSetup();
             }
 
-            //bind RT
+            //bind Main render texture RT
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
             GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
 
             //draw opaques (first pass) (forward rendering)
-            m_drawCount = 0;
-            m_shaderBindCount = 0;
-            m_materialUpdateCount = 0;
-            m_meshBindCount = 0;
-            m_verticesCount = 0;
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
             GL.Enable(EnableCap.DepthTest);
             InvokeUpdates();
+
+            //prepass (Prepass -> Opaque - 1)
+            int renderPassIndex = ExecuteRenderPasses(0, (int)RenderQueue.AfterOpaques);
+
+            //render Opaques
+            //TODO: move to render pass class
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
             {
                 SetupLights(AllCameras[cameraIndex]);
                 RenderCamera(AllCameras[cameraIndex]);
             }
-            //opaque render pass
-            int renderPassIndex;
-            for (renderPassIndex = 0; renderPassIndex < renderPasses.Count; renderPassIndex++)
-            {
-                if (renderPasses[renderPassIndex].Queue > (int)RenderQueue.AfterTransparents - 1)
-                {
-                    break;
-                }
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
-                renderPassCommandBuffer.Invoke();
-            }
 
-            //////////////////////
-            //draw transparents
-            //code here
-            //////////////////////
+            //Post opaque pass (Opaque -> Transparent - 1)
+            renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
 
-            //transparent render pass
-            for (; renderPassIndex < renderPasses.Count; renderPassIndex++)
-            {
-                if (renderPasses[renderPassIndex].Queue > (int)RenderQueue.AfterPostProcessing - 1)
-                {
-                    break;
-                }
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
-                renderPassCommandBuffer.Invoke();
-            }
+            //render Transparents
 
-            //post processing
-            //opaque render pass
-            for (; renderPassIndex < renderPasses.Count; renderPassIndex++)
-            {
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
-                renderPassCommandBuffer.Invoke();
-            }
+            //Post transparent render pass (Transparent -> PostProcess - 1)
+            renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterPostProcessing);
+
+            //Post post processing (Transparent -> End)
+            ExecuteRenderPasses(renderPassIndex, int.MaxValue);
 
             //blit render buffer to screen
             Blit(MainFrameBuffer, null, null);

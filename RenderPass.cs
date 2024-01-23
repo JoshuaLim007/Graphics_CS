@@ -8,6 +8,7 @@ namespace JLGraphics
 {
     public enum RenderQueue
     {
+        Prepass = 0,
         AfterOpaques = 2000,
         AfterTransparents = 3000,
         AfterPostProcessing = 4000,
