@@ -618,7 +618,7 @@ namespace JLGraphics
         }
         static Renderer[] FrustumCullCPU(Renderer[] renderers)
         {
-            
+            return renderers;
         }
         static void RenderCamera(Camera camera)
         {
@@ -637,7 +637,7 @@ namespace JLGraphics
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
             //var renderers = InternalGlobalScope<Renderer>.Values.ToArray();// SortRenderersByProgramByMaterials();
             var renderers = SortRenderersByProgramByMaterials();
-
+            renderers = FrustumCullCPU(renderers);
             for (int i = 0; i < renderers.Length; i++)
             {
                 var current = renderers[i];
