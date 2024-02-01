@@ -14,7 +14,7 @@ namespace JLGraphics
 {
     public struct Time
     {
-        public static float FixedDeltaTime { get => Graphics.FixedDeltaTime; set => Graphics.FixedDeltaTime = Math.Clamp(value, 0.002f, 1.0f); }
+        public static float FixedDeltaTime { get => Graphics.FixedDeltaTime; set => Graphics.FixedDeltaTime = Math.Clamp(value, float.Epsilon, 1.0f); }
         public static float UnscaledDeltaTime => Graphics.DeltaTime;
         public static float UnscaledSmoothDeltaTime => Graphics.SmoothDeltaTime;
 
@@ -58,7 +58,7 @@ namespace JLGraphics
             }
             return true;
         }
-        private static void InitWindow(float updateFrequency, int msaaSamples)
+        private static void InitWindow(int msaaSamples)
         {
             m_nativeWindowSettings.NumberOfSamples = msaaSamples;
 
@@ -69,7 +69,6 @@ namespace JLGraphics
             }
 
             Window = new GameWindow(m_gameWindowSettings, m_nativeWindowSettings);
-            Window.UpdateFrequency = updateFrequency;
             Window.VSync = 0;
             Window.Resize += Resize;
 
@@ -83,30 +82,36 @@ namespace JLGraphics
             }
 
             float statsInterval = 0.0f;
-
-            DateTime time1 = DateTime.Now;
-            DateTime time2 = DateTime.Now;
+            float fixedTimer = 0;
+            var time = DateTime.Now;
+            var time1 = DateTime.Now;
 
             //Window.Load += Start; //start now happens after the first frame
             Window.UpdateFrame += delegate (FrameEventArgs eventArgs)
             {
-                FixedUpdate();
+                fixedTimer += Time.DeltaTime;
+                if (fixedTimer >= Time.FixedDeltaTime)
+                {
+                    float t = fixedTimer / Time.FixedDeltaTime;
+                    int howMany = (int)MathF.Floor(t);
+                    for (int i = 0; i < howMany; i++)
+                    {
+                        FixedUpdate();
+                    }
+                    fixedTimer = 0;
+                }
+
+                InvokeNewStarts();
+                InvokeUpdates();
 
                 float updateFreq = 1.0f / FixedDeltaTime;
-                if (Window.UpdateFrequency != updateFreq)
-                {
-                    Window.UpdateFrequency = updateFreq;
-                }
-            };
 
-            int setFrame = 0;
-            Window.RenderFrame += delegate (FrameEventArgs eventArgs)
-            {
-                time2 = DateTime.Now;
+
+                time = DateTime.Now;
 #if DEBUG
                 fileTracker.ResolveFileTrackQueue();
 #endif
-                DeltaTime = (time2.Ticks - time1.Ticks) / 10000000f;
+                DeltaTime = (time.Ticks - time1.Ticks) / 10000000f;
                 SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
                 ElapsedTime += DeltaTime;
                 if (statsInterval > 0.5f)
@@ -128,23 +133,14 @@ namespace JLGraphics
                 }
                 statsInterval += DeltaTime;
 
-                if (setFrame != 0)
-                {
-                    m_drawCount = 0;
-                    m_shaderBindCount = 0;
-                    m_materialUpdateCount = 0;
-                    m_meshBindCount = 0;
-                    m_verticesCount = 0;
+                m_drawCount = 0;
+                m_shaderBindCount = 0;
+                m_materialUpdateCount = 0;
+                m_meshBindCount = 0;
+                m_verticesCount = 0;
+                DoRenderUpdate();
 
-                    InvokeNewStarts();
-                    Update();
-                }
-                else
-                {
-                    setFrame++;
-                }
-
-                time1 = time2;
+                time1 = time;
             };
         }
         static ShaderProgram DefaultShaderProgram;
@@ -153,19 +149,17 @@ namespace JLGraphics
         /// <param name="windowName"></param>
         /// <param name="windowResolution"></param>
         /// <param name="renderFrequency"></param>
-        /// <param name="updateFrequency"></param>
-        public static void Init(string windowName, Vector2i windowResolution, float renderFrequency = 0, float updateFrequency = 60.0f)
+        /// <param name="fixedUpdateFrequency"></param>
+        public static void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
             m_isInit = true;
             StbImage.stbi_set_flip_vertically_on_load(1);
 
-            FixedDeltaTime = 1.0f / updateFrequency;
+            FixedDeltaTime = 1.0f / fixedUpdateFrequency;
 
             m_gameWindowSettings = GameWindowSettings.Default;
             m_nativeWindowSettings = NativeWindowSettings.Default;
-
-            m_gameWindowSettings.RenderFrequency = renderFrequency;
-            m_gameWindowSettings.UpdateFrequency = updateFrequency;
+            m_gameWindowSettings.UpdateFrequency = renderFrequency;
 
             m_nativeWindowSettings.Size = windowResolution;
             m_nativeWindowSettings.Title = windowName;
@@ -174,7 +168,7 @@ namespace JLGraphics
             m_nativeWindowSettings.API = ContextAPI.OpenGL;
             m_nativeWindowSettings.APIVersion = Version.Parse("4.1");
 
-            InitWindow(updateFrequency, 0);
+            InitWindow(0);
 
             var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
@@ -393,7 +387,7 @@ namespace JLGraphics
             return renderPassIndex;
         }
         static CommandBuffer renderPassCommandBuffer;
-        private static void Update()
+        private static void DoRenderUpdate()
         {
             renderPasses.Sort();
             for (int i = 0; i < renderPasses.Count; i++)
@@ -409,7 +403,6 @@ namespace JLGraphics
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
             GL.Enable(EnableCap.DepthTest);
-            InvokeUpdates();
 
             //prepass (Prepass -> Opaque - 1)
             int renderPassIndex = ExecuteRenderPasses(0, (int)RenderQueue.AfterOpaques);
