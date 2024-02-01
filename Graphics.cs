@@ -491,6 +491,135 @@ namespace JLGraphics
             Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
 
+        static Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
+        static Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials)
+        {
+            List<Renderer>[] materials = new List<Renderer>[uniqueMaterials];
+            int materialCount;
+            int index;
+
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                materialCount = materialIndex.Count;
+                var current = renderers[i];
+                if (!materialIndex.ContainsKey(current.Material))
+                {
+                    materialIndex.Add(current.Material, materialCount);
+                    var list = new List<Renderer>();
+                    materials[materialCount] = list;
+                    list.Add(current);
+                }
+                else
+                {
+                    index = materialIndex[current.Material];
+                    materials[index].Add(current);
+                }
+            }
+
+            index = 0;
+            var final = new Renderer[renderers.Count];
+            for (int i = 0; i < materialIndex.Count; i++)
+            {
+                for (int j = 0; j < materials[i].Count; j++)
+                {
+                    final[index] = materials[i][j];
+                    index++;
+                }
+            }
+
+            materialIndex.Clear();
+            return final;
+        }
+
+        static Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
+        static Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
+        static Renderer[] SortRenderersByProgramByMaterials()
+        {
+            List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
+            int index;
+            int programCount;
+            int totalRenderers = InternalGlobalScope<Renderer>.Count;
+            for (int i = 0; i < totalRenderers; i++)
+            {
+                programCount = programIndex.Count;
+                var current = InternalGlobalScope<Renderer>.Values[i];
+                if (!programIndex.ContainsKey(current.Material.Program))
+                {
+                    programIndex.Add(current.Material.Program, programCount);
+                    var list = new List<Renderer>();
+                    programs[programCount] = list;
+                    list.Add(current);
+
+                    if (!uniqueMaterialsAtIndex.ContainsKey(programCount))
+                    {
+                        uniqueMaterialsAtIndex.Add(programCount, new HashSet<Shader>());
+                    }
+                    uniqueMaterialsAtIndex[programCount].Add(current.Material);
+                }
+                else
+                {
+                    index = programIndex[current.Material.Program];
+
+                    if (!uniqueMaterialsAtIndex.ContainsKey(index))
+                    {
+                        uniqueMaterialsAtIndex.Add(index, new HashSet<Shader>());
+                    }
+                    uniqueMaterialsAtIndex[index].Add(current.Material);
+
+                    var hashSet = uniqueMaterialsAtIndex[index];
+                    if (hashSet.Contains(current.Material))
+                        hashSet.Add(current.Material);
+
+                    programs[index].Add(current);
+                }
+            }
+
+            var final = new Renderer[totalRenderers];
+            //parallel sort if we have more than 16 program id
+            if (programIndex.Count > 16)
+            {
+                index = 0;
+                Vector2i[] ranges = new Vector2i[programIndex.Count];
+                int prevIndex = 0;
+                for (int i = 0; i < programIndex.Count; i++)
+                {
+                    ranges[i].X = prevIndex;
+                    ranges[i].Y = prevIndex + programs[i].Count;
+                    prevIndex += programs[i].Count;
+                }
+                Parallel.For(0, programIndex.Count, (i) =>
+                {
+                    var sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
+                    int index = ranges[i].X;
+                    for (int j = 0; j < sorted.Length; j++)
+                    {
+                        final[index] = sorted[j];
+                        index++;
+                    }
+                });
+            }
+            else
+            {
+                index = 0;
+                for (int i = 0; i < programIndex.Count; i++)
+                {
+                    var sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
+                    for (int j = 0; j < sorted.Length; j++)
+                    {
+                        final[index] = sorted[j];
+                        index++;
+                    }
+                }
+            }
+
+            programIndex.Clear();
+            uniqueMaterialsAtIndex.Clear();
+            return final;
+        }
+        static Renderer[] FrustumCullCPU(Renderer[] renderers)
+        {
+            
+        }
         static void RenderCamera(Camera camera)
         {
             Mesh? previousMesh = null;
@@ -505,9 +634,13 @@ namespace JLGraphics
             //apply static batching
 
             //render each renderer
-            for (int i = 0; i < InternalGlobalScope<Renderer>.Count; i++)
+            //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
+            //var renderers = InternalGlobalScope<Renderer>.Values.ToArray();// SortRenderersByProgramByMaterials();
+            var renderers = SortRenderersByProgramByMaterials();
+
+            for (int i = 0; i < renderers.Length; i++)
             {
-                var current = InternalGlobalScope<Renderer>.Values[i];
+                var current = renderers[i];
                 if (current == null || !current.Enabled || current.Material == null)
                 {
                     continue;

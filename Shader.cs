@@ -160,6 +160,7 @@ namespace JLGraphics
             shaderPrograms.Remove(this);
         }
 
+        public static int ProgramCounts => shaderPrograms.Count;
         Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
         public int GetUniformLocation(string id)
         {
