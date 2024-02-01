@@ -148,6 +148,7 @@ namespace JLGraphics
             var d = GL.GetProgramInfoLog(Id);
             if (d != "")
                 Console.WriteLine(d);
+            uniformLocations.Clear();
         }
         public void Dispose()
         {
@@ -157,6 +158,21 @@ namespace JLGraphics
             Vert.Dispose();
             GL.DeleteProgram(Id);
             shaderPrograms.Remove(this);
+        }
+
+        Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
+        public int GetUniformLocation(string id)
+        {
+            if (uniformLocations.ContainsKey(id))
+            {
+                return uniformLocations[id];
+            }
+            else
+            {
+                int loc = GL.GetUniformLocation(Id, id);
+                uniformLocations.Add(id, loc);
+                return loc;
+            }
         }
     }
     public sealed class Shader : IName
@@ -252,24 +268,24 @@ namespace JLGraphics
 
         WeakReference<Shader> myWeakRef;
         static List<WeakReference<Shader>> AllInstancedShaders = new List<WeakReference<Shader>>();
-        
+
         //global uniform caches
+        public enum UniformType
+        {
+            texture,
+            vec3,
+            vec4,
+            vec2,
+            Float,
+            Int,
+            mat4
+        }
         public struct GlobalUniformValue
         {
-            public enum GlobalUniformType
-            {
-                texture,
-                vec3,
-                vec4,
-                vec2,
-                Float,
-                Int,
-                mat4
-            }
             public string uniformName;
             public object value;
-            public GlobalUniformType uniformType;
-            public GlobalUniformValue(string uniformName, GlobalUniformType uniformType, object value)
+            public UniformType uniformType;
+            public GlobalUniformValue(string uniformName, UniformType uniformType, object value)
             {
                 this.uniformType = uniformType;
                 this.uniformName = uniformName;
@@ -286,7 +302,7 @@ namespace JLGraphics
         {
             return GlobalUniforms[index];
         }
-        public static void SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType globalUniformType, object value, string uniformName)
+        public static void SetGlobalUniformValue(UniformType globalUniformType, object value, string uniformName)
         {
             var index = FindGlobalUniformIndex(uniformName);
             if (index == -1)
@@ -354,6 +370,7 @@ namespace JLGraphics
         void ShaderReload()
         {
             Console.WriteLine("\tShader Reload.. Rebinding Textures, Setting uniforms for program " + Program.Id + " for material " + Name);
+            SetInt("textureMask", textureMask);
             UseProgram();
             BindAllTextures();
             UpdateUniforms();
@@ -375,6 +392,7 @@ namespace JLGraphics
             }
             Program.OnShaderReload += ShaderReload;
             Program.OnDispose += ShaderProgramDispose;
+            SetInt("textureMask", textureMask);
         }
         ~Shader()
         {
@@ -395,59 +413,81 @@ namespace JLGraphics
         {
             return ((val >> index) & 1) == 1;
         }
+        struct TextureBindState
+        {
+            public int TexturePtr;
+            public bool WasNull;
+        }
+        static TextureBindState[] PreviousTextureState = new TextureBindState[TotalTextures];
         internal void UpdateUniforms()
         {
+            //get uniform locations (cached by the shader program)
+            for (int i = 0; i < m_uniformValues.Count; i++)
+            {
+                var t = m_uniformValues[i];
+                t.uniformLocation = GetUniformLocation(m_uniformValues[i].id);
+                m_uniformValues[i] = t;
+            }
+
             //apply all material specific uniforms
+
+            //apply texture units
             for (int i = 0; i < TotalTextures; i++)
             {
                 if (IntToBool(textureMask, i))
                 {
-                    GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
-                    GL.BindTexture(TextureTarget.Texture2D, textures[i].GlTextureID);
+                    if (PreviousTextureState[i].WasNull || PreviousTextureState[i].TexturePtr != textures[i].GlTextureID)
+                    {
+                        GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
+                        GL.BindTexture(TextureTarget.Texture2D, textures[i].GlTextureID);
+                    }
+
+
+                    PreviousTextureState[i].WasNull = false;
+                    PreviousTextureState[i].TexturePtr = textures[i].GlTextureID;
                 }
                 else if(IntToBool(nullTextureMask, i))
                 {
-                    GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
-                    GL.BindTexture(TextureTarget.Texture2D, 0);
-                    GL.Disable(EnableCap.Texture2D);
+                    if (!PreviousTextureState[i].WasNull || PreviousTextureState[i].TexturePtr != textures[i].GlTextureID)
+                    {
+                        GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
+                        GL.BindTexture(TextureTarget.Texture2D, 0);
+                        GL.Disable(EnableCap.Texture2D);
+                    }
+
+                    PreviousTextureState[i].WasNull = true;
+                    PreviousTextureState[i].TexturePtr = 0;
                 }
             }
 
             SetInt("textureMask", textureMask);
-
             for (int i = 0; i < m_uniformValues.Count; i++)
             {
-                var type = m_uniformValues[i].value.GetType();
-                if (type == typeof(float))
+                var type = m_uniformValues[i].UniformType;
+                switch (type)
                 {
-                    var val = (float)m_uniformValues[i].value;
-                    GL.Uniform1(m_uniformValues[i].uniformLocation, val);
-                }
-                else if (type == typeof(int))
-                {
-                    var val = (int)m_uniformValues[i].value;
-                    GL.Uniform1(m_uniformValues[i].uniformLocation, val);
-                }
-                else if (type == typeof(Vector2))
-                {
-                    var val = (Vector2)m_uniformValues[i].value;
-                    GL.Uniform2(m_uniformValues[i].uniformLocation, val);
-                }
-                else if (type == typeof(Vector3))
-                {
-                    var val = (Vector3)m_uniformValues[i].value;
-                    GL.Uniform3(m_uniformValues[i].uniformLocation, val);
-                }
-                else if (type == typeof(Vector4))
-                {
-                    var val = (Vector4)m_uniformValues[i].value;
-                    GL.Uniform4(m_uniformValues[i].uniformLocation, val);
-                }
-                if (type == typeof(Matrix4))
-                {
-                    var val = (Matrix4)m_uniformValues[i].value;
-                    GL.UniformMatrix4(m_uniformValues[i].uniformLocation, false, ref val);
-                }
+                    case UniformType.vec3:
+                        GL.Uniform3(m_uniformValues[i].uniformLocation, (Vector3)m_uniformValues[i].value);
+                        break;
+                    case UniformType.vec4:
+                        GL.Uniform4(m_uniformValues[i].uniformLocation, (Vector4)m_uniformValues[i].value);
+                        break;
+                    case UniformType.vec2:
+                        GL.Uniform2(m_uniformValues[i].uniformLocation, (Vector2)m_uniformValues[i].value);
+                        break;
+                    case UniformType.Float:
+                        GL.Uniform1(m_uniformValues[i].uniformLocation, (float)m_uniformValues[i].value);
+                        break;
+                    case UniformType.Int:
+                        GL.Uniform1(m_uniformValues[i].uniformLocation, (int)m_uniformValues[i].value);
+                        break;
+                    case UniformType.mat4:
+                        var val = (Matrix4)m_uniformValues[i].value;
+                        GL.UniformMatrix4(m_uniformValues[i].uniformLocation, false, ref val);
+                        break;
+                    default:
+                        break;
+                };
             }
         }
         internal static void Unbind()
@@ -459,11 +499,13 @@ namespace JLGraphics
         {
             public string id;
             public int uniformLocation;
+            public UniformType UniformType;
             public object value;
-            public UniformValue(string id, int location, object value)
+            public UniformValue(string id, int location, UniformType UniformType, object value)
             {
                 this.id = id;
                 this.uniformLocation = location;
+                this.UniformType = UniformType;
                 this.value = value;
             }
         }
@@ -474,7 +516,7 @@ namespace JLGraphics
 
         public static void SetGlobalTexture(string id, Texture texture)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.texture, texture, id);
+            SetGlobalUniformValue(UniformType.texture, texture, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -487,7 +529,7 @@ namespace JLGraphics
         }
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.mat4, matrix4, id);
+            SetGlobalUniformValue(UniformType.mat4, matrix4, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -500,7 +542,7 @@ namespace JLGraphics
         }
         public static void SetGlobalVector4(string id, Vector4 value)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.vec4, value, id);
+            SetGlobalUniformValue(UniformType.vec4, value, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -513,7 +555,7 @@ namespace JLGraphics
         }
         public static void SetGlobalVector3(string id, Vector3 value)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.vec3, value, id);
+            SetGlobalUniformValue(UniformType.vec3, value, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -527,7 +569,7 @@ namespace JLGraphics
 
         public static void SetGlobalVector2(string id, Vector2 value)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.vec2, value, id);
+            SetGlobalUniformValue(UniformType.vec2, value, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -540,7 +582,7 @@ namespace JLGraphics
         }
         public static void SetGlobalFloat(string id, float value)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.Float, value, id);
+            SetGlobalUniformValue(UniformType.Float, value, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -553,7 +595,7 @@ namespace JLGraphics
         }
         public static void SetGlobalInt(string id, int value)
         {
-            SetGlobalUniformValue(GlobalUniformValue.GlobalUniformType.Int, value, id);
+            SetGlobalUniformValue(UniformType.Int, value, id);
 
             for (int i = 0; i < AllInstancedShaders.Count; i++)
             {
@@ -576,25 +618,25 @@ namespace JLGraphics
                 var cur = GlobalUniforms[i];
                 switch (cur.uniformType)
                 {
-                    case GlobalUniformValue.GlobalUniformType.texture:
+                    case UniformType.texture:
                         SetTexture(cur.uniformName, (Texture)cur.value);
                         break;
-                    case GlobalUniformValue.GlobalUniformType.vec3:
+                    case UniformType.vec3:
                         SetVector3(cur.uniformName, (Vector3)cur.value);
                         break;
-                    case GlobalUniformValue.GlobalUniformType.vec4:
+                    case UniformType.vec4:
                         SetVector4(cur.uniformName, (Vector4)cur.value);
                         break;
-                    case GlobalUniformValue.GlobalUniformType.vec2:
+                    case UniformType.vec2:
                         SetVector3(cur.uniformName, (Vector3)cur.value);
                         break;
-                    case GlobalUniformValue.GlobalUniformType.Float:
+                    case UniformType.Float:
                         SetFloat(cur.uniformName, (float)cur.value);
                         break;
-                    case GlobalUniformValue.GlobalUniformType.Int:
+                    case UniformType.Int:
                         SetInt(cur.uniformName, (int)cur.value);
                         break;
-                    case GlobalUniformValue.GlobalUniformType.mat4:
+                    case UniformType.mat4:
                         SetMat4(cur.uniformName, (Matrix4)cur.value);
                         break;
                     default:
@@ -606,18 +648,16 @@ namespace JLGraphics
         {
             if (m_cachedUniformValueIndex.ContainsKey(uniformValue.id))
             {
-                m_uniformValues[m_cachedUniformValueIndex[uniformValue.id]] = uniformValue;
+                int index = m_cachedUniformValueIndex[uniformValue.id];
+                var temp = m_uniformValues[index];
+                temp.value = uniformValue.value;
+                m_uniformValues[index] = temp;
             }
             else
             {
                 m_cachedUniformValueIndex.Add(uniformValue.id, m_uniformValues.Count);
                 m_uniformValues.Add(uniformValue);
             }
-        }
-
-        public void SetUniformValue(UniformValue uniformValue)
-        {
-            mAddUniform(uniformValue);
         }
         public T GetUniformValue<T>(string id)
         {
@@ -630,15 +670,15 @@ namespace JLGraphics
 
         public void SetMat4(string id, Matrix4 value)
         {
-            mAddUniform(new UniformValue(id, GetUniformLocation(id), value));
+            mAddUniform(new UniformValue(id, -1, UniformType.mat4, value));
         }
         public void SetFloat(string id, float value)
         {
-            mAddUniform(new UniformValue(id, GetUniformLocation(id), value));
+            mAddUniform(new UniformValue(id, -1, UniformType.Float, value));
         }
         public void SetInt(string id, int value)
         {
-            mAddUniform(new UniformValue(id, GetUniformLocation(id), value));
+            mAddUniform(new UniformValue(id, -1, UniformType.Int, value));
         }
         public void SetBool(string id, bool value)
         {
@@ -646,34 +686,22 @@ namespace JLGraphics
         }
         public void SetVector4(string id, Vector4 value)
         {
-            mAddUniform(new UniformValue(id, GetUniformLocation(id), value));
+            mAddUniform(new UniformValue(id, -1, UniformType.vec4, value));
 
         }
         public void SetVector3(string id, Vector3 value)
         {
-            mAddUniform(new UniformValue(id, GetUniformLocation(id), value));
+            mAddUniform(new UniformValue(id, -1, UniformType.vec3, value));
 
         }
         public void SetVector2(string id, Vector2 value)
         {
-            mAddUniform(new UniformValue(id, GetUniformLocation(id), value));
+            mAddUniform(new UniformValue(id, -1, UniformType.vec2, value));
         }
-
-
-        private Dictionary<string, int> m_cachedUniformLocations = new Dictionary<string, int>();
 
         public int GetUniformLocation(string id)
         {
-            if (m_cachedUniformLocations.ContainsKey(id))
-            {
-                return m_cachedUniformLocations[id];
-            }
-            else
-            {
-                int loc = GL.GetUniformLocation(Program,id);
-                m_cachedUniformLocations.Add(id, loc);
-                return loc;
-            }
+            return Program.GetUniformLocation(id);
         }
     }
 }

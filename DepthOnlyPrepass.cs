@@ -12,7 +12,7 @@ namespace JLGraphics
         {
         }
 
-        public override void Execute(in CommandBuffer cmd, in RenderTexture frameBuffer)
+        public override void Execute(in CommandBuffer cmd, in FrameBuffer frameBuffer)
         {
 
         }

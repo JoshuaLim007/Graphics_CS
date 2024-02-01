@@ -43,7 +43,7 @@ namespace JLGraphics
                 base.Height = value;
             }
         }
-        protected override IntPtr GetPixelData()
+        protected override IntPtr LoadPixelData()
         {
             if (image == null)
             {

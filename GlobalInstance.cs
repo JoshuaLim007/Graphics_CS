@@ -14,6 +14,19 @@ namespace JLGraphics
     {
         private InternalGlobalScope() { }
         internal static List<T> Values { get; private set; } = new List<T>();
+        internal static Dictionary<string, T> NamedValues { get; private set; } = new Dictionary<string, T>();
+        internal static void Add(string name, T value)
+        {
+            NamedValues.Add(name, value);
+        }
+        internal static T Get(string name)
+        {
+            return NamedValues[name];
+        }
+        internal static void Add(T value)
+        {
+            Values.Add(value);
+        }
         internal static T Value
         {
             get

@@ -198,7 +198,7 @@ namespace JLGraphics
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
             PassthroughShader = new Shader("Default Passthrough", passThroughShader);
-            MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
+            MainFrameBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
             renderPassCommandBuffer = new CommandBuffer();
         }
         public static void Free()
@@ -236,7 +236,7 @@ namespace JLGraphics
         {
             m_nativeWindowSettings.Size = new Vector2i(args.Width, args.Height);
             MainFrameBuffer.Dispose();
-            MainFrameBuffer = new RenderTexture(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, PixelInternalFormat.Rgb16f, PixelFormat.Rgb);
+            MainFrameBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
             GL.Viewport(0, 0, args.Width, args.Height);
             for (int i = 0; i < AllCameras.Count; i++)
             {
@@ -317,7 +317,7 @@ namespace JLGraphics
 
         static int FullScreenQuad = 0;
         static Shader PassthroughShader = null;
-        static RenderTexture MainFrameBuffer = null;
+        static FrameBuffer MainFrameBuffer = null;
         internal static int CreateFullScreenQuad()
         {
             int[] quad_VertexArrayID = new int[1];
@@ -342,7 +342,7 @@ namespace JLGraphics
             int vao = quad_VertexArrayID[0];
             return vao;
         }
-        internal static void Blit(RenderTexture src, RenderTexture dst, Shader shader = null)
+        internal static void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
         {
             // second pass
             int width = dst != null ? dst.Width : Window.Size.X;
@@ -356,7 +356,7 @@ namespace JLGraphics
 
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
-            blitShader.SetTexture("MainTex", src.GlTextureID);
+            blitShader.SetTexture("MainTex", src.ColorAttachments[0]);
             //blitShader.SetTexture("DepthTex", src.DepthBufferTextureId);
             blitShader.UseProgram();
             blitShader.UpdateUniforms();

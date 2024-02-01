@@ -16,9 +16,13 @@ namespace JLGraphics
     public class CommandBuffer
     {
         Queue<Action> actions = new Queue<Action>();
-        public void Blit(RenderTexture src, RenderTexture dst, Shader shader = null)
+        public void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
         {
             actions.Enqueue(() => { Graphics.Blit(src, dst, shader); });
+        }
+        public void Add(Action action)
+        {
+            actions.Enqueue(action);
         }
         internal void Invoke()
         {
@@ -39,7 +43,7 @@ namespace JLGraphics
         }
         public int Queue { get; set; }
         public virtual void FrameSetup() { }
-        public abstract void Execute(in CommandBuffer cmd, in RenderTexture frameBuffer);
+        public abstract void Execute(in CommandBuffer cmd, in FrameBuffer frameBuffer);
         public virtual void FrameCleanup() { }
         public int CompareTo(RenderPass? other)
         {
