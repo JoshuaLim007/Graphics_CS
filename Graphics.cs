@@ -445,7 +445,8 @@ namespace JLGraphics
             Window.SwapBuffers();
 
         }
-
+        static bool DisableFrustumCulling { get; set; } = false;
+        static bool DisableDynamicBatching { get; set; } = false;
         static void SetupLights(Camera camera)
         {
             List<PointLight> pointLights = new List<PointLight>();
@@ -533,16 +534,16 @@ namespace JLGraphics
 
         static Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
         static Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
-        static Renderer[] SortRenderersByProgramByMaterials()
+        static Renderer[] SortRenderersByProgramByMaterials(Renderer[] renderers)
         {
             List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
             int index;
             int programCount;
-            int totalRenderers = InternalGlobalScope<Renderer>.Count;
+            int totalRenderers = renderers.Length;
             for (int i = 0; i < totalRenderers; i++)
             {
                 programCount = programIndex.Count;
-                var current = InternalGlobalScope<Renderer>.Values[i];
+                var current = renderers[i];
                 if (!programIndex.ContainsKey(current.Material.Program))
                 {
                     programIndex.Add(current.Material.Program, programCount);
@@ -635,9 +636,12 @@ namespace JLGraphics
 
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
-            //var renderers = InternalGlobalScope<Renderer>.Values.ToArray();// SortRenderersByProgramByMaterials();
-            var renderers = SortRenderersByProgramByMaterials();
-            renderers = FrustumCullCPU(renderers);
+            Renderer[] renderers = InternalGlobalScope<Renderer>.Values.ToArray();
+            if(!DisableDynamicBatching)
+                renderers = SortRenderersByProgramByMaterials(renderers);
+            if(!DisableFrustumCulling)
+                renderers = FrustumCullCPU(renderers);
+            
             for (int i = 0; i < renderers.Length; i++)
             {
                 var current = renderers[i];
