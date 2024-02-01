@@ -445,8 +445,12 @@ namespace JLGraphics
             Window.SwapBuffers();
 
         }
-        static bool DisableFrustumCulling { get; set; } = false;
-        static bool DisableDynamicBatching { get; set; } = false;
+        public static bool DisableFrustumCulling { get; set; } = false;
+        public const int BATCH_PROGRAMID = 0b1;
+        public const int BATCH_MATERIAL_PROGRAMID = 0b11;
+        public const int BATCH_NONE = 0;
+        public static int DynamicBatchingFlags = BATCH_MATERIAL_PROGRAMID;
+
         static void SetupLights(Camera camera)
         {
             List<PointLight> pointLights = new List<PointLight>();
@@ -534,12 +538,12 @@ namespace JLGraphics
 
         static Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
         static Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
-        static Renderer[] SortRenderersByProgramByMaterials(Renderer[] renderers)
+        static Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers)
         {
             List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
             int index;
             int programCount;
-            int totalRenderers = renderers.Length;
+            int totalRenderers = renderers.Count;
             for (int i = 0; i < totalRenderers; i++)
             {
                 programCount = programIndex.Count;
@@ -576,40 +580,17 @@ namespace JLGraphics
             }
 
             var final = new Renderer[totalRenderers];
-            //parallel sort if we have more than 16 program id
-            if (programIndex.Count > 16)
+            index = 0;
+            bool batchMats = (DynamicBatchingFlags & BATCH_MATERIAL_PROGRAMID) == BATCH_MATERIAL_PROGRAMID;
+            for (int i = 0; i < programIndex.Count; i++)
             {
-                index = 0;
-                Vector2i[] ranges = new Vector2i[programIndex.Count];
-                int prevIndex = 0;
-                for (int i = 0; i < programIndex.Count; i++)
+                ICollection<Renderer> sorted = programs[i];
+                if(batchMats)
+                    sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
+                for (int j = 0; j < sorted.Count; j++)
                 {
-                    ranges[i].X = prevIndex;
-                    ranges[i].Y = prevIndex + programs[i].Count;
-                    prevIndex += programs[i].Count;
-                }
-                Parallel.For(0, programIndex.Count, (i) =>
-                {
-                    var sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
-                    int index = ranges[i].X;
-                    for (int j = 0; j < sorted.Length; j++)
-                    {
-                        final[index] = sorted[j];
-                        index++;
-                    }
-                });
-            }
-            else
-            {
-                index = 0;
-                for (int i = 0; i < programIndex.Count; i++)
-                {
-                    var sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
-                    for (int j = 0; j < sorted.Length; j++)
-                    {
-                        final[index] = sorted[j];
-                        index++;
-                    }
+                    final[index] = sorted.ElementAt(j);
+                    index++;
                 }
             }
 
@@ -636,12 +617,24 @@ namespace JLGraphics
 
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
-            Renderer[] renderers = InternalGlobalScope<Renderer>.Values.ToArray();
-            if(!DisableDynamicBatching)
-                renderers = SortRenderersByProgramByMaterials(renderers);
-            if(!DisableFrustumCulling)
-                renderers = FrustumCullCPU(renderers);
-            
+            Renderer[] renderers;
+            if((DynamicBatchingFlags & BATCH_MATERIAL_PROGRAMID) != BATCH_NONE)
+            {
+                renderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values);
+                if (!DisableFrustumCulling)
+                {
+                    renderers = FrustumCullCPU(renderers);
+                }
+            }
+            else
+            {
+                renderers = InternalGlobalScope<Renderer>.Values.ToArray();
+                if (!DisableFrustumCulling)
+                {
+                    renderers = FrustumCullCPU(renderers);
+                }
+            }
+
             for (int i = 0; i < renderers.Length; i++)
             {
                 var current = renderers[i];
