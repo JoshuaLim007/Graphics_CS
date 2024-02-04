@@ -113,19 +113,25 @@ namespace JLGraphics
             Id = GL.CreateProgram();
             shaderPrograms.Add(this);
         }
-        public ShaderProgram FindShaderProgram(string name)
+        public static ShaderProgram FindShaderProgram(string name)
         {
             for (int i = 0; i < shaderPrograms.Count; i++)
             {
                 if (shaderPrograms[i].Name == name)
                 {
-                    return this;
+                    return shaderPrograms[i];
                 }
             }
             return null;
         }
         public void CompileProgram()
         {
+            if (Disposed)
+            {
+                Console.WriteLine("ERROR::Program has been disposed!");
+                throw new Exception("ERROR::Program has been disposed!");
+            }
+            isCompiled = true;
             Frag.CompileShader();
             Vert.CompileShader();
             UpdateProgram();
@@ -152,18 +158,32 @@ namespace JLGraphics
         }
         public void Dispose()
         {
+            isCompiled = false;
             OnDispose.Invoke();
             Disposed = true;
             Frag.Dispose();
             Vert.Dispose();
             GL.DeleteProgram(Id);
             shaderPrograms.Remove(this);
+            Vert.FileChangeCallback.Remove(OnVertFileChangeShaderRecompile);
+            Frag.FileChangeCallback.Remove(OnFragFileChangeShaderRecompile);
         }
 
         public static int ProgramCounts => shaderPrograms.Count;
         Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
+        public bool isCompiled { get; private set; } = false;
         public int GetUniformLocation(string id)
         {
+            if (!isCompiled)
+            {
+                Console.WriteLine("ERROR::Program is not compiled! " + Name);
+                throw new Exception("ERROR::Program is not compiled! " + Name);
+            }
+            if (Disposed)
+            {
+                Console.WriteLine("ERROR::Program has been disposed! " + Name);
+                throw new Exception("ERROR::Program has been disposed! " + Name);
+            }
             if (uniformLocations.ContainsKey(id))
             {
                 return uniformLocations[id];
@@ -182,6 +202,7 @@ namespace JLGraphics
         public string Name { get; set; }
         public DepthFunction DepthTestFunction { get; set; } = DepthFunction.Equal;
         public bool DepthTest { get; set; } = true;
+        public bool DepthMask { get; set; } = true;
         public bool[] ColorMask { get; private set; } = new bool[4] { true, true, true, true };
         private int textureMask = 0;
         private int nullTextureMask = 0;
@@ -222,7 +243,7 @@ namespace JLGraphics
             }
         }
         bool isWithinShader = false;
-        public void SetTexture(string uniformName, Texture texture)
+        public void SetTexture(string uniformName, Texture texture, TextureTarget? textureTarget = null)
         {
             int previousProgram = 0;
             if (!isWithinShader)
@@ -232,6 +253,10 @@ namespace JLGraphics
             }
 
             int textureIndex = findShaderIndex(uniformName);
+            
+            if(textureTarget != null)
+                texture.TextureTarget = textureTarget.Value;
+
             if (textureIndex == -1) { 
                 if(texture == null)
                 {
@@ -267,15 +292,15 @@ namespace JLGraphics
                 GL.UseProgram(previousProgram);
             }
         }
-        public void SetTexture(string uniformName, int texturePtr)
+        public void SetTexture(string uniformName, int texturePtr, TextureTarget textureTarget)
         {
             if(texturePtr == 0)
             {
-                SetTexture(uniformName, null);
+                SetTexture(uniformName, null, textureTarget);
             }
             else
             {
-                SetTexture(uniformName, (Texture)texturePtr);
+                SetTexture(uniformName, (Texture)texturePtr, textureTarget);
             }
         }
 
@@ -363,6 +388,7 @@ namespace JLGraphics
         }
         public Shader(Shader shader)
         {
+            dontFetchGlobals = shader.dontFetchGlobals;
             Name = shader.Name + "_clone";
             Program = shader.Program;
             CopyUniforms(shader);   //this already contains global uniforms
@@ -370,15 +396,17 @@ namespace JLGraphics
             AllInstancedShaders.Add(myWeakRef);
             init();
         }
-
-        public Shader(string name, ShaderProgram shaderProgram) 
+        bool dontFetchGlobals = false;
+        public Shader(string name, ShaderProgram shaderProgram, bool excludeFromGlobalUniforms = false) 
         {
+            dontFetchGlobals = excludeFromGlobalUniforms;
             Name = name;
             Program = shaderProgram;
             myWeakRef = new WeakReference<Shader>(this);
             AllInstancedShaders.Add(myWeakRef);
             init();
-            fetchAllGlobalUniforms();   //get all previous global values before the shader was created
+            if(!dontFetchGlobals)
+                fetchAllGlobalUniforms();   //get all previous global values before the shader was created
         }
         void ShaderReload()
         {
@@ -390,13 +418,6 @@ namespace JLGraphics
             Unbind();
             return;
         }
-        void ShaderProgramDispose()
-        {
-            //if the shader program gets disposed, clone it and own the program
-            Program = new ShaderProgram(Program);
-            ShaderReload();
-            return;
-        }
         void init()
         {
             for (int i = 0; i < TotalTextures; i++)
@@ -404,17 +425,14 @@ namespace JLGraphics
                 availableTextureSlots.Push(i);
             }
             Program.OnShaderReload += ShaderReload;
-            Program.OnDispose += ShaderProgramDispose;
             SetInt("textureMask", textureMask);
         }
         ~Shader()
         {
-            Program.OnDispose -= ShaderProgramDispose;
             Program.OnShaderReload -= ShaderReload;
             AllInstancedShaders.Remove(myWeakRef);
             myWeakRef = null;
         }
-        static DepthFunction previousDepthFunction = DepthFunction.Never;
         /// <summary>
         /// Expensive, try to batch this with other meshes with same materials.
         /// Applies material unique uniforms.
@@ -455,6 +473,7 @@ namespace JLGraphics
             {
                 GL.Disable(EnableCap.DepthTest);
             }
+            GL.DepthMask(DepthMask);
             GL.ColorMask(ColorMask[0], ColorMask[1], ColorMask[2], ColorMask[3]);
 
             //get uniform locations (cached by the shader program)
@@ -466,7 +485,7 @@ namespace JLGraphics
             }
 
             //apply all material specific uniforms
-            if(PreviousProgram != Program)
+            if(PreviousProgram != Program && !dontFetchGlobals)
                 fetchAllGlobalUniforms();
 
             //apply texture units
@@ -477,7 +496,7 @@ namespace JLGraphics
                     if (PreviousTextureState[i].WasNull || PreviousTextureState[i].TexturePtr != textures[i].GlTextureID)
                     {
                         GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
-                        GL.BindTexture(TextureTarget.Texture2D, textures[i].GlTextureID);
+                        GL.BindTexture(textures[i].TextureTarget, textures[i].GlTextureID);
                     }
 
 
@@ -489,8 +508,7 @@ namespace JLGraphics
                     if (!PreviousTextureState[i].WasNull || PreviousTextureState[i].TexturePtr != textures[i].GlTextureID)
                     {
                         GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
-                        GL.BindTexture(TextureTarget.Texture2D, 0);
-                        GL.Disable(EnableCap.Texture2D);
+                        GL.BindTexture(textures[i].TextureTarget, 0);
                     }
 
                     PreviousTextureState[i].WasNull = true;
@@ -585,6 +603,12 @@ namespace JLGraphics
         public static void SetGlobalTexture(string id, Texture texture)
         {
             SetGlobalUniformValue(UniformType.texture, texture, id);
+        }
+        public static void SetGlobalTexture(string id, int texture, TextureTarget textureTarget)
+        {
+            Texture texture1 = (Texture)texture;
+            texture1.TextureTarget = textureTarget;
+            SetGlobalUniformValue(UniformType.texture, texture1, id);
         }
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {

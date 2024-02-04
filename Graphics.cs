@@ -7,6 +7,7 @@ using OpenTK.Windowing.Desktop;
 using StbImageSharp;
 using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Xml.Serialization;
 using All = OpenTK.Graphics.OpenGL4.All;
 
@@ -85,7 +86,10 @@ namespace JLGraphics
             float fixedTimer = 0;
             var time = DateTime.Now;
             var time1 = DateTime.Now;
+            Window.Load += delegate ()
+            {
 
+            };
             //Window.Load += Start; //start now happens after the first frame
             Window.UpdateFrame += delegate (FrameEventArgs eventArgs)
             {
@@ -144,6 +148,7 @@ namespace JLGraphics
                 time1 = time;
             };
         }
+        static CubemapTexture SkyBox;
         static ShaderProgram DefaultShaderProgram;
         static ShaderProgram PassthroughShaderProgram;
         static ShaderProgram DepthPrepassShaderProgram;
@@ -179,7 +184,8 @@ namespace JLGraphics
             var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
             var depthOnlyShader = new ShaderProgram("DepthOnlyShader", "./Shaders/DepthOnly.frag", "./Shaders/vertexSimple.glsl");
-
+            var skyBoxShaderProrgam = new ShaderProgram("Skybox Shader", "./Shaders/cubemapFrag.glsl", "./Shaders/skyboxVert.glsl");
+            var skyboxDepthPrepassProgram = new ShaderProgram("Skybox Shader", "./Shaders/fragmentEmpty.glsl", "./Shaders/skyboxVert.glsl");
 #if DEBUG
             fileTracker = new FileTracker();
             fileTracker.AddFileObject(defaultShader.FragFile);
@@ -187,14 +193,21 @@ namespace JLGraphics
             fileTracker.AddFileObject(passThroughShader.FragFile);
             fileTracker.AddFileObject(passThroughShader.VertFile);
 #endif
-
+            skyBoxShaderProrgam.CompileProgram();
             defaultShader.CompileProgram();
             passThroughShader.CompileProgram();
             depthOnlyShader.CompileProgram();
+            skyboxDepthPrepassProgram.CompileProgram();
+
+            SkyBox = new CubemapTexture();
+            SkyBox.Path = "D:\\joshu\\Downloads\\rural_asphalt_road_4k.hdr";
+            SkyBox.RenderCubemap(true, 1024);
 
             DefaultShaderProgram = defaultShader;
             PassthroughShaderProgram = passThroughShader;
             DepthPrepassShaderProgram = depthOnlyShader;
+            SkyboxShader = new Shader("Skybox material", skyBoxShaderProrgam);
+            SkyboxDepthPrepassShader = new Shader("Skybox depth prepass material", skyboxDepthPrepassProgram);
 
             DefaultMaterial = new Shader("Default Material", DefaultShaderProgram);
             DepthPrepassShader = new Shader("Default depth only", DepthPrepassShaderProgram);
@@ -204,13 +217,18 @@ namespace JLGraphics
             DepthPrepassShader.ColorMask[2] = false;
             DepthPrepassShader.ColorMask[3] = false;
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
-            FullScreenQuad = CreateFullScreenQuad();
+            DefaultMaterial.SetFloat("Smoothness", 0.5f);
+            FullScreenQuad = Mesh.CreateQuadMesh();
+            BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
             InitFramebuffers();
             renderPassCommandBuffer = new CommandBuffer();
         }
         public static void Free()
         {
+            SkyboxDepthPrepassShader.Program.Dispose();
+            SkyboxShader.Program.Dispose();
+            SkyBox.Dispose();
             Window.Close();
             MainFrameBuffer.Dispose();
             DepthTextureBuffer.Dispose();
@@ -231,7 +249,7 @@ namespace JLGraphics
             DefaultShaderProgram.Dispose();
             PassthroughShaderProgram.Dispose();
             DepthPrepassShaderProgram.Dispose();
-            GL.DeleteVertexArray(FullScreenQuad);
+            Mesh.FreeMeshObject(FullScreenQuad);
             m_isInit = false;
         }
         public static void Run()
@@ -328,35 +346,14 @@ namespace JLGraphics
             }
         }
 
-        static int FullScreenQuad = 0;
+        static MeshPrimative FullScreenQuad;
+        static MeshPrimative BasicCube;
         public static Shader PassthroughShader { get; private set; } = null;
         public static Shader DepthPrepassShader { get; private set; } = null;
+        public static Shader SkyboxShader { get; private set; } = null;
+        static Shader SkyboxDepthPrepassShader;
         static FrameBuffer MainFrameBuffer = null;
         static FrameBuffer DepthTextureBuffer = null;
-        internal static int CreateFullScreenQuad()
-        {
-            int[] quad_VertexArrayID = new int[1];
-            GL.GenVertexArrays(1, quad_VertexArrayID);
-            GL.BindVertexArray(quad_VertexArrayID[0]);
-
-            float[] g_quad_vertex_buffer_data = {
-                    -1.0f, -1.0f,
-                    1.0f, -1.0f,
-                    -1.0f,  1.0f,
-                    -1.0f,  1.0f,
-                    1.0f, -1.0f,
-                    1.0f,  1.0f,
-                };
-
-            int[] quad_vertexbuffer = new int[1];
-            GL.GenBuffers(1, quad_vertexbuffer);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, quad_vertexbuffer[0]);
-            GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * g_quad_vertex_buffer_data.Length, g_quad_vertex_buffer_data, BufferUsageHint.StaticDraw);
-            GL.EnableVertexAttribArray(0);
-            GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
-            int vao = quad_VertexArrayID[0];
-            return vao;
-        }
         internal static void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
             if(src == null)
@@ -379,12 +376,14 @@ namespace JLGraphics
             blitShader.UseProgram();
             blitShader.UpdateUniforms();
 
-            GL.BindVertexArray(FullScreenQuad);
+            GL.BindVertexArray(FullScreenQuad.VAO);
             GL.Disable(EnableCap.DepthTest);
             m_drawCount++;
-            m_verticesCount += 6;
+            m_verticesCount += FullScreenQuad.VertexCount;
+            m_shaderBindCount++;
+            m_meshBindCount++;
 
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, FullScreenQuad.VertexCount);
 
             if (restoreSrc)
             {
@@ -416,6 +415,34 @@ namespace JLGraphics
             return renderPassIndex;
         }
         static CommandBuffer renderPassCommandBuffer;
+
+        static void RenderSkyBox(bool doDepthPrepass, Camera camera)
+        {
+            //render skybox
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, BasicCube.EBO);
+            GL.BindVertexArray(BasicCube.VAO);
+            var mat = SkyboxShader;
+            if (doDepthPrepass)
+            {
+                mat = SkyboxDepthPrepassShader;
+                mat.DepthTestFunction = DepthFunction.Less;
+            }
+            else
+            {
+                mat.DepthTestFunction = DepthFunction.Lequal;
+            }
+            mat.SetMat4("ModelMatrix", Matrix4.CreateTranslation(camera.Transform.Position));
+            mat.UseProgram();
+            mat.UpdateUniforms();
+            GL.CullFace(CullFaceMode.Front);
+            GL.DrawElements(PrimitiveType.Triangles, BasicCube.IndiciesCount, DrawElementsType.UnsignedInt, 0);
+            GL.CullFace(CullFaceMode.Back);
+            m_drawCount++;
+            m_verticesCount += BasicCube.VertexCount;
+            m_shaderBindCount++;
+            m_meshBindCount++;
+        }
+
         private static void DoRenderUpdate()
         {
             renderPasses.Sort();
@@ -425,7 +452,7 @@ namespace JLGraphics
                 {
                     renderPasses[i].FrameSetup();
                 }
-
+                GL.Disable(EnableCap.Blend);
                 //bind Main render texture RT
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
                 GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
@@ -433,8 +460,10 @@ namespace JLGraphics
                 //render depth prepass
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
                 RenderCamera(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
-                //copy depth texture
                 Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
+                RenderSkyBox(true, AllCameras[cameraIndex]);
+
+                //copy depth texture
                 GL.Clear(ClearBufferMask.ColorBufferBit);
 
                 //prepass (Prepass -> Opaque - 1)
@@ -444,10 +473,12 @@ namespace JLGraphics
                 //TODO: move to render pass class
                 SetupLights(AllCameras[cameraIndex]);
                 RenderCamera(AllCameras[cameraIndex], RenderingSortMode);
+                RenderSkyBox(false, AllCameras[cameraIndex]);
 
                 //Post opaque pass (Opaque -> Transparent - 1)
                 renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
-
+                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+                GL.Enable(EnableCap.Blend);
                 //render Transparents
 
                 //Post transparent render pass (Transparent -> PostProcess - 1)
@@ -675,8 +706,6 @@ namespace JLGraphics
         }
         static void RenderCamera(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
         {
-            GL.DepthMask(true);
-
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
 
@@ -738,9 +767,8 @@ namespace JLGraphics
                 if (meshData != previousMesh)
                 {
                     m_meshBindCount++;
-                    GL.BindVertexArray(0);
-                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
                     GL.BindVertexArray(meshData.VertexArrayObject);
+                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
                     previousMesh = meshData;
                 }
 

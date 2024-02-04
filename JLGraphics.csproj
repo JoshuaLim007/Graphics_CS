@@ -35,6 +35,7 @@
     <PackageReference Include="CjClutter.ObjLoader" Version="1.0.0" />
     <PackageReference Include="OpenTK" Version="4.7.5" />
     <PackageReference Include="StbImageSharp" Version="2.27.13" />
+    <PackageReference Include="StbiSharp" Version="1.2.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,11 +49,54 @@
 
   <ItemGroup>
     <None Remove="shaders\CopyToScreen.frag" />
+    <None Remove="Shaders\cubemapFrag.glsl" />
     <None Remove="Shaders\DepthOnly.frag" />
     <None Remove="Shaders\fragmentEmpty.glsl" />
     <None Remove="shaders\Passthrough.vert" />
     <None Remove="Shaders\PostProcess.frag" />
+    <None Remove="Shaders\Rect2CubeFrag.glsl" />
+    <None Remove="Shaders\Rect2CubeVert.glsl" />
+    <None Remove="Shaders\skyboxVert.glsl" />
     <None Remove="Shaders\vertexSimple.glsl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Shaders\CopyToScreen.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\cubemapFrag.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\DepthOnly.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\fragment.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\fragmentEmpty.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\Passthrough.vert">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\PostProcess.frag">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\Rect2CubeFrag.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\Rect2CubeVert.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\skyboxVert.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\vertex.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Shaders\vertexSimple.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   
 </Project>

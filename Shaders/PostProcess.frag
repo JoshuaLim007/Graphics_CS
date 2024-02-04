@@ -7,6 +7,8 @@ uniform vec3 FogColor;
 uniform float FogDensity;
 uniform vec2 MainTex_Size;
 uniform vec4 CameraParams;
+uniform int Tonemapping;
+uniform int GammaCorrection;
 
 vec3 aces_tonemap(vec3 color){	
 	mat3 m1 = mat3(
@@ -36,8 +38,6 @@ float linearDepth(float depthSample)
 }
 void main()
 { 
-
-    //tonemap
     vec4 col = texture(MainTex, gl_FragCoord.xy / MainTex_Size);
 
     float depth = linearDepth(get_depth(gl_FragCoord.xy / MainTex_Size));
@@ -45,10 +45,15 @@ void main()
     col = mix(vec4(col), vec4(FogColor, 1), 1 - density);
 
     //aces tonemapping
-    col.xyz = aces_tonemap(col.xyz);
+    if(Tonemapping == 1){
+        col.xyz = aces_tonemap(col.xyz);
+    }
 
     //gamma correction
-    float gamma = 2.2;
-    col.rgb = pow(col.rgb, vec3(1.0/gamma));
-    FragColor = vec4(col);//mix(vec4(col), vec4(FogColor, 1), density);
+    if(GammaCorrection == 1){
+        float gamma = 2.2;
+        col.rgb = pow(col.rgb, vec3(1.0/gamma));
+    }
+
+    FragColor = vec4(col);
 }

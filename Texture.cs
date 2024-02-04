@@ -46,12 +46,15 @@ namespace JLGraphics
     }
     public class Texture : IDisposable
     {
+        public TextureTarget TextureTarget { get; set; } = TextureTarget.Texture2D;
         public PixelFormat pixelFormat { get; set; } = PixelFormat.Rgba;
         public PixelInternalFormat internalPixelFormat { get; set; } = PixelInternalFormat.Rgba;
         public bool generateMipMaps { get; set; } = true;
         public TextureWrapMode textureWrapMode { get; set; } = TextureWrapMode.ClampToEdge;
         public TextureMinFilter textureMinFilter { get; set; } = TextureMinFilter.Nearest;
         public TextureMagFilter textureMagFilter { get; set; } = TextureMagFilter.Nearest;
+        public int MipmapLevels { get; set; } = 11;
+
         public virtual int Width { get; set; } = 0;
         public virtual int Height { get; set; } = 0;
         public int GlTextureID { get; protected set; } = 0;
@@ -73,17 +76,25 @@ namespace JLGraphics
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)textureMinFilter);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)textureMagFilter);
 
+            if (generateMipMaps)
+            {
+                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, MipmapLevels);
+                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
+            }
+
             GL.TexImage2D(TextureTarget.Texture2D, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.UnsignedByte, LoadPixelData());
 
             if (generateMipMaps)
             {
                 GL.GenerateTextureMipmap(GlTextureID);
             }
+
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
         public virtual void Dispose()
         {
-            GL.DeleteTexture(GlTextureID);
+            if(GlTextureID != 0)
+                GL.DeleteTexture(GlTextureID);
             GlTextureID = 0;
         }
     }

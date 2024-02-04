@@ -37,6 +37,7 @@ uniform int textureMask;		//texture masks
 uniform vec3 SkyColor;
 uniform vec3 HorizonColor;
 uniform vec3 GroundColor;
+uniform samplerCube EnvironmentMap;
 
 //scalars
 uniform float Smoothness;
@@ -65,8 +66,8 @@ vec4 GetDirectionalLight(vec3 normal, vec3 reflectedVector) {
 
 	//specular color
 	float specular = max(dot(reflectedVector, DirectionalLight.Direction), 0);
-	specular = pow(specular, 32);
-	specular = smoothstep(0.3, 1., specular) * 24;
+	specular = pow(specular, pow(Smoothness, 3) * 32);
+	specular = smoothstep(0.3, 1., specular) * pow(Smoothness, 3) * 24;
 	vec4 specColor = vec4(DirectionalLight.Color, 0) * specular * shade;
 
 	//combined color
@@ -95,8 +96,8 @@ vec4 GetPointLight(vec3 worldPosition, vec3 normal, vec3 reflectedVector) {
 
 		//specular color
 		float specular = min(max(dot(reflectedVector, dirFromLight), 0), 1);
-		specular = pow(specular, 32);
-		specular = smoothstep(0.3, 1., specular) * 24;
+		specular = pow(specular, pow(Smoothness, 3) * 32);
+		specular = smoothstep(0.3, 1., specular) * pow(Smoothness, 3) * 24;
 		vec4 specColor = vec4(PointLights[i].Color * lightFactor, 0) * specular * shade;
 
 		//combined color
@@ -127,7 +128,7 @@ float linearDepth(float depthSample)
 	float zLinear = 2.0 * CameraParams.z * CameraParams.w / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
 	return zLinear;
 }
-
+uniform samplerCube SkyBox;
 void main(){
 
 	vec3 viewVector = normalize(fs_in.Position.xyz - CameraWorldSpacePos.xyz);
@@ -146,11 +147,15 @@ void main(){
 	vec4 sunColor = GetDirectionalLight(normal, reflectedVector);
 	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
 
-	vec4 c = (color * vec4(AlbedoColor, 0)) * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor,0);
-
+	vec3 I = normalize(fs_in.Position.xyz - CameraWorldSpacePos.xyz);
+	vec3 R = reflect(I, normalize(normal));
+	vec4 envColor = vec4(texture(SkyBox, R).rgb, 1.0);
 	//float d = linearDepth(get_depth());
 	//float density = 1.0 / pow(2.71828, pow(d * .1f, 2));
 	//c = mix(c, vec4(1,1,1,1), 1 - density);
+	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
+	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
+	vec4 c = color * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor, 0);
 
 	frag = c;
 }

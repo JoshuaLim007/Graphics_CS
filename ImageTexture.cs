@@ -1,4 +1,5 @@
-﻿using StbImageSharp;
+﻿using OpenTK.Graphics.OpenGL4;
+using StbImageSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace JLGraphics
         public ImageResult image { get; }
         public ImageTexture(ImageResult image)
         {
+            TextureTarget = TextureTarget.Texture2D;
             this.image = image;
         }
         public override int Width
