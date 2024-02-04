@@ -17,10 +17,6 @@ namespace JLGraphics
         {
             entityReference = new WeakReference<Entity>(entity);
             base.Name += entity.Name + "_Component_" + GetType().Name;
-            if (GetType() == typeof(Renderer))
-            {
-                InternalGlobalScope<Renderer>.Values.Add(this as Renderer);
-            }
             CallCreate(args);
         }
 

@@ -1,5 +1,5 @@
 ﻿#version 410
-out float FragColor;
+layout(location = 0) out float FragColor;
 
 void main()
 { 

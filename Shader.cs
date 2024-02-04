@@ -180,7 +180,9 @@ namespace JLGraphics
     {
         public ShaderProgram Program { get; private set; }
         public string Name { get; set; }
-
+        public DepthFunction DepthTestFunction { get; set; } = DepthFunction.Equal;
+        public bool DepthTest { get; set; } = true;
+        public bool[] ColorMask { get; private set; } = new bool[4] { true, true, true, true };
         private int textureMask = 0;
         private int nullTextureMask = 0;
         const int TotalTextures = 32;
@@ -219,10 +221,15 @@ namespace JLGraphics
                 number &= ~(1 << index);
             }
         }
+        bool isWithinShader = false;
         public void SetTexture(string uniformName, Texture texture)
         {
-            var previousProgram = GL.GetInteger(GetPName.CurrentProgram);
-            GL.UseProgram(Program);
+            int previousProgram = 0;
+            if (!isWithinShader)
+            {
+                previousProgram = GL.GetInteger(GetPName.CurrentProgram);
+                GL.UseProgram(Program);
+            }
 
             int textureIndex = findShaderIndex(uniformName);
             if (textureIndex == -1) { 
@@ -242,7 +249,7 @@ namespace JLGraphics
             textures[textureIndex] = texture;
             if (texture != null)
             {
-                var texLoc = GL.GetUniformLocation(Program, uniformName);
+                var texLoc = Program.GetUniformLocation(uniformName);
                 GL.Uniform1(texLoc, textureIndex);
                 set_int_bool(textureIndex, true, ref textureMask);
             }
@@ -254,7 +261,11 @@ namespace JLGraphics
                 availableTextureSlots.Push(textureIndex);
             }
             SetInt("textureMask", textureMask);
-            GL.UseProgram(previousProgram);
+
+            if (!isWithinShader)
+            {
+                GL.UseProgram(previousProgram);
+            }
         }
         public void SetTexture(string uniformName, int texturePtr)
         {
@@ -403,6 +414,7 @@ namespace JLGraphics
             AllInstancedShaders.Remove(myWeakRef);
             myWeakRef = null;
         }
+        static DepthFunction previousDepthFunction = DepthFunction.Never;
         /// <summary>
         /// Expensive, try to batch this with other meshes with same materials.
         /// Applies material unique uniforms.
@@ -410,6 +422,10 @@ namespace JLGraphics
         internal void UseProgram()
         {
             GL.UseProgram(Program);
+            if(textureMask == 0)
+            {
+                GL.ActiveTexture(TextureUnit.Texture0);
+            }
         }
         bool IntToBool(int val, int index)
         {
@@ -429,6 +445,18 @@ namespace JLGraphics
         static Dictionary<string, UniformBindState> PreviousUniformState = new Dictionary<string, UniformBindState>();
         internal void UpdateUniforms()
         {
+            isWithinShader = true;
+            if (DepthTest)
+            {
+                GL.Enable(EnableCap.DepthTest);
+                GL.DepthFunc(DepthTestFunction);
+            }
+            else
+            {
+                GL.Disable(EnableCap.DepthTest);
+            }
+            GL.ColorMask(ColorMask[0], ColorMask[1], ColorMask[2], ColorMask[3]);
+
             //get uniform locations (cached by the shader program)
             for (int i = 0; i < m_uniformValues.Count; i++)
             {
@@ -528,6 +556,7 @@ namespace JLGraphics
             }
 
             PreviousProgram = Program;
+            isWithinShader = false;
         }
         internal static void Unbind()
         {
@@ -556,15 +585,6 @@ namespace JLGraphics
         public static void SetGlobalTexture(string id, Texture texture)
         {
             SetGlobalUniformValue(UniformType.texture, texture, id);
-
-            for (int i = 0; i < AllInstancedShaders.Count; i++)
-            {
-                if (!AllInstancedShaders[i].TryGetTarget(out var shader))
-                {
-                    continue;
-                }
-                shader.SetTexture(id, texture);
-            }
         }
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {

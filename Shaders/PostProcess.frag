@@ -2,8 +2,11 @@
 out vec4 FragColor;
 
 uniform sampler2D MainTex;
-uniform sampler2D DepthTex;
+uniform sampler2D _CameraDepthTexture;
+uniform vec3 FogColor;
+uniform float FogDensity;
 uniform vec2 MainTex_Size;
+uniform vec4 CameraParams;
 
 vec3 aces_tonemap(vec3 color){	
 	mat3 m1 = mat3(
@@ -21,20 +24,31 @@ vec3 aces_tonemap(vec3 color){
 	vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
 	return m2 * (a / b);
 }
+float get_depth(vec2 pos)
+{
+    float d = texture(_CameraDepthTexture, pos).r * 2 - 1;
+    return d;
+}
+float linearDepth(float depthSample)
+{
+    float zLinear = 2.0 * CameraParams.z * CameraParams.w / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
+    return zLinear;
+}
 void main()
 { 
 
     //tonemap
     vec4 col = texture(MainTex, gl_FragCoord.xy / MainTex_Size);
-    float depth = texture(DepthTex, gl_FragCoord.xy / MainTex_Size).r;
-    
-    //reinhard tonemapping
-    //col = col / (col + 1);
+
+    float depth = linearDepth(get_depth(gl_FragCoord.xy / MainTex_Size));
+    float density = 1.0 / pow(2.71828, pow(depth * FogDensity, 2));
+    col = mix(vec4(col), vec4(FogColor, 1), 1 - density);
+
+    //aces tonemapping
     col.xyz = aces_tonemap(col.xyz);
 
     //gamma correction
     float gamma = 2.2;
     col.rgb = pow(col.rgb, vec3(1.0/gamma));
-
-    FragColor = vec4(col);
+    FragColor = vec4(col);//mix(vec4(col), vec4(FogColor, 1), density);
 }

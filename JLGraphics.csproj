@@ -49,8 +49,10 @@
   <ItemGroup>
     <None Remove="shaders\CopyToScreen.frag" />
     <None Remove="Shaders\DepthOnly.frag" />
+    <None Remove="Shaders\fragmentEmpty.glsl" />
     <None Remove="shaders\Passthrough.vert" />
     <None Remove="Shaders\PostProcess.frag" />
+    <None Remove="Shaders\vertexSimple.glsl" />
   </ItemGroup>
   
 </Project>

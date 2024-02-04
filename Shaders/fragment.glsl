@@ -25,7 +25,6 @@ uniform struct DIRECT_LIGHT {
 
 //out to render texture
 layout(location = 0) out vec4 frag;
-layout(location = 1) out float depth;
 
 //textures
 uniform sampler2D AlbedoTex;	//rgba texture
@@ -117,6 +116,17 @@ vec4 GetAmbientColor(vec3 normal) {
 	vec3 finalCol = SkyColor * mixValues.x + HorizonColor * mixValues.y + GroundColor * mixValues.z;
 	return vec4(finalCol, 0);
 }
+uniform vec4 CameraParams;
+float get_depth()
+{
+	float d = gl_FragCoord.z * 2 - 1;
+	return d;
+}
+float linearDepth(float depthSample)
+{
+	float zLinear = 2.0 * CameraParams.z * CameraParams.w / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
+	return zLinear;
+}
 
 void main(){
 
@@ -138,6 +148,9 @@ void main(){
 
 	vec4 c = (color * vec4(AlbedoColor, 0)) * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor,0);
 
+	//float d = linearDepth(get_depth());
+	//float density = 1.0 / pow(2.71828, pow(d * .1f, 2));
+	//c = mix(c, vec4(1,1,1,1), 1 - density);
+
 	frag = c;
-	depth = gl_FragCoord.z;
 }

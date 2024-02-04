@@ -16,9 +16,9 @@ namespace JLGraphics
     public class CommandBuffer
     {
         Queue<Action> actions = new Queue<Action>();
-        public void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        public void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
-            actions.Enqueue(() => { Graphics.Blit(src, dst, shader); });
+            actions.Enqueue(() => { Graphics.Blit(src, dst, restoreSrc, shader); });
         }
         public void Add(Action action)
         {

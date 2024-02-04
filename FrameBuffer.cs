@@ -1,5 +1,4 @@
-﻿using Assimp;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using System;
@@ -14,10 +13,16 @@ namespace JLGraphics
     {
         public PixelInternalFormat internalFormat;
         public PixelFormat pixelFormat;
+        public TextureMinFilter minFilter;
+        public TextureMagFilter magFilter;
+        public TextureWrapMode wrapMode;
         public TFP()
         {
             internalFormat = PixelInternalFormat.Rgb8;
             pixelFormat = PixelFormat.Rgb;
+            minFilter = TextureMinFilter.Nearest;
+            magFilter = TextureMagFilter.Nearest;
+            wrapMode = TextureWrapMode.Repeat;
         }
         public TFP(PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
         {
@@ -27,11 +32,11 @@ namespace JLGraphics
     }
     public class FrameBuffer : IDisposable, IGlobalScope
     {
-        internal Texture[] ColorAttachments { get; }
-        internal int FrameBufferObject { get; }
-        internal int RenderBufferObject { get; }
-        public int Width { get; }
-        public int Height { get; }
+        internal Texture[] ColorAttachments { get; } = null;
+        internal int FrameBufferObject { get; } = 0;
+        internal int RenderBufferObject { get; } = 0;
+        public int Width { get; } = 0;
+        public int Height { get; } = 0;
 
         public FrameBuffer(int width, int height, bool enableDepthRenderBuffer = false, params TFP[] textureFormat)
         {
@@ -49,18 +54,21 @@ namespace JLGraphics
                 ColorAttachments[i].Height = height;
                 ColorAttachments[i].internalPixelFormat = textureFormat[i].internalFormat;
                 ColorAttachments[i].pixelFormat = textureFormat[i].pixelFormat;
+                ColorAttachments[i].textureMagFilter = textureFormat[i].magFilter;
+                ColorAttachments[i].textureMinFilter = textureFormat[i].minFilter;
+                ColorAttachments[i].textureWrapMode = textureFormat[i].wrapMode;
                 ColorAttachments[i].ResolveTexture();
                 GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureTarget.Texture2D, ColorAttachments[i].GlTextureID, 0);
             }
 
             if (enableDepthRenderBuffer)
             {
-                RenderbufferStorage renderbufferStorage = RenderbufferStorage.Depth24Stencil8;
+                RenderbufferStorage renderbufferStorage = RenderbufferStorage.DepthComponent;
                 RenderBufferObject = GL.GenRenderbuffer();
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, RenderBufferObject);
                 GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, renderbufferStorage, width, height);
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
-                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthStencilAttachment, RenderbufferTarget.Renderbuffer, RenderBufferObject);
+                GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, RenderBufferObject);
             }
 
 

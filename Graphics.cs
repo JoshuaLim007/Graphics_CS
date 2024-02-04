@@ -89,6 +89,8 @@ namespace JLGraphics
             //Window.Load += Start; //start now happens after the first frame
             Window.UpdateFrame += delegate (FrameEventArgs eventArgs)
             {
+                InvokeNewStarts();
+
                 fixedTimer += Time.DeltaTime;
                 if (fixedTimer >= Time.FixedDeltaTime)
                 {
@@ -101,7 +103,6 @@ namespace JLGraphics
                     fixedTimer = 0;
                 }
 
-                InvokeNewStarts();
                 InvokeUpdates();
 
                 float updateFreq = 1.0f / FixedDeltaTime;
@@ -145,7 +146,12 @@ namespace JLGraphics
         }
         static ShaderProgram DefaultShaderProgram;
         static ShaderProgram PassthroughShaderProgram;
-
+        static ShaderProgram DepthPrepassShaderProgram;
+        static void InitFramebuffers() {
+            MainFrameBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, new TFP(PixelInternalFormat.Rgb32f, PixelFormat.Rgb));
+            DepthTextureBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, false, new TFP(PixelInternalFormat.R32f, PixelFormat.Red));
+            Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.ColorAttachments[0]);
+        }
         /// <param name="windowName"></param>
         /// <param name="windowResolution"></param>
         /// <param name="renderFrequency"></param>
@@ -172,6 +178,7 @@ namespace JLGraphics
 
             var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
+            var depthOnlyShader = new ShaderProgram("DepthOnlyShader", "./Shaders/DepthOnly.frag", "./Shaders/vertexSimple.glsl");
 
 #if DEBUG
             fileTracker = new FileTracker();
@@ -183,23 +190,33 @@ namespace JLGraphics
 
             defaultShader.CompileProgram();
             passThroughShader.CompileProgram();
+            depthOnlyShader.CompileProgram();
 
             DefaultShaderProgram = defaultShader;
             PassthroughShaderProgram = passThroughShader;
+            DepthPrepassShaderProgram = depthOnlyShader;
 
-            DefaultMaterial = new Shader("Default Material", defaultShader);
-
+            DefaultMaterial = new Shader("Default Material", DefaultShaderProgram);
+            DepthPrepassShader = new Shader("Default depth only", DepthPrepassShaderProgram);
+            DepthPrepassShader.DepthTestFunction = DepthFunction.Less;
+            DepthPrepassShader.ColorMask[0] = true;
+            DepthPrepassShader.ColorMask[1] = false;
+            DepthPrepassShader.ColorMask[2] = false;
+            DepthPrepassShader.ColorMask[3] = false;
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             FullScreenQuad = CreateFullScreenQuad();
-            PassthroughShader = new Shader("Default Passthrough", passThroughShader);
-            MainFrameBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
+            PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
+            InitFramebuffers();
             renderPassCommandBuffer = new CommandBuffer();
         }
         public static void Free()
         {
             Window.Close();
+            MainFrameBuffer.Dispose();
+            DepthTextureBuffer.Dispose();
             PassthroughShader = null;
             MainFrameBuffer = null;
+            DepthTextureBuffer = null;
             renderPassCommandBuffer = null;
             DefaultMaterial = null;
             m_gameWindowSettings = null;
@@ -213,6 +230,7 @@ namespace JLGraphics
             renderPasses = null;
             DefaultShaderProgram.Dispose();
             PassthroughShaderProgram.Dispose();
+            DepthPrepassShaderProgram.Dispose();
             GL.DeleteVertexArray(FullScreenQuad);
             m_isInit = false;
         }
@@ -228,15 +246,15 @@ namespace JLGraphics
 
         private static void Resize(ResizeEventArgs args)
         {
-            m_nativeWindowSettings.Size = new Vector2i(args.Width, args.Height);
-            MainFrameBuffer.Dispose();
-            MainFrameBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
-            GL.Viewport(0, 0, args.Width, args.Height);
-            for (int i = 0; i < AllCameras.Count; i++)
+            if(args.Width == Window.Size.X && args.Height == Window.Size.X)
             {
-                AllCameras[i].Width = args.Width;
-                AllCameras[i].Height = args.Height;
+                return;
             }
+            Window.Size = new Vector2i(args.Width, args.Height);
+            MainFrameBuffer.Dispose();
+            DepthTextureBuffer.Dispose();
+            InitFramebuffers();
+            GL.Viewport(0, 0, args.Width, args.Height);
         }
 
         private static void InvokeNewStarts()
@@ -296,6 +314,7 @@ namespace JLGraphics
             Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
             Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
+            Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Width, camera.Height, camera.Near, camera.Far));
         }
         static void SetDrawMode(bool wireframe)
         {
@@ -310,8 +329,10 @@ namespace JLGraphics
         }
 
         static int FullScreenQuad = 0;
-        static Shader PassthroughShader = null;
+        public static Shader PassthroughShader { get; private set; } = null;
+        public static Shader DepthPrepassShader { get; private set; } = null;
         static FrameBuffer MainFrameBuffer = null;
+        static FrameBuffer DepthTextureBuffer = null;
         internal static int CreateFullScreenQuad()
         {
             int[] quad_VertexArrayID = new int[1];
@@ -336,8 +357,14 @@ namespace JLGraphics
             int vao = quad_VertexArrayID[0];
             return vao;
         }
-        internal static void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        internal static void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
+            if(src == null)
+            {
+                Console.WriteLine("ERROR::Cannot blit with null src");
+                return;
+            }
+
             // second pass
             int width = dst != null ? dst.Width : Window.Size.X;
             int height = dst != null ? dst.Height : Window.Size.Y;
@@ -345,13 +372,10 @@ namespace JLGraphics
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Viewport(0, 0, width, height);
-            GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
 
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
             blitShader.SetTexture("MainTex", src.ColorAttachments[0]);
-            //blitShader.SetTexture("DepthTex", src.DepthBufferTextureId);
             blitShader.UseProgram();
             blitShader.UpdateUniforms();
 
@@ -361,6 +385,11 @@ namespace JLGraphics
             m_verticesCount += 6;
 
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+
+            if (restoreSrc)
+            {
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, src.FrameBufferObject);
+            }
         }
         
         static List<RenderPass> renderPasses = new List<RenderPass>();
@@ -390,59 +419,72 @@ namespace JLGraphics
         private static void DoRenderUpdate()
         {
             renderPasses.Sort();
-            for (int i = 0; i < renderPasses.Count; i++)
-            {
-                renderPasses[i].FrameSetup();
-            }
-
-            //bind Main render texture RT
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
-            GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
-
-            //draw opaques (first pass) (forward rendering)
-            GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
-            GL.Enable(EnableCap.DepthTest);
-
-            //prepass (Prepass -> Opaque - 1)
-            int renderPassIndex = ExecuteRenderPasses(0, (int)RenderQueue.AfterOpaques);
-
-            //render Opaques
-            //TODO: move to render pass class
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
             {
+                for (int i = 0; i < renderPasses.Count; i++)
+                {
+                    renderPasses[i].FrameSetup();
+                }
+
+                //bind Main render texture RT
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
+                GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
+
+                //render depth prepass
+                GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
+                RenderCamera(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
+                //copy depth texture
+                Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
+                GL.Clear(ClearBufferMask.ColorBufferBit);
+
+                //prepass (Prepass -> Opaque - 1)
+                int renderPassIndex = ExecuteRenderPasses(0, (int)RenderQueue.AfterOpaques);
+
+                //render Opaques
+                //TODO: move to render pass class
                 SetupLights(AllCameras[cameraIndex]);
-                RenderCamera(AllCameras[cameraIndex]);
+                RenderCamera(AllCameras[cameraIndex], RenderingSortMode);
+
+                //Post opaque pass (Opaque -> Transparent - 1)
+                renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
+
+                //render Transparents
+
+                //Post transparent render pass (Transparent -> PostProcess - 1)
+                renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterPostProcessing);
+
+                //Post post processing (Transparent -> End)
+                ExecuteRenderPasses(renderPassIndex, int.MaxValue);
+
+                //blit render buffer to screen
+                Blit(MainFrameBuffer, null, false, null);
+
+                //frame cleanup
+                for (int i = 0; i < renderPasses.Count; i++)
+                {
+                    renderPasses[i].FrameCleanup();
+                }
+
+                Window.SwapBuffers();
             }
-
-            //Post opaque pass (Opaque -> Transparent - 1)
-            renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
-
-            //render Transparents
-
-            //Post transparent render pass (Transparent -> PostProcess - 1)
-            renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterPostProcessing);
-
-            //Post post processing (Transparent -> End)
-            ExecuteRenderPasses(renderPassIndex, int.MaxValue);
-
-            //blit render buffer to screen
-            Blit(MainFrameBuffer, null, null);
-
-            //frame cleanup
-            for (int i = 0; i < renderPasses.Count; i++)
-            {
-                renderPasses[i].FrameCleanup();
-            }
-
-            Window.SwapBuffers();
-
         }
+
+        /// <summary>
+        /// Disable camera frustum culling
+        /// </summary>
         public static bool DisableFrustumCulling { get; set; } = false;
-        public const int BATCH_PROGRAMID = 0b1;
-        public const int BATCH_MATERIAL_PROGRAMID = 0b11;
-        public const int BATCH_NONE = 0;
-        public static int DynamicBatchingFlags = BATCH_MATERIAL_PROGRAMID;
+
+        public enum RenderSort
+        {
+            ShaderProgram,
+            ShaderProgramMaterial,
+            FrontToBack,
+            None
+        }
+        /// <summary>
+        /// Sets rendering sorting
+        /// </summary>
+        public static RenderSort RenderingSortMode { get; set; } = RenderSort.ShaderProgramMaterial;
 
         static void SetupLights(Camera camera)
         {
@@ -531,7 +573,7 @@ namespace JLGraphics
 
         static Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
         static Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
-        static Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers)
+        static Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers, bool AlsoSortMaterials)
         {
             List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
             int index;
@@ -541,6 +583,10 @@ namespace JLGraphics
             {
                 programCount = programIndex.Count;
                 var current = renderers[i];
+                if(current.Material == null)
+                {
+                    continue;
+                }
                 if (!programIndex.ContainsKey(current.Material.Program))
                 {
                     programIndex.Add(current.Material.Program, programCount);
@@ -574,11 +620,10 @@ namespace JLGraphics
 
             var final = new Renderer[totalRenderers];
             index = 0;
-            bool batchMats = (DynamicBatchingFlags & BATCH_MATERIAL_PROGRAMID) == BATCH_MATERIAL_PROGRAMID;
             for (int i = 0; i < programIndex.Count; i++)
             {
                 ICollection<Renderer> sorted = programs[i];
-                if(batchMats)
+                if(AlsoSortMaterials)
                     sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
                 for (int j = 0; j < sorted.Count; j++)
                 {
@@ -595,8 +640,43 @@ namespace JLGraphics
         {
             return renderers;
         }
-        static void RenderCamera(Camera camera)
+        
+        struct RendererDistancePair
         {
+            public Renderer renderer;
+            public float distanceSqrd;
+        }
+        static Renderer[] SortByDistanceToCamera(List<Renderer> renderers, Camera camera)
+        {
+            RendererDistancePair[] rendererDistancePairs = new RendererDistancePair[renderers.Count];
+            Parallel.For(0, rendererDistancePairs.Length, (i) =>
+            {
+                rendererDistancePairs[i] = new RendererDistancePair() {
+                    distanceSqrd = (renderers[i].Transform.Position - camera.Transform.Position).LengthSquared,
+                    renderer = renderers[i]
+                };
+            });
+            Array.Sort(rendererDistancePairs, (a, b) => { 
+                if(a.distanceSqrd < b.distanceSqrd)
+                {
+                    return -1;
+                }
+                else
+                {
+                    return 1;
+                }
+            });
+            Renderer[] output = new Renderer[renderers.Count];
+            for (int i = 0; i < rendererDistancePairs.Length; i++)
+            {
+                output[i] = rendererDistancePairs[i].renderer;
+            }
+            return output;
+        }
+        static void RenderCamera(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
+        {
+            GL.DepthMask(true);
+
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
 
@@ -604,40 +684,55 @@ namespace JLGraphics
             InvokeOnRenders(camera);
             SetDrawMode(camera.EnabledWireFrame);
 
+            bool useOverride = false;
+            int overrideModelLoc = 0;
+            if (overrideShader != null)
+            {
+                overrideModelLoc = overrideShader.GetUniformLocation("ModelMatrix");
+                useOverride = true;
+            }
+
             //TODO:
-            //apply dynamic batching
             //apply static batching
 
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
-            Renderer[] renderers;
-            if((DynamicBatchingFlags & BATCH_MATERIAL_PROGRAMID) != BATCH_NONE)
+            Renderer[] renderers = null;
+            switch (renderingMode)
             {
-                renderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values);
-                if (!DisableFrustumCulling)
-                {
-                    renderers = FrustumCullCPU(renderers);
-                }
+                case RenderSort.None:
+                    renderers = InternalGlobalScope<Renderer>.Values.ToArray();
+                    break;
+                case RenderSort.FrontToBack:
+                    renderers = SortByDistanceToCamera(InternalGlobalScope<Renderer>.Values, camera);
+                    break;
+                case RenderSort.ShaderProgramMaterial:
+                    renderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, true);
+                    break;
+                case RenderSort.ShaderProgram:
+                    renderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, false);
+                    break;
             }
-            else
+
+            if (!DisableFrustumCulling)
             {
-                renderers = InternalGlobalScope<Renderer>.Values.ToArray();
-                if (!DisableFrustumCulling)
-                {
-                    renderers = FrustumCullCPU(renderers);
-                }
+                renderers = FrustumCullCPU(renderers);
             }
+
 
             for (int i = 0; i < renderers.Length; i++)
             {
                 var current = renderers[i];
-                if (current == null || !current.Enabled || current.Material == null)
+                if (current == null || !current.Enabled)
+                {
+                    continue;
+                }
+                Shader? material = useOverride ? overrideShader : current.Material;
+                if (material == null)
                 {
                     continue;
                 }
                 Mesh meshData = current.Mesh;
-                Shader material = current.Material;
-
                 //bind shader and mesh
                 //don't bind if the previous mesh and previous material are the same
                 if (meshData != previousMesh)
@@ -648,9 +743,10 @@ namespace JLGraphics
                     GL.BindVertexArray(meshData.VertexArrayObject);
                     previousMesh = meshData;
                 }
+
                 if (material != previousMaterial)
                 {
-                    if(material.Program != previousMaterial?.Program)
+                    if (material.Program != previousMaterial?.Program)
                     {
                         m_shaderBindCount++;
                         material.UseProgram();
@@ -659,12 +755,19 @@ namespace JLGraphics
                     material.UpdateUniforms();
                     previousMaterial = material;
                 }
+                
+                var worlToLocalMatrix = current.Entity.Transform.WorldToLocalMatrix;
+                if (useOverride)
+                {
+                    //apply model matrix
+                    GL.UniformMatrix4(overrideModelLoc, false, ref worlToLocalMatrix);
+                }
+                else
+                {
+                    GL.UniformMatrix4(current.Material.GetUniformLocation("ModelMatrix"), false, ref worlToLocalMatrix);
+                }
 
                 m_verticesCount += meshData.VertexCount;
-
-                //apply model matrix
-                var val = current.Entity.Transform.WorldToLocalMatrix;
-                GL.UniformMatrix4(current.Material.GetUniformLocation("ModelMatrix"), false, ref val);
 
                 //render object
                 GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);

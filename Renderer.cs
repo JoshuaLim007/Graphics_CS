@@ -14,12 +14,14 @@ namespace JLGraphics
         public Mesh Mesh { get; set; } = null;
         public Renderer()
         {
-
+            InternalGlobalScope<Renderer>.Values.Add(this);
         }
         public Renderer(Shader material, Mesh mesh)
         {
             Mesh = mesh;
             Material = material;
+
+            InternalGlobalScope<Renderer>.Values.Add(this);
         }
     }
 }

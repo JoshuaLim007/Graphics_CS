@@ -50,8 +50,8 @@ namespace JLGraphics
         public PixelInternalFormat internalPixelFormat { get; set; } = PixelInternalFormat.Rgba;
         public bool generateMipMaps { get; set; } = true;
         public TextureWrapMode textureWrapMode { get; set; } = TextureWrapMode.ClampToEdge;
-        public TextureMinFilter textureMinFilter { get; set; } = TextureMinFilter.Linear;
-        public TextureMagFilter textureMagFilter { get; set; } = TextureMagFilter.Linear;
+        public TextureMinFilter textureMinFilter { get; set; } = TextureMinFilter.Nearest;
+        public TextureMagFilter textureMagFilter { get; set; } = TextureMagFilter.Nearest;
         public virtual int Width { get; set; } = 0;
         public virtual int Height { get; set; } = 0;
         public int GlTextureID { get; protected set; } = 0;
