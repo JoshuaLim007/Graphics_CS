@@ -242,23 +242,23 @@ namespace JLGraphics
                 number &= ~(1 << index);
             }
         }
-        bool isWithinShader = false;
-        public void SetTexture(string uniformName, Texture texture, TextureTarget? textureTarget = null)
+        bool isWithinShader { get; set; } = false;
+        /// <summary>
+        /// Must be called after calling UseProgram()
+        /// </summary>
+        /// <param name="uniformName"></param>
+        /// <param name="texture"></param>
+        /// <param name="textureTarget"></param>
+        internal void SetTextureUnsafe(string uniformName, Texture texture, TextureTarget? textureTarget = null)
         {
-            int previousProgram = 0;
-            if (!isWithinShader)
-            {
-                previousProgram = GL.GetInteger(GetPName.CurrentProgram);
-                GL.UseProgram(Program);
-            }
-
             int textureIndex = findShaderIndex(uniformName);
-            
-            if(textureTarget != null)
+
+            if (textureTarget != null)
                 texture.TextureTarget = textureTarget.Value;
 
-            if (textureIndex == -1) { 
-                if(texture == null)
+            if (textureIndex == -1)
+            {
+                if (texture == null)
                 {
                     return;
                 }
@@ -286,10 +286,20 @@ namespace JLGraphics
                 availableTextureSlots.Push(textureIndex);
             }
             SetInt("textureMask", textureMask);
-
+        }
+        public void SetTexture(string uniformName, Texture texture, TextureTarget? textureTarget = null)
+        {
             if (!isWithinShader)
             {
+                int previousProgram;
+                previousProgram = GL.GetInteger(GetPName.CurrentProgram);
+                GL.UseProgram(Program);
+                SetTextureUnsafe(uniformName, texture, textureTarget);
                 GL.UseProgram(previousProgram);
+            }
+            else
+            {
+                SetTextureUnsafe(uniformName, texture, textureTarget);
             }
         }
         public void SetTexture(string uniformName, int texturePtr, TextureTarget textureTarget)

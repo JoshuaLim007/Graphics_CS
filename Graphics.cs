@@ -374,8 +374,8 @@ namespace JLGraphics
 
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
-            blitShader.SetTexture("MainTex", src.ColorAttachments[0]);
             blitShader.UseProgram();
+            blitShader.SetTextureUnsafe("MainTex", src.ColorAttachments[0]);
             blitShader.UpdateUniforms();
 
             GL.BindVertexArray(FullScreenQuad.VAO);
