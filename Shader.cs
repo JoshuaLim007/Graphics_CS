@@ -461,8 +461,14 @@ namespace JLGraphics
         }
         static TextureBindState[] PreviousTextureState = new TextureBindState[TotalTextures];
         static Dictionary<string, UniformBindState> PreviousUniformState = new Dictionary<string, UniformBindState>();
-        internal void UpdateUniforms()
+        internal static void ClearStateCheckCache()
         {
+            PreviousUniformState.Clear();
+            PreviousTextureState = new TextureBindState[TotalTextures];
+        }
+        internal bool UpdateUniforms()
+        {
+            bool hasUpdated = false;
             isWithinShader = true;
             if (DepthTest)
             {
@@ -476,6 +482,10 @@ namespace JLGraphics
             GL.DepthMask(DepthMask);
             GL.ColorMask(ColorMask[0], ColorMask[1], ColorMask[2], ColorMask[3]);
 
+            //apply all material specific uniforms
+            if (PreviousProgram != Program && !dontFetchGlobals)
+                fetchAllGlobalUniforms();
+
             //get uniform locations (cached by the shader program)
             for (int i = 0; i < m_uniformValues.Count; i++)
             {
@@ -483,10 +493,6 @@ namespace JLGraphics
                 t.uniformLocation = GetUniformLocation(m_uniformValues[i].id);
                 m_uniformValues[i] = t;
             }
-
-            //apply all material specific uniforms
-            if(PreviousProgram != Program && !dontFetchGlobals)
-                fetchAllGlobalUniforms();
 
             //apply texture units
             for (int i = 0; i < TotalTextures; i++)
@@ -497,6 +503,7 @@ namespace JLGraphics
                     {
                         GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
                         GL.BindTexture(textures[i].TextureTarget, textures[i].GlTextureID);
+                        hasUpdated = true;
                     }
 
 
@@ -509,6 +516,7 @@ namespace JLGraphics
                     {
                         GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
                         GL.BindTexture(textures[i].TextureTarget, 0);
+                        hasUpdated = true;
                     }
 
                     PreviousTextureState[i].WasNull = true;
@@ -531,6 +539,7 @@ namespace JLGraphics
                     }
                     else
                     {
+                        hasUpdated = true;
                         PreviousUniformState[m_uniformValues[i].id] = new UniformBindState()
                         {
                             value = m_uniformValues[i].value,
@@ -540,6 +549,7 @@ namespace JLGraphics
                 }
                 else
                 {
+                    hasUpdated = true;
                     PreviousUniformState.Add(m_uniformValues[i].id, new UniformBindState()
                     {
                         value = m_uniformValues[i].value,
@@ -575,6 +585,7 @@ namespace JLGraphics
 
             PreviousProgram = Program;
             isWithinShader = false;
+            return hasUpdated;
         }
         internal static void Unbind()
         {

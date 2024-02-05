@@ -781,8 +781,10 @@ namespace JLGraphics
                         m_shaderBindCount++;
                         material.UseProgram();
                     }
-                    m_materialUpdateCount++;
-                    material.UpdateUniforms();
+                    if (material.UpdateUniforms())
+                    {
+                        m_materialUpdateCount++;
+                    }
                     previousMaterial = material;
                 }
                 
