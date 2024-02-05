@@ -4,6 +4,7 @@ out vec4 FragColor;
 uniform sampler2D MainTex;
 uniform sampler2D DepthTex;
 uniform vec2 MainTex_Size;
+uniform float RenderScale;
 
 void main()
 { 

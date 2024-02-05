@@ -144,6 +144,7 @@ namespace JLGraphics
                 m_materialUpdateCount = 0;
                 m_meshBindCount = 0;
                 m_verticesCount = 0;
+                RenderScaleChange(RenderScale);
                 DoRenderUpdate();
 
                 time1 = time;
@@ -153,9 +154,29 @@ namespace JLGraphics
         static ShaderProgram DefaultShaderProgram;
         static ShaderProgram PassthroughShaderProgram;
         static ShaderProgram DepthPrepassShaderProgram;
+        static float previousRenderScale = 1.0f;
+        public static float RenderScale { get; set; } = 1.0f;
         static void InitFramebuffers() {
-            MainFrameBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, true, new TFP(PixelInternalFormat.Rgb32f, PixelFormat.Rgb));
-            DepthTextureBuffer = new FrameBuffer(m_nativeWindowSettings.Size.X, m_nativeWindowSettings.Size.Y, false, new TFP(PixelInternalFormat.R32f, PixelFormat.Red));
+            float scale = RenderScale;// MathF.Sqrt(RenderScale);
+            var colorSettings = new TFP()
+            {
+                wrapMode = TextureWrapMode.ClampToEdge,
+                MaxMipmap = 0,
+                minFilter = TextureMinFilter.Linear,
+                magFilter = TextureMagFilter.Linear,
+                internalFormat = PixelInternalFormat.Rgb32f,
+                pixelFormat = PixelFormat.Rgb
+            };
+            var depthSettings = new TFP() { 
+                wrapMode = TextureWrapMode.ClampToEdge,
+                MaxMipmap = 0,
+                minFilter = TextureMinFilter.Nearest,
+                magFilter = TextureMagFilter.Nearest,
+                internalFormat = PixelInternalFormat.R32f,
+                pixelFormat = PixelFormat.Red
+            };
+            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(m_nativeWindowSettings.Size.X * scale), (int)MathF.Ceiling(m_nativeWindowSettings.Size.Y * scale), true, colorSettings);
+            DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(m_nativeWindowSettings.Size.X * scale), (int)MathF.Ceiling(m_nativeWindowSettings.Size.Y * scale), false, depthSettings);
             Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.ColorAttachments[0]);
         }
         /// <param name="windowName"></param>
@@ -165,6 +186,7 @@ namespace JLGraphics
         public static void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
             m_isInit = true;
+            previousRenderScale = RenderScale;
             StbImage.stbi_set_flip_vertically_on_load(1);
             Stbi.SetFlipVerticallyOnLoad(true);
 
@@ -276,7 +298,21 @@ namespace JLGraphics
             InitFramebuffers();
             GL.Viewport(0, 0, args.Width, args.Height);
         }
-
+        private static void RenderScaleChange(float newScale)
+        {
+            RenderScale = MathHelper.Clamp(newScale, 0.1f, 2.0f);
+            if(previousRenderScale == RenderScale)
+            {
+                return;
+            }
+            previousRenderScale = RenderScale;
+            MainFrameBuffer.Dispose();
+            DepthTextureBuffer.Dispose();
+            InitFramebuffers();
+#if DEBUG
+            Console.WriteLine("Render Scale Update: " + previousRenderScale);
+#endif
+        }
         private static void InvokeNewStarts()
         {
             for (int i = 0; i < InternalGlobalScope<IStart>.Count; i++)
@@ -335,6 +371,7 @@ namespace JLGraphics
             Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
             Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
+            Shader.SetGlobalFloat("RenderScale", RenderScale);
         }
         static void SetDrawMode(bool wireframe)
         {
@@ -391,6 +428,7 @@ namespace JLGraphics
             if (restoreSrc)
             {
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, src.FrameBufferObject);
+                GL.Viewport(0, 0, src.Width, src.Height);
             }
         }
         

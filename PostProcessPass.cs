@@ -30,10 +30,13 @@ namespace JLGraphics
             shader = new Shader("Postprocessing material", PostProcessShader);
             shader.SetFloat("FogDensity", .002f);
             shader.SetVector3("FogColor", new Vector3(1, 1, 1));
-            postProcessTexture = new FrameBuffer(Graphics.Window.Size.X, Graphics.Window.Size.Y, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
         }
         public override void Execute(in CommandBuffer cmd, in FrameBuffer frameBuffer)
         {
+            if(postProcessTexture == null)
+            {
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
+            }
             shader.SetFloat("FogDensity", FogDensity);
             shader.SetVector3("FogColor", FogColor);
             shader.SetBool("Tonemapping", Tonemapping);

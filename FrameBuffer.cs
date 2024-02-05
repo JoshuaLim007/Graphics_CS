@@ -16,6 +16,7 @@ namespace JLGraphics
         public TextureMinFilter minFilter;
         public TextureMagFilter magFilter;
         public TextureWrapMode wrapMode;
+        public int MaxMipmap;
         public TFP()
         {
             internalFormat = PixelInternalFormat.Rgb8;
@@ -23,9 +24,15 @@ namespace JLGraphics
             minFilter = TextureMinFilter.Nearest;
             magFilter = TextureMagFilter.Nearest;
             wrapMode = TextureWrapMode.Repeat;
+            MaxMipmap = 0;
         }
         public TFP(PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
         {
+            minFilter = TextureMinFilter.Nearest;
+            magFilter = TextureMagFilter.Nearest;
+            wrapMode = TextureWrapMode.Repeat;
+            MaxMipmap = 0;
+
             internalFormat = pixelInternalFormat;
             this.pixelFormat = pixelFormat;
         }
@@ -57,6 +64,8 @@ namespace JLGraphics
                 ColorAttachments[i].textureMagFilter = textureFormat[i].magFilter;
                 ColorAttachments[i].textureMinFilter = textureFormat[i].minFilter;
                 ColorAttachments[i].textureWrapMode = textureFormat[i].wrapMode;
+                ColorAttachments[i].MipmapLevels = textureFormat[i].MaxMipmap;
+                ColorAttachments[i].generateMipMaps = textureFormat[i].MaxMipmap != 0;
                 ColorAttachments[i].ResolveTexture();
                 GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureTarget.Texture2D, ColorAttachments[i].GlTextureID, 0);
             }
