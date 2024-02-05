@@ -334,7 +334,7 @@ namespace JLGraphics
             Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
             Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
-            Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Width, camera.Height, camera.Near, camera.Far));
+            Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
         }
         static void SetDrawMode(bool wireframe)
         {
