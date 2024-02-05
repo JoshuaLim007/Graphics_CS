@@ -152,7 +152,7 @@ namespace JLGraphics
             return new Entity(Name, parent, position, rotation, scale);
         }
         
-        internal override void InternalImmediateDestroy()
+        protected override void InternalOnImmediateDestroy()
         {
             for (int i = 0; i < m_components.Count; i++)
             {

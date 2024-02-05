@@ -33,14 +33,14 @@ namespace JLGraphics
             Orthographic
         }
 
-        protected override void SetArgs(params object[] args)
+        protected override void OnCreate(params object[] args)
         {
             Transform.IsCameraTransform = true;
             InternalGlobalScope<Camera>.Values.Add(this);
         }
-        internal override void InternalImmediateDestroy()
+        protected override void InternalOnImmediateDestroy()
         {
-            base.InternalImmediateDestroy();
+            base.InternalOnImmediateDestroy();
             InternalGlobalScope<Camera>.Values.Remove(this);
         }
         private Matrix4 calculateProjectionMatrix()

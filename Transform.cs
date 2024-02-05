@@ -91,7 +91,7 @@ namespace JLGraphics
             return Enabled;
         }
 
-        protected override void SetArgs(params object[] args)
+        protected override void OnCreate(params object[] args)
         {
             Parent = (Transform)args[0];
             Position = (Vector3)args[1];

@@ -15,9 +15,9 @@ namespace JLGraphics
             InternalGlobalScope<Light>.Values.Add(this);
             Temperature = temperature;
         }
-        internal override void InternalImmediateDestroy()
+        protected override void InternalOnImmediateDestroy()
         {
-            base.InternalImmediateDestroy();
+            base.InternalOnImmediateDestroy();
             InternalGlobalScope<Light>.Values.Remove(this);
         }
         public float Intensity { get; set; } = 1.0f;

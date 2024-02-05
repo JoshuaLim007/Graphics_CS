@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,12 +32,24 @@ namespace JLGraphics
 
     public abstract class Object : IGlobalScope
     {
-        protected virtual void SetArgs(params object[] args) { }
-
-        private bool Null = false;
+        static int count = 0;
+        static Stack<int> previousDestroyedObject = new Stack<int>();
+        int mId = 0;
+        public int InstanceID => mId;
+        private bool Null => mId == 0;
+        protected virtual void OnCreate(params object[] args) { }
         internal void CallCreate(params object[] args)
         {
-            Null = false;
+            if (previousDestroyedObject.Count != 0)
+            {
+                mId = previousDestroyedObject.Pop();
+            }
+            else
+            {
+                count++;
+                mId = count;
+            }
+
             if (typeof(IUpdate).IsAssignableFrom(GetType()))
             {
                 //AllUpdates.Add((IUpdate)instance);
@@ -57,11 +70,13 @@ namespace JLGraphics
                 //AllOnRenders.Add((IOnRender)instance);
                 InternalGlobalScope<IOnRender>.Values.Add(this as IOnRender);
             }
-            SetArgs(args);
+            OnCreate(args);
         }
         internal void CallDestroy()
         {
-            Null = true;
+            previousDestroyedObject.Push(mId);
+            mId = 0;
+
             if (typeof(IUpdate).IsAssignableFrom(GetType()))
             {
                 InternalGlobalScope<IUpdate>.Values.Remove(this as IUpdate);
@@ -78,12 +93,14 @@ namespace JLGraphics
             {
                 InternalGlobalScope<IOnRender>.Values.Remove(this as IOnRender);
             }
-            InternalImmediateDestroy();
+            InternalOnImmediateDestroy();
+            OnDestroy();
         }
-        internal virtual void InternalImmediateDestroy() { }
-        public static bool operator == (Object a, Object b)
+        protected virtual void InternalOnImmediateDestroy() { }
+        public virtual void OnDestroy() { }
+        public static bool operator ==(Object a, Object b)
         {
-            if(a is null && b is not null)
+            if (a is null && b is not null)
             {
                 if (b.Null)
                 {
@@ -105,16 +122,36 @@ namespace JLGraphics
                     return false;
                 }
             }
-            else if(b is null && a is null)
+            else if (b is null && a is null)
             {
                 return true;
             }
 
             return ReferenceEquals(a, b);
         }
-        public static bool operator != (Object a, Object b)
+        public static bool operator !=(Object a, Object b)
         {
             return !(a == b);
+        }
+        public override bool Equals(object? obj)
+        {
+            if (obj is null && Null)
+            {
+                return true;
+            }
+            else if (obj is null)
+            {
+                return false;
+            }
+            else
+            {
+                return Null == ((Object)obj).Null;
+            }
+        }
+        public static implicit operator bool(Object a) => a.Null;
+        public override int GetHashCode()
+        {
+            return mId;
         }
     }
     public abstract class NamedObject : Object, IName
