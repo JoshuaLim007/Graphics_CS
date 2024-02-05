@@ -50,6 +50,7 @@ namespace JLGraphics
             AddComponent<Transform>(out var t, parent, position, rotation, scale);
             Transform = t;
             InternalGlobalScope<Entity>.Values.Add(this);
+            CallCreate(this, null);
         }
         internal Entity(string Name) : base(Name)
         {
@@ -156,7 +157,7 @@ namespace JLGraphics
         {
             for (int i = 0; i < m_components.Count; i++)
             {
-                Object.CallDestroy(m_components[i]);
+                CallDestroy(m_components[i]);
             }
             InternalGlobalScope<Entity>.Values.Remove(this);
         }

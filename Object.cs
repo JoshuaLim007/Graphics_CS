@@ -32,10 +32,10 @@ namespace JLGraphics
 
     public abstract class Object : IGlobalScope
     {
-        static int count = 0;
-        static Stack<int> previousDestroyedObject = new Stack<int>();
-        int mId = 0;
-        public int InstanceID => mId;
+        static ulong count = 0;
+        static Stack<ulong> previousDestroyedObject = new Stack<ulong>();
+        ulong mId = 0;
+        public ulong InstanceID => mId;
         private bool Null => mId == 0;
         protected virtual void OnCreate(params object[] args) { }
         internal static void CallCreate(Object @object, params object[] args)
@@ -152,7 +152,7 @@ namespace JLGraphics
         public static implicit operator bool(Object a) => a.Null;
         public override int GetHashCode()
         {
-            return mId;
+            return (int)mId;
         }
     }
     public abstract class NamedObject : Object, IName
