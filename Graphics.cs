@@ -5,6 +5,7 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using StbImageSharp;
+using StbiSharp;
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -165,6 +166,7 @@ namespace JLGraphics
         {
             m_isInit = true;
             StbImage.stbi_set_flip_vertically_on_load(1);
+            Stbi.SetFlipVerticallyOnLoad(true);
 
             FixedDeltaTime = 1.0f / fixedUpdateFrequency;
 

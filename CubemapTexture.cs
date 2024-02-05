@@ -42,16 +42,18 @@ namespace JLGraphics
             cubeMesh = Mesh.CreateCubeMesh();
         }
         StbiImageF imageResult = null;
+        FileStream imageFile = null;
+        MemoryStream imageFileData = null;
         ReadOnlySpan<float> LoadPixelData()
         {
-            MemoryStream memoryStream = new MemoryStream();
-            File.OpenRead(Path).CopyTo(memoryStream);
-            Stbi.SetFlipVerticallyOnLoad(true);
-            if (!Stbi.IsHdrFromMemory(memoryStream))
+            imageFile = File.OpenRead(Path);
+            imageFileData = new MemoryStream();
+            imageFile.CopyTo(imageFileData);
+            if (!Stbi.IsHdrFromMemory(imageFileData))
             {
                 Console.WriteLine("WARNING::Pixel data for cubemap is not HDR!");
             }
-            var image = Stbi.LoadFFromMemory(memoryStream, 3);
+            var image = Stbi.LoadFFromMemory(imageFileData, 3);
             imageResult = image;
             return image.Data;
         }
@@ -76,6 +78,9 @@ namespace JLGraphics
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
             GL.GenerateTextureMipmap(ImageTextureID);
             GL.BindTexture(TextureTarget.Texture2D, 0);
+
+            imageFileData.Close();
+            imageFile.Close();
         }
         public void RenderCubemap(bool isSkyBox, int size = 512)
         {
