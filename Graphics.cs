@@ -377,9 +377,10 @@ namespace JLGraphics
             blitShader.UseProgram();
             blitShader.SetTextureUnsafe("MainTex", src.ColorAttachments[0]);
             blitShader.UpdateUniforms();
+            blitShader.DepthTest = false;
 
             GL.BindVertexArray(FullScreenQuad.VAO);
-            GL.Disable(EnableCap.DepthTest);
+
             m_drawCount++;
             m_verticesCount += FullScreenQuad.VertexCount;
             m_shaderBindCount++;
