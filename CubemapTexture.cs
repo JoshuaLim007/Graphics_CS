@@ -82,7 +82,7 @@ namespace JLGraphics
             imageFileData.Close();
             imageFile.Close();
         }
-        public void RenderCubemap(bool isSkyBox, int size = 512)
+        public void RenderCubemap(int size = 512, string uniformTextureId = "")
         {
             ResolveTexture();
 
@@ -203,10 +203,9 @@ namespace JLGraphics
                 GL.DrawElements(PrimitiveType.Triangles, cubeMesh.IndiciesCount, DrawElementsType.UnsignedInt, 0);
             }
 
-
-            if (isSkyBox)
+            if(uniformTextureId != "")
             {
-                Shader.SetGlobalTexture("SkyBox", tColorCubeMap, TextureTarget.TextureCubeMap);
+                Shader.SetGlobalTexture(uniformTextureId, tColorCubeMap, TextureTarget.TextureCubeMap);
             }
             GL.Enable(EnableCap.CullFace);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
