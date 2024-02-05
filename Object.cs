@@ -38,64 +38,65 @@ namespace JLGraphics
         public int InstanceID => mId;
         private bool Null => mId == 0;
         protected virtual void OnCreate(params object[] args) { }
-        internal void CallCreate(params object[] args)
+        internal static void CallCreate(Object @object, params object[] args)
         {
             if (previousDestroyedObject.Count != 0)
             {
-                mId = previousDestroyedObject.Pop();
+                @object.mId = previousDestroyedObject.Pop();
             }
             else
             {
                 count++;
-                mId = count;
+                @object.mId = count;
             }
 
-            if (typeof(IUpdate).IsAssignableFrom(GetType()))
+            if (typeof(IUpdate).IsAssignableFrom(@object.GetType()))
             {
                 //AllUpdates.Add((IUpdate)instance);
-                InternalGlobalScope<IUpdate>.Values.Add(this as IUpdate);
+                InternalGlobalScope<IUpdate>.Values.Add(@object as IUpdate);
             }
-            if (typeof(IFixedUpdate).IsAssignableFrom(GetType()))
+            if (typeof(IFixedUpdate).IsAssignableFrom(@object.GetType()))
             {
                 //AllFixedUpdates.Add((IFixedUpdate)instance);
-                InternalGlobalScope<IFixedUpdate>.Values.Add(this as IFixedUpdate);
+                InternalGlobalScope<IFixedUpdate>.Values.Add(@object as IFixedUpdate);
             }
-            if (typeof(IStart).IsAssignableFrom(GetType()))
+            if (typeof(IStart).IsAssignableFrom(@object.GetType()))
             {
                 //StartQueue.Add((IStart)instance);
-                InternalGlobalScope<IStart>.Values.Add(this as IStart);
+                InternalGlobalScope<IStart>.Values.Add(@object as IStart);
             }
-            if (typeof(IOnRender).IsAssignableFrom(GetType()))
+            if (typeof(IOnRender).IsAssignableFrom(@object.GetType()))
             {
                 //AllOnRenders.Add((IOnRender)instance);
-                InternalGlobalScope<IOnRender>.Values.Add(this as IOnRender);
+                InternalGlobalScope<IOnRender>.Values.Add(@object as IOnRender);
             }
-            OnCreate(args);
+            @object.OnCreate(args);
         }
-        internal void CallDestroy()
+        internal static void CallDestroy(Object @object)
         {
-            previousDestroyedObject.Push(mId);
-            mId = 0;
+            previousDestroyedObject.Push(@object.mId);
+            @object.mId = 0;
 
-            if (typeof(IUpdate).IsAssignableFrom(GetType()))
+            if (typeof(IUpdate).IsAssignableFrom(@object.GetType()))
             {
-                InternalGlobalScope<IUpdate>.Values.Remove(this as IUpdate);
+                InternalGlobalScope<IUpdate>.Values.Remove(@object as IUpdate);
             }
-            if (typeof(IFixedUpdate).IsAssignableFrom(GetType()))
+            if (typeof(IFixedUpdate).IsAssignableFrom(@object.GetType()))
             {
-                InternalGlobalScope<IFixedUpdate>.Values.Remove(this as IFixedUpdate);
+                InternalGlobalScope<IFixedUpdate>.Values.Remove(@object as IFixedUpdate);
             }
-            if (typeof(IStart).IsAssignableFrom(GetType()))
+            if (typeof(IStart).IsAssignableFrom(@object.GetType()))
             {
-                InternalGlobalScope<IStart>.Values.Remove(this as IStart);
+                InternalGlobalScope<IStart>.Values.Remove(@object as IStart);
             }
-            if (typeof(IOnRender).IsAssignableFrom(GetType()))
+            if (typeof(IOnRender).IsAssignableFrom(@object.GetType()))
             {
-                InternalGlobalScope<IOnRender>.Values.Remove(this as IOnRender);
+                InternalGlobalScope<IOnRender>.Values.Remove(@object as IOnRender);
             }
-            InternalOnImmediateDestroy();
-            OnDestroy();
+            @object.InternalOnImmediateDestroy();
+            @object.OnDestroy();
         }
+
         protected virtual void InternalOnImmediateDestroy() { }
         public virtual void OnDestroy() { }
         public static bool operator ==(Object a, Object b)

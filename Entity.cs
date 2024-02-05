@@ -132,7 +132,7 @@ namespace JLGraphics
             {
                 InternalGlobalScope<Renderer>.Values.Remove(toDestroy as Renderer);
             }
-            toDestroy.CallDestroy();
+            CallDestroy(toDestroy);
             toDestroy = null;
         }
         public static Entity Create(string Name)
@@ -156,7 +156,7 @@ namespace JLGraphics
         {
             for (int i = 0; i < m_components.Count; i++)
             {
-                m_components[i].CallDestroy();
+                Object.CallDestroy(m_components[i]);
             }
             InternalGlobalScope<Entity>.Values.Remove(this);
         }

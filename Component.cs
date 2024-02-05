@@ -17,7 +17,7 @@ namespace JLGraphics
         {
             entityReference = new WeakReference<Entity>(entity);
             base.Name += entity.Name + "_Component_" + GetType().Name;
-            CallCreate(args);
+            CallCreate(this, args);
         }
 
         WeakReference<Entity> entityReference;
