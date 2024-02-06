@@ -41,7 +41,7 @@ void main()
     vec4 col = texture(MainTex, gl_FragCoord.xy / MainTex_Size);
 
     float depth = linearDepth(get_depth(gl_FragCoord.xy / MainTex_Size));
-    float density = 1.0 / pow(2.71828, pow(depth * FogDensity, 2));
+    float density = 1.0 / exp(pow(depth * FogDensity, 2));
     col = mix(vec4(col), vec4(FogColor, 1), 1 - density);
 
     //aces tonemapping

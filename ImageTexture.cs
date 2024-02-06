@@ -13,7 +13,11 @@ namespace JLGraphics
         public static ImageTexture LoadTextureFromPath(string path)
         {
             var image = ImageResult.FromStream(File.OpenRead(path), ColorComponents.RedGreenBlueAlpha);
-            return new ImageTexture(image);
+            var m = new ImageTexture(image);
+            m.textureMinFilter = TextureMinFilter.LinearMipmapLinear;
+            m.textureMagFilter = TextureMagFilter.Linear;
+            m.textureWrapMode = TextureWrapMode.Repeat;
+            return m;
         }
         public ImageResult image { get; }
         public ImageTexture(ImageResult image)

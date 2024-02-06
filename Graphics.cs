@@ -241,6 +241,9 @@ namespace JLGraphics
             DepthPrepassShader.ColorMask[3] = false;
             DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
             DefaultMaterial.SetFloat("Smoothness", 0.5f);
+            var img = ImageTexture.LoadTextureFromPath("./Textures/1x1_white.png");
+            img.ResolveTexture();
+            DefaultMaterial.SetTexture("AlbedoTex", img);
             FullScreenQuad = Mesh.CreateQuadMesh();
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);

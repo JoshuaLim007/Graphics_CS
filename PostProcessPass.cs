@@ -10,7 +10,7 @@ namespace JLGraphics
 {
     public class PostProcessPass : RenderPass
     {
-        public float FogDensity = .002f;
+        public float FogDensity = .0025f;
         public Vector3 FogColor = new Vector3(1, 1, 1);
         public bool Tonemapping = true;
         public bool GammaCorrection = true;
