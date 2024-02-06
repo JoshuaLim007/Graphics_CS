@@ -237,12 +237,6 @@ namespace JLGraphics
         public static int ProgramCounts => AllShaderPrograms.Count;
         Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
         public bool isCompiled { get; private set; } = false;
-        internal static List<UniformValue> GlobalUniformValues { get; private set; } = new();
-        internal static Dictionary<string, int> GlobalUniformIndexCache { get; private set; } = new();
-        /// <summary>
-        /// Make sure to reset this to false after rendering every camera
-        /// </summary>
-        internal static bool GlobalUniformAdded = true;
         public int GetUniformLocation(string id)
         {
             if (!isCompiled)
@@ -491,6 +485,8 @@ namespace JLGraphics
         {
             return ((val >> index) & 1) == 1;
         }
+
+        //#################### PREVIOUS UNIFORM STATE ####################
         struct TextureBindState
         {
             public int TexturePtr;
@@ -501,12 +497,14 @@ namespace JLGraphics
             public int uniformLocation;
             public object value;
         }
-        static TextureBindState[] PreviousTextureState = new TextureBindState[TotalTextures];
-        static Dictionary<string, UniformBindState> PreviousUniformState = new Dictionary<string, UniformBindState>();
+        static TextureBindState[] PreviousTextureState { get; } = new TextureBindState[TotalTextures];
+        static Dictionary<string, UniformBindState> PreviousUniformState { get; } = new Dictionary<string, UniformBindState>();
+        //######################################################
+
         internal static void ClearStateCheckCache()
         {
             PreviousUniformState.Clear();
-            PreviousTextureState = new TextureBindState[TotalTextures];
+            Array.Clear(PreviousTextureState);
         }
         static void SendUniformDataToGPU(int uniformLocation, UniformType type, object value)
         {
@@ -646,7 +644,7 @@ namespace JLGraphics
 
                 //if there was a recently added global uniform check
                 //if the uniform value is a default value, remove it if it is
-                if (ShaderProgram.GlobalUniformAdded)
+                if (NewGlobalUniformAddedFlag)
                 {
                     if (m_uniformValuesDefaultFlag[i] && mFindGlobalUniformIndex(current.uniformName) != -1)
                     {
@@ -689,10 +687,17 @@ namespace JLGraphics
         private Dictionary<string, int> m_cachedUniformValueIndex = new Dictionary<string, int>();
         private List<UniformValueWithLocation> m_uniformValues = new List<UniformValueWithLocation>();
         private List<bool> m_uniformValuesDefaultFlag = new List<bool>();
-        static ShaderProgram PreviousProgram = null;
-        static int mFindGlobalUniformIndex(string uniformName)
+        static ShaderProgram PreviousProgram { get; set; } = null;
+        static List<UniformValue> GlobalUniformValues { get; } = new();
+        static Dictionary<string, int> GlobalUniformIndexCache { get; } = new();
+        /// <summary>
+        /// Make sure to reset this to false after rendering every camera.
+        /// Set true everytime we add a new global uniform. Existing uniform would not raise this flag.
+        /// </summary>
+        internal static bool NewGlobalUniformAddedFlag { get; set; } = true;
+        private static int mFindGlobalUniformIndex(string uniformName)
         {
-            if(ShaderProgram.GlobalUniformIndexCache.TryGetValue(uniformName, out var index))
+            if(GlobalUniformIndexCache.TryGetValue(uniformName, out var index))
             {
                 return index;
             }
@@ -703,15 +708,15 @@ namespace JLGraphics
             var index = mFindGlobalUniformIndex(uniformName);
             if (index == -1)
             {
-                ShaderProgram.GlobalUniformValues.Add(new UniformValue(uniformName, globalUniformType, value));
-                ShaderProgram.GlobalUniformIndexCache.Add(uniformName, ShaderProgram.GlobalUniformValues.Count-1);
-                ShaderProgram.GlobalUniformAdded = true;
+                GlobalUniformValues.Add(new UniformValue(uniformName, globalUniformType, value));
+                GlobalUniformIndexCache.Add(uniformName, GlobalUniformValues.Count-1);
+                NewGlobalUniformAddedFlag = true;
             }
             else
             {
-                var val = ShaderProgram.GlobalUniformValues[index];
+                var val = GlobalUniformValues[index];
                 val.value = value;
-                ShaderProgram.GlobalUniformValues[index] = val;
+                GlobalUniformValues[index] = val;
             }
         }
         public static void SetGlobalTexture(string id, Texture texture)
@@ -754,10 +759,10 @@ namespace JLGraphics
         }
         void mPushAllGlobalUniformsToShaderProgram()
         {
-            for (int i = 0; i < ShaderProgram.GlobalUniformValues.Count; i++)
+            for (int i = 0; i < GlobalUniformValues.Count; i++)
             {
                 //we will fetch global texture data via update uniforms
-                var cur = ShaderProgram.GlobalUniformValues[i];
+                var cur = GlobalUniformValues[i];
                 if(cur.uniformType == UniformType.texture)
                 {
                     continue;
@@ -767,9 +772,9 @@ namespace JLGraphics
         }
         private void mFetchGlobalTextures()
         {
-            for (int i = 0; i < ShaderProgram.GlobalUniformValues.Count; i++)
+            for (int i = 0; i < GlobalUniformValues.Count; i++)
             {
-                var cur = ShaderProgram.GlobalUniformValues[i];
+                var cur = GlobalUniformValues[i];
                 if(cur.uniformType != UniformType.texture)
                 {
                     continue;

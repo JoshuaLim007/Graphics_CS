@@ -538,7 +538,7 @@ namespace JLGraphics
 
                 Window.SwapBuffers();
             }
-            ShaderProgram.GlobalUniformAdded = false;
+            Shader.NewGlobalUniformAddedFlag = false;
         }
 
         /// <summary>
