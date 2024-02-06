@@ -54,14 +54,75 @@ namespace JLGraphics
             return temp1.Normalized();  
         }
 
-        public Vector3 Position { get; set; } = Vector3.Zero;
-        public Quaternion Rotation { get; set; } = Quaternion.Identity;
-        public Vector3 Scale { get; set; } = Vector3.One;
+        Vector3 pos = Vector3.Zero;
+        public Vector3 Position {
+            get
+            {
+                return pos;
+            }
+            set
+            {
+                HasChanged = true;
+                pos = value;
+            }
+        }
+
+        Quaternion rot = Quaternion.Identity;
+        public Quaternion Rotation {
+            get
+            {
+                return rot;
+            }
+            set
+            {
+                HasChanged = true;
+                rot = value;
+            } 
+        }
+
+        Vector3 scale = Vector3.One;
+        public Vector3 Scale { 
+            get
+            {
+                return scale;
+            }
+            set
+            {
+                HasChanged = true;
+                scale = value;
+            }
+        }
+
         public Matrix4 WorldToLocalMatrix => GetWorldToLocalMatrix();
         
         private bool isStatic => Entity.StaticFlag == StaticFlags.StaticDraw;
         private Matrix4 bakedMatrix;
         private bool isMatrixBaked = false;
+
+        bool hasChanged = true;
+        public bool HasChanged {
+            get { 
+                if(Parent != null)
+                {
+                    return Parent.HasChanged | hasChanged;
+                }
+                return hasChanged;
+            }
+            set {
+                if(value == true)
+                {
+                    hasChanged = value;
+                    return;
+                }
+
+                if(Parent != null)
+                {
+                    Parent.HasChanged = false;
+                }
+                hasChanged = value;
+            }
+        }
+
         private Matrix4 GetWorldToLocalMatrix()
         {
             if (!IsCameraTransform)
@@ -77,7 +138,13 @@ namespace JLGraphics
                 }
                 else
                 {
-                    return Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.WorldToLocalMatrix : Matrix4.Identity);
+                    if (HasChanged)
+                    {
+                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.WorldToLocalMatrix : Matrix4.Identity);
+                        HasChanged = false;
+                        return bakedMatrix;
+                    }
+                    return bakedMatrix;
                 }
             }
             else

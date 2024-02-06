@@ -146,7 +146,6 @@ namespace JLGraphics
                 m_verticesCount = 0;
                 RenderScaleChange(RenderScale);
                 DoRenderUpdate();
-
                 time1 = time;
             };
         }
@@ -539,6 +538,7 @@ namespace JLGraphics
 
                 Window.SwapBuffers();
             }
+            ShaderProgram.GlobalUniformAdded = false;
         }
 
         /// <summary>
@@ -603,9 +603,9 @@ namespace JLGraphics
             Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
 
-        static Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
-        static Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials)
+        static Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials, Dictionary<Shader, int> caching)
         {
+            Dictionary<Shader, int> materialIndex = caching;
             List<Renderer>[] materials = new List<Renderer>[uniqueMaterials];
             int materialCount;
             int index;
@@ -645,6 +645,7 @@ namespace JLGraphics
 
         static Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
         static Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
+        static Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
         static Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers, bool AlsoSortMaterials)
         {
             List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
@@ -691,12 +692,47 @@ namespace JLGraphics
             }
 
             var final = new Renderer[totalRenderers];
+
+            //if (AlsoSortMaterials)
+            //{
+            //    Renderer[][] parallelSort = new Renderer[programIndex.Count][];
+            //    var results = Parallel.For(0, programIndex.Count, i => {
+            //        var renderers = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count, new Dictionary<Shader, int>());
+            //        parallelSort[i] = renderers;
+            //    });
+            //    index = 0;
+            //    for (int i = 0; i < parallelSort.Length; i++)
+            //    {
+            //        Renderer[] sortedList = parallelSort[i];
+            //        for (int j = 0; j < sortedList.Length; j++)
+            //        {
+            //            final[index] = sortedList[j];
+            //            index++;
+            //        }
+            //    }
+            //}
+            //else
+            //{
+            //    index = 0;
+            //    for (int i = 0; i < programIndex.Count; i++)
+            //    {
+            //        var sorted = programs[i];
+            //        for (int j = 0; j < sorted.Count; j++)
+            //        {
+            //            final[index] = sorted[j];
+            //            index++;
+            //        }
+            //    }
+            //}
+
             index = 0;
             for (int i = 0; i < programIndex.Count; i++)
             {
                 ICollection<Renderer> sorted = programs[i];
-                if(AlsoSortMaterials)
-                    sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count);
+                if (AlsoSortMaterials)
+                {
+                    sorted = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count, materialIndex);
+                }
                 for (int j = 0; j < sorted.Count; j++)
                 {
                     final[index] = sorted.ElementAt(j);
@@ -825,8 +861,8 @@ namespace JLGraphics
                     }
                     previousMaterial = material;
                 }
-                
-                var worlToLocalMatrix = current.Entity.Transform.WorldToLocalMatrix;
+                var transform = current.Entity.Transform;
+                var worlToLocalMatrix = transform.WorldToLocalMatrix;
                 if (useOverride)
                 {
                     //apply model matrix

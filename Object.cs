@@ -101,7 +101,15 @@ namespace JLGraphics
         public virtual void OnDestroy() { }
         public static bool operator ==(Object a, Object b)
         {
-            if (a is null && b is not null)
+            object ao = a;
+            object bo = b;
+
+            if (bo == null && ao == null)
+            {
+                return true;
+            }
+
+            if (ao == null && bo != null)
             {
                 if (b.Null)
                 {
@@ -112,7 +120,7 @@ namespace JLGraphics
                     return false;
                 }
             }
-            else if (b is null && a is not null)
+            else if (bo == null && ao != null)
             {
                 if (a.Null)
                 {
@@ -123,12 +131,8 @@ namespace JLGraphics
                     return false;
                 }
             }
-            else if (b is null && a is null)
-            {
-                return true;
-            }
 
-            return ReferenceEquals(a, b);
+            return a.InstanceID == b.InstanceID;
         }
         public static bool operator !=(Object a, Object b)
         {
