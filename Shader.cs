@@ -210,9 +210,10 @@ namespace JLGraphics
                 Console.WriteLine("ERROR::Program has been disposed! " + Name);
                 throw new Exception("ERROR::Program has been disposed! " + Name);
             }
-            if (uniformLocations.ContainsKey(id))
+
+            if (uniformLocations.TryGetValue(id, out int value))
             {
-                return uniformLocations[id];
+                return value;
             }
             else
             {
@@ -613,7 +614,13 @@ namespace JLGraphics
             for (int i = 0; i < m_uniformValues.Count; i++)
             {
                 var type = m_uniformValues[i].UniformType;
-                int uniformLocation = Program.GetUniformLocation(m_uniformValues[i].uniformName);
+                if(m_uniformValues[i].uniformLocation == -1)
+                {
+                    var temp = m_uniformValues[i];
+                    temp.uniformLocation = Program.GetUniformLocation(m_uniformValues[i].uniformName);
+                    m_uniformValues[i] = temp;
+                }
+                int uniformLocation = m_uniformValues[i].uniformLocation;// Program.GetUniformLocation(m_uniformValues[i].uniformName);
 
                 if (PreviousUniformState.TryGetValue(m_uniformValues[i].uniformName, out UniformBindState prevState))
                 {
@@ -684,11 +691,13 @@ namespace JLGraphics
             public string uniformName;
             public UniformType UniformType;
             public object value;
+            public int uniformLocation;
             public UniformValue(string id, UniformType UniformType, object value)
             {
                 this.uniformName = id;
                 this.UniformType = UniformType;
                 this.value = value;
+                uniformLocation = -1;
             }
         }
 
@@ -772,9 +781,9 @@ namespace JLGraphics
         }
         private void mAddUniform(in UniformValue uniformValue)
         {
-            if (m_cachedUniformValueIndex.ContainsKey(uniformValue.uniformName))
+            if (m_cachedUniformValueIndex.TryGetValue(uniformValue.uniformName, out int value))
             {
-                int index = m_cachedUniformValueIndex[uniformValue.uniformName];
+                int index = value;
                 var temp = m_uniformValues[index];
                 temp.value = uniformValue.value;
                 m_uniformValues[index] = temp;
