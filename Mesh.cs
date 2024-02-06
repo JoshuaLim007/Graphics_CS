@@ -6,10 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using OpenTK.Graphics.OpenGL4;
-using static JLGraphics.AssetLoader;
-using Assimp;
 using JLUtility;
-using System.Runtime.InteropServices;
 
 namespace JLGraphics
 {
@@ -155,8 +152,12 @@ namespace JLGraphics
         }
         public Mesh(string path) : base(path)
         {
-            var Data = MeshLoader.Load(path);
-            ApplyMesh(Data[0]);
+            var Data = AssetLoader.Load(path);
+            ApplyMesh(Data);
+        }
+        public Mesh(GlMeshData data, string path) : base(path)
+        {
+            ApplyMesh(data);
         }
         ~Mesh()
         {

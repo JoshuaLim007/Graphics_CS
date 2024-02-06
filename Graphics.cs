@@ -225,7 +225,7 @@ namespace JLGraphics
 
             SkyBox = new CubemapTexture();
             SkyBox.Path = "D:\\joshu\\Downloads\\rural_asphalt_road_4k.hdr";
-            SkyBox.RenderCubemap(1024, "SkyBox");
+            SkyBox.RenderCubemap(2048, "SkyBox");
 
             DefaultShaderProgram = defaultShader;
             PassthroughShaderProgram = passThroughShader;

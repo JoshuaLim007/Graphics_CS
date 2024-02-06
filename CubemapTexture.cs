@@ -85,6 +85,7 @@ namespace JLGraphics
         public void RenderCubemap(int size = 512, string uniformTextureId = "")
         {
             ResolveTexture();
+            GL.Enable(EnableCap.TextureCubeMapSeamless);
 
             if (disposed)
             {

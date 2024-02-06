@@ -14,12 +14,44 @@ namespace JLGraphics
         None = 0,
         StaticDraw = 0b1,
     }
-    
-    public sealed class Entity : NamedObject
+
+    public class Entity : NamedObject
     {
         public StaticFlags StaticFlag { get; set; } = StaticFlags.None;
         public bool Enabled { get; set; } = true;
         public Transform Transform { get; private set; } = null;
+
+        public Entity Parent
+        {
+            set
+            {
+                Transform.Parent = value.Transform;
+            }
+            get
+            {
+                if(Transform.Parent != null)
+                {
+                    return Transform.Parent.Entity;
+                }
+                return null;
+            }
+        }
+        public Entity[] Children { 
+            get
+            {
+                if(Transform.Childs.Length == 0)
+                {
+                    return null;
+                }
+
+                Entity[] arr = new Entity[Transform.Childs.Length];
+                for (int i = 0; i < Transform.Childs.Length; i++)
+                {
+                    arr[i] = Transform.Childs[i].Entity;
+                }
+                return arr;
+            }
+        }
 
         public static Entity FindObjectByName(string name)
         {
