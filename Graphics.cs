@@ -789,7 +789,6 @@ namespace JLGraphics
                 renderers = FrustumCullCPU(renderers);
             }
 
-
             for (int i = 0; i < renderers.Length; i++)
             {
                 var current = renderers[i];

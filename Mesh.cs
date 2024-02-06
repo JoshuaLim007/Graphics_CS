@@ -22,7 +22,7 @@ namespace JLGraphics
         public int IndiciesCount;
         public bool HasEBO;
     }
-    public class Mesh: FileObject
+    public class Mesh: FileObject, IDisposable
     {
         public static MeshPrimative CreateCubeMesh()
         {
@@ -150,6 +150,13 @@ namespace JLGraphics
 
             VertexCount = (int)(Data.vertexData.Count() / (float)Data.elementsPerVertex);
         }
+
+        public void Dispose()
+        {
+            GL.DeleteBuffer(ElementArrayBuffer);
+            GL.DeleteVertexArray(VertexArrayObject);
+        }
+
         public Mesh(string path) : base(path)
         {
             var Data = AssetLoader.Load(path);
@@ -159,11 +166,5 @@ namespace JLGraphics
         {
             ApplyMesh(data);
         }
-        ~Mesh()
-        {
-            GL.DeleteBuffer(ElementArrayBuffer);
-            GL.DeleteVertexArray(VertexArrayObject);
-        }
-  
     }
 }
