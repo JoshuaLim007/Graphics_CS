@@ -55,5 +55,5 @@ void main()
         col.rgb = pow(col.rgb, vec3(1.0/gamma));
     }
 
-    FragColor = vec4(col);
+    FragColor = col;
 }

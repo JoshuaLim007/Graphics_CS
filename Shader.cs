@@ -765,7 +765,6 @@ namespace JLGraphics
                 SendUniformDataToGPU(Program.GetUniformLocation(cur.uniformName), cur.uniformType, cur.value);
             }
         }
-        static Texture[] previousGlobalTextures = new Texture[32];
         private void mFetchGlobalTextures()
         {
             for (int i = 0; i < ShaderProgram.GlobalUniformValues.Count; i++)
@@ -776,23 +775,6 @@ namespace JLGraphics
                     continue;
                 }
                 Texture? tex = (Texture)cur.value;
-
-                if(tex == null)
-                {
-                    previousGlobalTextures[i] = null;
-                    SetTexture(cur.uniformName, null);
-                    return;
-                }
-
-                if(previousGlobalTextures[i] != null)
-                {
-                    if (previousGlobalTextures[i] == tex || tex.GlTextureID == previousGlobalTextures[i].GlTextureID)
-                    {
-                        continue;
-                    }
-                }
-
-                previousGlobalTextures[i] = tex;
                 SetTexture(cur.uniformName, tex);
             }
         }
