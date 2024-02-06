@@ -139,20 +139,22 @@ void main(){
 	mat3 TBN = mat3(fs_in.Tangent, cross(fs_in.Normal, fs_in.Tangent), fs_in.Normal);
 
 	color = texture(AlbedoTex, fs_in.TexCoord);
-	bump = texture(NormalTex, fs_in.TexCoord) * 2 - 1;
+	bump = texture(NormalTex, fs_in.TexCoord);
+	if (bump.x == 0 && bump.y == 0 && bump.z == 0) {
+		bump.xyz = vec3(0, 0, 1);
+	}
+	else {
+		bump = bump * 2 - 1;
+	}
 	bump.xyz = normalize(mix(TBN * vec3(0,0,1), TBN * bump.xyz, .5));
-	vec3 normal = bump.xyz;
+	vec3 normal = mix(bump.xyz, fs_in.Normal, 0.0f);
 	vec3 reflectedVector = reflect(viewVector, normal);
 
 	vec4 sunColor = GetDirectionalLight(normal, reflectedVector);
 	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
 
-	vec3 I = normalize(fs_in.Position.xyz - CameraWorldSpacePos.xyz);
-	vec3 R = reflect(I, normalize(normal));
-	vec4 envColor = vec4(texture(SkyBox, R).rgb, 1.0);
-	//float d = linearDepth(get_depth());
-	//float density = 1.0 / pow(2.71828, pow(d * .1f, 2));
-	//c = mix(c, vec4(1,1,1,1), 1 - density);
+	vec4 envColor = vec4(texture(SkyBox, reflectedVector).rgb, 1.0);
+
 	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
 	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
 	vec4 c = color * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor, 0);
