@@ -6,17 +6,17 @@ using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
 
 namespace JLGraphics
 {
-    internal class CubemapTexture : IDisposable
+    internal class CubemapTexture : SafeDispose
     {
         int ImageTextureID;
         MeshPrimative cubeMesh;
-        public void Dispose()
+        protected override void OnDispose()
         {
-            if(ImageTextureID != 0)
+            if (ImageTextureID != 0)
                 GL.DeleteTexture(ImageTextureID);
-            
+
             cubeMapTextureInstances--;
-            if(cubeMapTextureInstances == 0)
+            if (cubeMapTextureInstances == 0)
             {
                 CubeMapProjectionShader = null;
                 CubemapShaderProgram.Dispose();
@@ -27,6 +27,9 @@ namespace JLGraphics
             imageResult.Dispose();
         }
         public string Path { get; set; }
+
+        public override string Name => "Cubemap: " + Path;
+
         bool disposed = false;
         static Shader CubeMapProjectionShader = null;
         static ShaderProgram CubemapShaderProgram = null;
@@ -211,7 +214,7 @@ namespace JLGraphics
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.DeleteFramebuffer(fbo);
 
-            GL.Viewport(0, 0, Graphics.Window.Size.X, Graphics.Window.Size.Y); 
+            GL.Viewport(0, 0, Graphics.Instance.Window.Size.X, Graphics.Instance.Window.Size.Y); 
         }
     }
 }

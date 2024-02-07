@@ -18,7 +18,7 @@ namespace JLGraphics
         Queue<Action> actions = new Queue<Action>();
         public void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
-            actions.Enqueue(() => { Graphics.Blit(src, dst, restoreSrc, shader); });
+            actions.Enqueue(() => { Graphics.Instance.Blit(src, dst, restoreSrc, shader); });
         }
         public void Add(Action action)
         {

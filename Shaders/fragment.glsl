@@ -1,5 +1,5 @@
 ﻿#version 410
-#define MAX_POINT_LIGHTS 8
+#define MAX_POINT_LIGHTS 16
 
 in VS_OUT{
 	vec3 Color;

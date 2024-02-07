@@ -121,7 +121,7 @@ namespace JLGraphics
             {
                 foreach (var mat in scene.Materials)
                 {
-                    var shader = new Shader(Graphics.DefaultMaterial);
+                    var shader = new Shader(Graphics.Instance.DefaultMaterial);
                     shader.Name = mat.Name;
                     materials.Add(shader);
                 }

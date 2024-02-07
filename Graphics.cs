@@ -3,6 +3,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using StbImageSharp;
 using StbiSharp;
 
@@ -10,51 +11,55 @@ namespace JLGraphics
 {
     public struct Time
     {
-        public static float FixedDeltaTime { get => Graphics.FixedDeltaTime; set => Graphics.FixedDeltaTime = Math.Clamp(value, float.Epsilon, 1.0f); }
-        public static float UnscaledDeltaTime => Graphics.DeltaTime;
-        public static float UnscaledSmoothDeltaTime => Graphics.SmoothDeltaTime;
+        public static float FixedDeltaTime { get => Graphics.Instance.FixedDeltaTime; set => Graphics.Instance.FixedDeltaTime = Math.Clamp(value, float.Epsilon, 1.0f); }
+        public static float UnscaledDeltaTime => Graphics.Instance.DeltaTime;
+        public static float UnscaledSmoothDeltaTime => Graphics.Instance.SmoothDeltaTime;
 
 
-        public static float DeltaTime => Graphics.DeltaTime * TimeScale;
-        public static float SmoothDeltaTime => Graphics.SmoothDeltaTime * TimeScale;
-        public static float ElapsedTime => Graphics.ElapsedTime * TimeScale;
+        public static float DeltaTime => Graphics.Instance.DeltaTime * TimeScale;
+        public static float SmoothDeltaTime => Graphics.Instance.SmoothDeltaTime * TimeScale;
+        public static float ElapsedTime => Graphics.Instance.ElapsedTime * TimeScale;
 
         private static float m_timeScale = 1.0f;
         public static float TimeScale { get => m_timeScale; set => m_timeScale = Math.Clamp(value, 0, float.MaxValue); }
     }
-    public static class Graphics
+    public sealed class Graphics : IDisposable
     {
-        public const int MAXPOINTLIGHTS = 8;
-        private static GameWindowSettings m_gameWindowSettings = null;
-        private static NativeWindowSettings m_nativeWindowSettings = null;
-        public static GameWindow Window { get; private set; } = null;
-        public static Shader DefaultMaterial { get; private set; } = null;
-        internal static float FixedDeltaTime { get; set; } = 0;
-        internal static float DeltaTime { get; private set; } = 0;
-        internal static float SmoothDeltaTime { get; private set; } = 0;
-        internal static float ElapsedTime { get; private set; } = 0;
-        public static bool DisableRendering { get; set; } = false;
-
-        private static int m_drawCount = 0;
-        private static int m_meshBindCount = 0;
-        private static int m_shaderBindCount = 0;
-        private static int m_materialUpdateCount = 0;
-        private static int m_verticesCount = 0;
-        private static bool m_isInit = false;
-        private static List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
-        private static List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
-        public static Vector2i OutputResolution => m_nativeWindowSettings.Size;
-        static FileTracker fileTracker;
-        public static bool GetFileTracker(out FileTracker fileTracker)
+        static Lazy<Graphics> m_lazyGraphics = new Lazy<Graphics>(() => new Graphics());
+        public static Graphics Instance { get { return m_lazyGraphics.Value; } }
+        private Graphics()
         {
-            fileTracker = Graphics.fileTracker;
+        }
+
+        public const int MAXPOINTLIGHTS = 16;
+        public GameWindow Window { get; private set; } = null;
+        public Shader DefaultMaterial { get; private set; } = null;
+        internal float FixedDeltaTime { get; set; } = 0;
+        internal float DeltaTime { get; private set; } = 0;
+        internal float SmoothDeltaTime { get; private set; } = 0;
+        internal float ElapsedTime { get; private set; } = 0;
+        public bool DisableRendering { get; set; } = false;
+
+        private int m_drawCount = 0;
+        private int m_meshBindCount = 0;
+        private int m_shaderBindCount = 0;
+        private int m_materialUpdateCount = 0;
+        private int m_verticesCount = 0;
+        private bool m_isInit = false;
+        private List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
+        private List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
+        public Vector2i OutputResolution => new Vector2i((int)(Window.Size.X * RenderScale), (int)(Window.Size.Y * RenderScale));
+        FileTracker fileTracker;
+        public bool GetFileTracker(out FileTracker fileTracker)
+        {
+            fileTracker = this.fileTracker;
             if(fileTracker == null)
             {
                 return false;
             }
             return true;
         }
-        private static void InitWindow(int msaaSamples)
+        private void InitWindow(int msaaSamples, GameWindowSettings m_gameWindowSettings, NativeWindowSettings m_nativeWindowSettings)
         {
             m_nativeWindowSettings.NumberOfSamples = msaaSamples;
 
@@ -84,13 +89,13 @@ namespace JLGraphics
 
             Window.UpdateFrame += UpdateFrame;
         }
-        static CubemapTexture SkyBox;
-        static ShaderProgram DefaultShaderProgram;
-        static ShaderProgram PassthroughShaderProgram;
-        static ShaderProgram DepthPrepassShaderProgram;
-        static float previousRenderScale = 1.0f;
-        public static float RenderScale { get; set; } = 1.0f;
-        static void InitFramebuffers() {
+        CubemapTexture SkyBox;
+        ShaderProgram DefaultShaderProgram;
+        ShaderProgram PassthroughShaderProgram;
+        ShaderProgram DepthPrepassShaderProgram;
+        float previousRenderScale = 1.0f;
+        public float RenderScale { get; set; } = 1.0f;
+        void InitFramebuffers() {
             float scale = RenderScale;// MathF.Sqrt(RenderScale);
             var colorSettings = new TFP()
             {
@@ -113,11 +118,7 @@ namespace JLGraphics
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(Window.Size.X * scale), (int)MathF.Ceiling(Window.Size.Y * scale), false, depthSettings);
             Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.ColorAttachments[0]);
         }
-        /// <param name="windowName"></param>
-        /// <param name="windowResolution"></param>
-        /// <param name="renderFrequency"></param>
-        /// <param name="fixedUpdateFrequency"></param>
-        public static void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
+        public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
             m_isInit = true;
             previousRenderScale = RenderScale;
@@ -126,8 +127,8 @@ namespace JLGraphics
 
             FixedDeltaTime = 1.0f / fixedUpdateFrequency;
 
-            m_gameWindowSettings = GameWindowSettings.Default;
-            m_nativeWindowSettings = NativeWindowSettings.Default;
+            var m_gameWindowSettings = GameWindowSettings.Default;
+            var m_nativeWindowSettings = NativeWindowSettings.Default;
             m_gameWindowSettings.UpdateFrequency = renderFrequency;
 
             m_nativeWindowSettings.Size = windowResolution;
@@ -137,7 +138,7 @@ namespace JLGraphics
             m_nativeWindowSettings.API = ContextAPI.OpenGL;
             m_nativeWindowSettings.APIVersion = Version.Parse("4.1");
 
-            InitWindow(0);
+            InitWindow(0, m_gameWindowSettings, m_nativeWindowSettings);
 
             var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
@@ -185,13 +186,18 @@ namespace JLGraphics
             InitFramebuffers();
             renderPassCommandBuffer = new CommandBuffer();
         }
-        public static void Free()
+        public void Dispose()
         {
+            if (m_isInit)
+            {
+                Debug.Log("Graphics is not initialized!", Debug.Flag.Error);
+            }
             temporaryUpdateFrameCommands.Clear();
             SkyboxDepthPrepassShader.Program.Dispose();
             SkyboxShader.Program.Dispose();
             SkyBox.Dispose();
             Window.Close();
+            Window.Dispose();
             MainFrameBuffer = null;
             DepthTextureBuffer = null;
             PassthroughShader = null;
@@ -199,8 +205,6 @@ namespace JLGraphics
             DepthTextureBuffer = null;
             renderPassCommandBuffer = null;
             DefaultMaterial = null;
-            m_gameWindowSettings = null;
-            m_nativeWindowSettings = null;
             Window = null;
             fileTracker = null;
             for (int i = 0; i < renderPasses.Count; i++)
@@ -213,22 +217,25 @@ namespace JLGraphics
             DepthPrepassShaderProgram.Dispose();
             Mesh.FreeMeshObject(FullScreenQuad);
             m_isInit = false;
+            m_lazyGraphics = new Lazy<Graphics>(() => new Graphics());
+            DestructorCommands.Instance.ExecuteCommands();
         }
-        public static void Run()
+        public void Run()
         {
             if (!m_isInit)
             {
+                Debug.Log("Graphics not initialized!", Debug.Flag.Error);
                 throw new Exception("Graphics not initialized!");
             }
             Window.Run();
 
         }
-        static float statsInterval = 0.0f;
-        static float fixedTimer = 0;
-        static DateTime time = DateTime.Now;
-        static DateTime time1 = DateTime.Now;
-        static List<Action> temporaryUpdateFrameCommands = new List<Action>();
-        private static void UpdateFrame(FrameEventArgs eventArgs)
+        float statsInterval = 0.0f;
+        float fixedTimer = 0;
+        DateTime time = DateTime.Now;
+        DateTime time1 = DateTime.Now;
+        List<Action> temporaryUpdateFrameCommands = new List<Action>();
+        private void UpdateFrame(FrameEventArgs eventArgs)
         {
             //do any one time update frame actions
             if(temporaryUpdateFrameCommands.Count > 0)
@@ -295,9 +302,9 @@ namespace JLGraphics
             DestructorCommands.Instance.ExecuteCommands();
             time1 = time;
         }
-        private static bool WindowResized = false;
-        private static Vector2i WindowResizeResults;
-        private static void Resize(ResizeEventArgs args)
+        private bool WindowResized = false;
+        private Vector2i WindowResizeResults;
+        private void Resize(ResizeEventArgs args)
         {
             if(args.Width == Window.Size.X && args.Height == Window.Size.X)
             {
@@ -321,8 +328,8 @@ namespace JLGraphics
             }
         }
 
-        private static bool WindowScaleChanged = false;
-        private static void RenderScaleChange(float newScale)
+        private bool WindowScaleChanged = false;
+        private void RenderScaleChange(float newScale)
         {
             RenderScale = MathHelper.Clamp(newScale, 0.1f, 2.0f);
             if(previousRenderScale == RenderScale)
@@ -346,7 +353,7 @@ namespace JLGraphics
                 WindowScaleChanged = true;
             }
         }
-        private static void InvokeNewStarts()
+        private void InvokeNewStarts()
         {
             for (int i = 0; i < InternalGlobalScope<IStart>.Count; i++)
             {
@@ -360,7 +367,7 @@ namespace JLGraphics
             InternalGlobalScope<IStart>.Clear();
         }
 
-        private static void FixedUpdate()
+        private void FixedUpdate()
         {
             for (int i = 0; i < InternalGlobalScope<IFixedUpdate>.Count; i++)
             {
@@ -372,7 +379,7 @@ namespace JLGraphics
             }
         }
         
-        static void InvokeUpdates()
+        void InvokeUpdates()
         {
             for (int i = 0; i < InternalGlobalScope<IUpdate>.Count; i++)
             {
@@ -384,7 +391,7 @@ namespace JLGraphics
                 current.Update();
             }
         }
-        static void InvokeOnRenders(Camera camera)
+        void InvokeOnRenders(Camera camera)
         {
             //invoke render event
             for (int i = 0; i < InternalGlobalScope<IOnRender>.Count; i++)
@@ -397,7 +404,7 @@ namespace JLGraphics
                 current.OnRender(camera);
             }
         }
-        static void SetShaderCameraData(Camera camera)
+        void SetShaderCameraData(Camera camera)
         {
             Shader.SetGlobalMat4("ProjectionMatrix", camera.ProjectionMatrix);
             Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
@@ -406,7 +413,7 @@ namespace JLGraphics
             Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
             Shader.SetGlobalFloat("RenderScale", RenderScale);
         }
-        static void SetDrawMode(bool wireframe)
+        void SetDrawMode(bool wireframe)
         {
             if (wireframe)
             {
@@ -418,15 +425,15 @@ namespace JLGraphics
             }
         }
 
-        static MeshPrimative FullScreenQuad;
-        static MeshPrimative BasicCube;
-        public static Shader PassthroughShader { get; private set; } = null;
-        public static Shader DepthPrepassShader { get; private set; } = null;
-        public static Shader SkyboxShader { get; private set; } = null;
-        static Shader SkyboxDepthPrepassShader;
-        static FrameBuffer MainFrameBuffer = null;
-        static FrameBuffer DepthTextureBuffer = null;
-        internal static void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
+        MeshPrimative FullScreenQuad;
+        MeshPrimative BasicCube;
+        public Shader PassthroughShader { get; private set; } = null;
+        public Shader DepthPrepassShader { get; private set; } = null;
+        public Shader SkyboxShader { get; private set; } = null;
+        Shader SkyboxDepthPrepassShader;
+        FrameBuffer MainFrameBuffer = null;
+        FrameBuffer DepthTextureBuffer = null;
+        internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
             if(src == null)
             {
@@ -465,16 +472,16 @@ namespace JLGraphics
             }
         }
         
-        static List<RenderPass> renderPasses = new List<RenderPass>();
-        public static void EnqueueRenderPass(RenderPass renderPass)
+        List<RenderPass> renderPasses = new List<RenderPass>();
+        public void EnqueueRenderPass(RenderPass renderPass)
         {
             renderPasses.Add(renderPass);
         }
-        public static void DequeueRenderPass(RenderPass renderPass)
+        public void DequeueRenderPass(RenderPass renderPass)
         {
             renderPasses.Remove(renderPass);
         }
-        static int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
+        int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
         {
             int renderPassIndex;
             for (renderPassIndex = startingIndex; renderPassIndex < renderPasses.Count; renderPassIndex++)
@@ -488,9 +495,9 @@ namespace JLGraphics
             }
             return renderPassIndex;
         }
-        static CommandBuffer renderPassCommandBuffer;
+        CommandBuffer renderPassCommandBuffer;
 
-        static void RenderSkyBox(bool doDepthPrepass, Camera camera)
+        void RenderSkyBox(bool doDepthPrepass, Camera camera)
         {
             //render skybox
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, BasicCube.EBO);
@@ -517,7 +524,7 @@ namespace JLGraphics
             m_meshBindCount++;
         }
 
-        private static void DoRenderUpdate()
+        private void DoRenderUpdate()
         {
             renderPasses.Sort();
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
@@ -578,7 +585,7 @@ namespace JLGraphics
         /// <summary>
         /// Disable camera frustum culling
         /// </summary>
-        public static bool DisableFrustumCulling { get; set; } = false;
+        public bool DisableFrustumCulling { get; set; } = false;
 
         public enum RenderSort
         {
@@ -590,9 +597,9 @@ namespace JLGraphics
         /// <summary>
         /// Sets rendering sorting
         /// </summary>
-        public static RenderSort RenderingSortMode { get; set; } = RenderSort.ShaderProgramMaterial;
+        public RenderSort RenderingSortMode { get; set; } = RenderSort.ShaderProgramMaterial;
 
-        static void SetupLights(Camera camera)
+        void SetupLights(Camera camera)
         {
             List<PointLight> pointLights = new List<PointLight>();
             var lights = InternalGlobalScope<Light>.Values;
@@ -637,7 +644,7 @@ namespace JLGraphics
             Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
 
-        static Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials, Dictionary<Shader, int> caching)
+        Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials, Dictionary<Shader, int> caching)
         {
             Dictionary<Shader, int> materialIndex = caching;
             List<Renderer>[] materials = new List<Renderer>[uniqueMaterials];
@@ -677,10 +684,10 @@ namespace JLGraphics
             return final;
         }
 
-        static Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
-        static Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
-        static Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
-        static Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers, bool AlsoSortMaterials)
+        Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
+        Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
+        Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
+        Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers, bool AlsoSortMaterials)
         {
             List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
             int index;
@@ -778,7 +785,7 @@ namespace JLGraphics
             uniqueMaterialsAtIndex.Clear();
             return final;
         }
-        static Renderer[] FrustumCullCPU(Renderer[] renderers)
+        Renderer[] FrustumCullCPU(Renderer[] renderers)
         {
             return renderers;
         }
@@ -788,7 +795,7 @@ namespace JLGraphics
             public Renderer renderer;
             public float distanceSqrd;
         }
-        static Renderer[] SortByDistanceToCamera(List<Renderer> renderers, Camera camera)
+        Renderer[] SortByDistanceToCamera(List<Renderer> renderers, Camera camera)
         {
             RendererDistancePair[] rendererDistancePairs = new RendererDistancePair[renderers.Count];
             Parallel.For(0, rendererDistancePairs.Length, (i) =>
@@ -815,7 +822,7 @@ namespace JLGraphics
             }
             return output;
         }
-        static void RenderCamera(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
+        void RenderCamera(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
         {
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
@@ -833,7 +840,7 @@ namespace JLGraphics
             }
 
             //TODO:
-            //apply static batching
+            //apply batching
 
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
