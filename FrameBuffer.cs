@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using JLUtility;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using System;
@@ -37,13 +38,14 @@ namespace JLGraphics
             this.pixelFormat = pixelFormat;
         }
     }
-    public class FrameBuffer : IDisposable, IGlobalScope
+    public class FrameBuffer : SafeDispose, IGlobalScope
     {
         internal Texture[] ColorAttachments { get; } = null;
         internal int FrameBufferObject { get; } = 0;
         internal int RenderBufferObject { get; } = 0;
         public int Width { get; } = 0;
         public int Height { get; } = 0;
+        public override string Name => "FrameBuffer:" + FrameBufferObject;
 
         public FrameBuffer(int width, int height, bool enableDepthRenderBuffer = false, params TFP[] textureFormat)
         {
@@ -100,10 +102,10 @@ namespace JLGraphics
             GL.ReadBuffer(ReadBufferMode.None);
 
             if (GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != FramebufferErrorCode.FramebufferComplete)
-                Console.WriteLine("ERROR::FRAMEBUFFER:: Framebuffer is not complete!");
+                Debug.Log("Framebuffer is not complete!", Debug.Flag.Error);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         }
-        public void Dispose()
+        protected override void OnDispose()
         {
             GL.DeleteFramebuffer(FrameBufferObject);
             GL.DeleteRenderbuffer(RenderBufferObject);
@@ -111,7 +113,16 @@ namespace JLGraphics
             {
                 ColorAttachments[i].Dispose();
             }
-            //GL.DeleteTexture(DepthBufferTextureId);
         }
+        //public void Dispose()
+        //{
+        //    GL.DeleteFramebuffer(FrameBufferObject);
+        //    GL.DeleteRenderbuffer(RenderBufferObject);
+        //    for (int i = 0; i < ColorAttachments.Length; i++)
+        //    {
+        //        ColorAttachments[i].Dispose();
+        //    }
+        //    //GL.DeleteTexture(DepthBufferTextureId);
+        //}
     }
 }

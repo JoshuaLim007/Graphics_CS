@@ -1,16 +1,10 @@
 ﻿using JLUtility;
-using OpenTK.Compute.OpenCL;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using StbImageSharp;
 using StbiSharp;
-using System;
-using System.Diagnostics;
-using System.Reflection;
-using System.Xml.Serialization;
-using All = OpenTK.Graphics.OpenGL4.All;
 
 namespace JLGraphics
 {
@@ -83,71 +77,12 @@ namespace JLGraphics
                 GL.Enable(EnableCap.Multisample);
             }
 
-            float statsInterval = 0.0f;
-            float fixedTimer = 0;
-            var time = DateTime.Now;
-            var time1 = DateTime.Now;
             Window.Load += delegate ()
             {
 
             };
-            //Window.Load += Start; //start now happens after the first frame
-            Window.UpdateFrame += delegate (FrameEventArgs eventArgs)
-            {
-                InvokeNewStarts();
 
-                fixedTimer += Time.DeltaTime;
-                if (fixedTimer >= Time.FixedDeltaTime)
-                {
-                    float t = fixedTimer / Time.FixedDeltaTime;
-                    int howMany = (int)MathF.Floor(t);
-                    for (int i = 0; i < howMany; i++)
-                    {
-                        FixedUpdate();
-                    }
-                    fixedTimer = 0;
-                }
-
-                InvokeUpdates();
-
-                float updateFreq = 1.0f / FixedDeltaTime;
-
-
-                time = DateTime.Now;
-#if DEBUG
-                fileTracker.ResolveFileTrackQueue();
-#endif
-                DeltaTime = (time.Ticks - time1.Ticks) / 10000000f;
-                SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
-                ElapsedTime += DeltaTime;
-                if (statsInterval > 0.5f)
-                {
-                    string stats = "";
-
-                    stats += " | fixed delta time: " + FixedDeltaTime;
-                    stats += " | draw count: " + m_drawCount;
-                    stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
-                    stats += " | material update count: " + m_materialUpdateCount;
-                    stats += " | vertices: " + m_verticesCount;
-                    stats += " | total world objects: " + AllInstancedObjects.Count;
-                    stats += " | fps: " + 1 / SmoothDeltaTime;
-                    stats += " | delta time: " + DeltaTime;
-
-                    Window.Title = stats;
-
-                    statsInterval = 0;
-                }
-                statsInterval += DeltaTime;
-
-                m_drawCount = 0;
-                m_shaderBindCount = 0;
-                m_materialUpdateCount = 0;
-                m_meshBindCount = 0;
-                m_verticesCount = 0;
-                RenderScaleChange(RenderScale);
-                DoRenderUpdate();
-                time1 = time;
-            };
+            Window.UpdateFrame += UpdateFrame;
         }
         static CubemapTexture SkyBox;
         static ShaderProgram DefaultShaderProgram;
@@ -174,8 +109,8 @@ namespace JLGraphics
                 internalFormat = PixelInternalFormat.R32f,
                 pixelFormat = PixelFormat.Red
             };
-            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(m_nativeWindowSettings.Size.X * scale), (int)MathF.Ceiling(m_nativeWindowSettings.Size.Y * scale), true, colorSettings);
-            DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(m_nativeWindowSettings.Size.X * scale), (int)MathF.Ceiling(m_nativeWindowSettings.Size.Y * scale), false, depthSettings);
+            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(Window.Size.X * scale), (int)MathF.Ceiling(Window.Size.Y * scale), true, colorSettings);
+            DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(Window.Size.X * scale), (int)MathF.Ceiling(Window.Size.Y * scale), false, depthSettings);
             Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.ColorAttachments[0]);
         }
         /// <param name="windowName"></param>
@@ -252,12 +187,13 @@ namespace JLGraphics
         }
         public static void Free()
         {
+            temporaryUpdateFrameCommands.Clear();
             SkyboxDepthPrepassShader.Program.Dispose();
             SkyboxShader.Program.Dispose();
             SkyBox.Dispose();
             Window.Close();
-            MainFrameBuffer.Dispose();
-            DepthTextureBuffer.Dispose();
+            MainFrameBuffer = null;
+            DepthTextureBuffer = null;
             PassthroughShader = null;
             MainFrameBuffer = null;
             DepthTextureBuffer = null;
@@ -287,19 +223,105 @@ namespace JLGraphics
             Window.Run();
 
         }
+        static float statsInterval = 0.0f;
+        static float fixedTimer = 0;
+        static DateTime time = DateTime.Now;
+        static DateTime time1 = DateTime.Now;
+        static List<Action> temporaryUpdateFrameCommands = new List<Action>();
+        private static void UpdateFrame(FrameEventArgs eventArgs)
+        {
+            //do any one time update frame actions
+            if(temporaryUpdateFrameCommands.Count > 0)
+            {
+                for (int i = 0; i < temporaryUpdateFrameCommands.Count; i++)
+                {
+                    temporaryUpdateFrameCommands[i].Invoke();
+                }
+                temporaryUpdateFrameCommands.Clear();
+            }
 
+            InvokeNewStarts();
+
+            fixedTimer += Time.DeltaTime;
+            if (fixedTimer >= Time.FixedDeltaTime)
+            {
+                float t = fixedTimer / Time.FixedDeltaTime;
+                int howMany = (int)MathF.Floor(t);
+                for (int i = 0; i < howMany; i++)
+                {
+                    FixedUpdate();
+                }
+                fixedTimer = 0;
+            }
+
+            InvokeUpdates();
+
+            float updateFreq = 1.0f / FixedDeltaTime;
+
+
+            time = DateTime.Now;
+#if DEBUG
+            fileTracker.ResolveFileTrackQueue();
+#endif
+            DeltaTime = (time.Ticks - time1.Ticks) / 10000000f;
+            SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
+            ElapsedTime += DeltaTime;
+            if (statsInterval > 0.5f)
+            {
+                string stats = "";
+
+                stats += " | fixed delta time: " + FixedDeltaTime;
+                stats += " | draw count: " + m_drawCount;
+                stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
+                stats += " | material update count: " + m_materialUpdateCount;
+                stats += " | vertices: " + m_verticesCount;
+                stats += " | total world objects: " + AllInstancedObjects.Count;
+                stats += " | fps: " + 1 / SmoothDeltaTime;
+                stats += " | delta time: " + DeltaTime;
+
+                Window.Title = stats;
+
+                statsInterval = 0;
+            }
+            statsInterval += DeltaTime;
+
+            m_drawCount = 0;
+            m_shaderBindCount = 0;
+            m_materialUpdateCount = 0;
+            m_meshBindCount = 0;
+            m_verticesCount = 0;
+            RenderScaleChange(RenderScale);
+            DoRenderUpdate();
+            DestructorCommands.Instance.ExecuteCommands();
+            time1 = time;
+        }
+        private static bool WindowResized = false;
+        private static Vector2i WindowResizeResults;
         private static void Resize(ResizeEventArgs args)
         {
             if(args.Width == Window.Size.X && args.Height == Window.Size.X)
             {
                 return;
             }
-            Window.Size = new Vector2i(args.Width, args.Height);
-            MainFrameBuffer.Dispose();
-            DepthTextureBuffer.Dispose();
-            InitFramebuffers();
-            GL.Viewport(0, 0, args.Width, args.Height);
+            void DoResize()
+            {
+                Debug.Log("Window resized: " + WindowResizeResults);
+                Window.Size = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
+                MainFrameBuffer = null;
+                DepthTextureBuffer = null;
+                InitFramebuffers();
+                GL.Viewport(0, 0, WindowResizeResults.X, WindowResizeResults.Y);
+                WindowResized = false;
+            }
+            WindowResizeResults = new Vector2i(args.Width, args.Height);
+            if (!WindowResized)
+            {
+                temporaryUpdateFrameCommands.Add(DoResize);
+                WindowResized = true;
+            }
         }
+
+        private static bool WindowScaleChanged = false;
         private static void RenderScaleChange(float newScale)
         {
             RenderScale = MathHelper.Clamp(newScale, 0.1f, 2.0f);
@@ -308,12 +330,21 @@ namespace JLGraphics
                 return;
             }
             previousRenderScale = RenderScale;
-            MainFrameBuffer.Dispose();
-            DepthTextureBuffer.Dispose();
-            InitFramebuffers();
-#if DEBUG
-            Console.WriteLine("Render Scale Update: " + previousRenderScale);
-#endif
+
+            void DoRenderScaleChange()
+            {
+                Debug.Log("Render Scale Update: " + RenderScale);
+                MainFrameBuffer.Dispose();
+                DepthTextureBuffer.Dispose();
+                InitFramebuffers();
+                WindowScaleChanged = false;
+            }
+
+            if (!WindowScaleChanged)
+            {
+                temporaryUpdateFrameCommands.Add(DoRenderScaleChange);
+                WindowScaleChanged = true;
+            }
         }
         private static void InvokeNewStarts()
         {
@@ -399,7 +430,7 @@ namespace JLGraphics
         {
             if(src == null)
             {
-                Console.WriteLine("ERROR::Cannot blit with null src");
+                Debug.Log("Cannot blit with null src!", Debug.Flag.Error);
                 return;
             }
 

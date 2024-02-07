@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using JLUtility;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using StbiSharp;
 using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
@@ -61,8 +62,7 @@ namespace JLGraphics
         {
             if (disposed)
             {
-                Console.WriteLine("ERROR::Cubemap texture is disposed!");
-                throw new Exception("ERROR::Cubemap texture is disposed!");
+                Debug.Log("Cubemap texture is disposed!", Debug.Flag.Error);
             }
             if (ImageTextureID == 0)
                 ImageTextureID = GL.GenTexture();
@@ -89,8 +89,7 @@ namespace JLGraphics
 
             if (disposed)
             {
-                Console.WriteLine("ERROR::Cubemap texture is disposed!");
-                throw new Exception("ERROR::Cubemap texture is disposed!");
+                Debug.Log("Cubemap texture is disposed!", Debug.Flag.Error);
             }
             int width = size;
             int height = size;
@@ -149,7 +148,7 @@ namespace JLGraphics
             {
                 // Handle framebuffer error
                 // For example, print an error message or throw an exception
-                Console.WriteLine("ERROR::Cannot create cubemap!");
+                Debug.Log("Cannot create cubemap!");
                 return;
             }
 

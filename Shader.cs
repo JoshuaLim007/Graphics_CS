@@ -52,16 +52,19 @@ namespace JLGraphics
         }
         public static implicit operator UniformValueWithLocation(UniformValue uniformValue) => new UniformValueWithLocation(uniformValue.uniformName, uniformValue.uniformType, uniformValue.value);
     }
-    internal sealed class ShaderFile : FileObject, IDisposable
+    internal sealed class ShaderFile : IFileObject, IDisposable
     {
         internal ShaderType ShaderType { get; }
+
+        public List<Action> FileChangeCallback => new List<Action>();
+        public string FilePath { get; }
+
         public static implicit operator int(ShaderFile d) => d.compiledShader;
-        
+
         int compiledShader;
-        string path;
-        internal ShaderFile(string path, ShaderType shaderType) : base(path)
+        internal ShaderFile(string path, ShaderType shaderType)
         {
-            this.path = path;
+            FilePath = path;
             ShaderType = shaderType;
             if (!File.Exists(path))
             {
@@ -77,13 +80,13 @@ namespace JLGraphics
             });
         }
         internal void CompileShader() { 
-            Console.WriteLine("Compiling Shader: " + path);
-            if (!File.Exists(Path))
+            Console.WriteLine("Compiling Shader: " + FilePath);
+            if (!File.Exists(FilePath))
             {
-                Console.WriteLine("Shader not found: " + Path);
+                Console.WriteLine("Shader not found: " + FilePath);
                 return;
             }
-            GL.ShaderSource(compiledShader, File.ReadAllText(Path));
+            GL.ShaderSource(compiledShader, File.ReadAllText(FilePath));
 
             //compile the shaders
             GL.CompileShader(compiledShader);
@@ -107,8 +110,8 @@ namespace JLGraphics
         internal ShaderFile Frag { get; }
         internal ShaderFile Vert { get; }
 
-        public FileObject FragFile => Frag;
-        public FileObject VertFile => Vert;
+        public IFileObject FragFile => Frag;
+        public IFileObject VertFile => Vert;
 
         string Name { get; }
         public int Id { get; private set; } = 0;
@@ -147,8 +150,8 @@ namespace JLGraphics
         public ShaderProgram(ShaderProgram shaderProgram)
         {
             Name = shaderProgram.Name;
-            Vert = new ShaderFile(shaderProgram.VertFile.Path, ShaderType.VertexShader);
-            Frag = new ShaderFile(shaderProgram.FragFile.Path, ShaderType.FragmentShader);
+            Vert = new ShaderFile(shaderProgram.VertFile.FilePath, ShaderType.VertexShader);
+            Frag = new ShaderFile(shaderProgram.FragFile.FilePath, ShaderType.FragmentShader);
             Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
             Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
             Id = GL.CreateProgram();
@@ -169,8 +172,7 @@ namespace JLGraphics
         {
             if (Disposed)
             {
-                Console.WriteLine("ERROR::Program has been disposed!");
-                throw new Exception("ERROR::Program has been disposed!");
+                Debug.Log("Program has been disposed!", Debug.Flag.Error);
             }
             isCompiled = true;
             Frag.CompileShader();
@@ -211,13 +213,11 @@ namespace JLGraphics
         {
             if (!isCompiled)
             {
-                Console.WriteLine("ERROR::Program is not compiled! " + Name);
-                throw new Exception("ERROR::Program is not compiled! " + Name);
+                Debug.Log("Program is not compiled! " + Name, Debug.Flag.Error);
             }
             if (Disposed)
             {
-                Console.WriteLine("ERROR::Program has been disposed! " + Name);
-                throw new Exception("ERROR::Program has been disposed! " + Name);
+                Debug.Log("Program has been disposed! " + Name, Debug.Flag.Error);
             }
             return uniformTypes;
         }
@@ -241,13 +241,11 @@ namespace JLGraphics
         {
             if (!isCompiled)
             {
-                Console.WriteLine("ERROR::Program is not compiled! " + Name);
-                throw new Exception("ERROR::Program is not compiled! " + Name);
+                Debug.Log("Program is not compiled! " + Name, Debug.Flag.Error);
             }
             if (Disposed)
             {
-                Console.WriteLine("ERROR::Program has been disposed! " + Name);
-                throw new Exception("ERROR::Program has been disposed! " + Name);
+                Debug.Log("Program has been disposed! " + Name, Debug.Flag.Error);
             }
 
             if (uniformLocations.TryGetValue(id, out int value))
@@ -323,7 +321,7 @@ namespace JLGraphics
                 }
                 if (availableTextureSlots.Count == 0)
                 {
-                    Console.WriteLine("ERROR::Cannot add more textures to shader material: " + Name);
+                    Debug.Log("Cannot add more textures to shader material: " + Name, Debug.Flag.Error);
                     return;
                 }
                 textureIndex = availableTextureSlots.Pop();

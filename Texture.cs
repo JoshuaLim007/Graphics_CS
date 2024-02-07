@@ -44,7 +44,7 @@ namespace JLGraphics
             GL.DeleteTexture(textureObject.ID);
         }
     }
-    public class Texture : IDisposable
+    public class Texture : SafeDispose
     {
         public TextureTarget TextureTarget { get; set; } = TextureTarget.Texture2D;
         public PixelFormat pixelFormat { get; set; } = PixelFormat.Rgba;
@@ -58,6 +58,8 @@ namespace JLGraphics
         public virtual int Width { get; set; } = 0;
         public virtual int Height { get; set; } = 0;
         public int GlTextureID { get; protected set; } = 0;
+
+        public override string Name => "Texture: " + GlTextureID;
 
         public static explicit operator Texture(int ptr) => new Texture() {GlTextureID = ptr};
         public static explicit operator int(Texture texture) => texture.GlTextureID;
@@ -91,9 +93,10 @@ namespace JLGraphics
 
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
-        public virtual void Dispose()
+
+        protected override void OnDispose()
         {
-            if(GlTextureID != 0)
+            if (GlTextureID != 0)
                 GL.DeleteTexture(GlTextureID);
             GlTextureID = 0;
         }

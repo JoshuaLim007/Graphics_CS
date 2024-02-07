@@ -1,23 +1,17 @@
-﻿namespace JLUtility
+﻿using JLGraphics;
+
+namespace JLUtility
 {
-    public abstract class FileObject
+    public interface IFileObject
     {
-        internal List<Action> FileChangeCallback { get; private set; } = new List<Action>();
-        public string Path { get; internal set; }
+        public List<Action> FileChangeCallback { get; }
+        public string FilePath { get; }
         internal void InvokeOnFileUpdate()
         {
             for (int i = 0; i < FileChangeCallback.Count; i++)
             {
                 FileChangeCallback[i].Invoke();
             }
-        }
-        internal FileObject(string path)
-        {
-            Path = path;
-        }
-        ~FileObject()
-        {
-            FileChangeCallback = null;
         }
     }
 }

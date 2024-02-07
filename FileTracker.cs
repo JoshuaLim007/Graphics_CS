@@ -5,7 +5,7 @@ namespace JLUtility
     public class FileTracker
     {
         struct FileWatcher {
-            public List<FileObject> fileObjects;
+            public List<IFileObject> fileObjects;
             public List<DateTime> LastTouched;
             public FileSystemWatcher systemWatcher;
         }
@@ -15,13 +15,13 @@ namespace JLUtility
         {
             return directoryFilePair.TryGetValue(dir, out fileWatcher);
         }
-        public void AddFileObject(FileObject fileObject)
+        public void AddFileObject(IFileObject fileObject)
         {
-            var dirPath = Path.GetFullPath(fileObject.Path);
+            var dirPath = Path.GetFullPath(fileObject.FilePath);
             dirPath = Path.GetDirectoryName(dirPath);
-            var file = Path.GetFileName(fileObject.Path);
-            Console.WriteLine("FileWatcher: Added directory: " + dirPath);
-            Console.WriteLine("FileWatcher: Added file: " + file);
+            var file = Path.GetFileName(fileObject.FilePath);
+            Debug.Log("FileWatcher: Added directory: " + dirPath);
+            Debug.Log("FileWatcher: Added file: " + file);
 
             if (TryGetValue(dirPath, out var watcher))
             {
@@ -34,7 +34,7 @@ namespace JLUtility
                 directoryFilePair.Add(dirPath,
                     new FileWatcher()
                     {
-                        fileObjects = new List<FileObject>(),
+                        fileObjects = new List<IFileObject>(),
                         LastTouched = new List<DateTime>(),
                         systemWatcher = CreateFileWatcher(dirPath)
                     });
@@ -42,9 +42,9 @@ namespace JLUtility
                 directoryFilePair[dirPath].LastTouched.Add(DateTime.MinValue);
             }
         }
-        public void RemoveFileObject(FileObject fileObject)
+        public void RemoveFileObject(IFileObject fileObject)
         {
-            if (TryGetValue(Path.GetDirectoryName(fileObject.Path), out var watcher))
+            if (TryGetValue(Path.GetDirectoryName(fileObject.FilePath), out var watcher))
             {
                 watcher.fileObjects.Remove(fileObject);
             }
@@ -117,7 +117,7 @@ namespace JLUtility
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Debug.Log(e.ToString());
             }
             finally
             {
@@ -135,15 +135,15 @@ namespace JLUtility
             var touched = directoryFilePair[path].LastTouched;
             for (int i = 0; i < objects.Count; i++)
             {
-                var f = Path.GetFileName(objects[i].Path);
+                var f = Path.GetFileName(objects[i].FilePath);
                 if (f == fileName)
                 {
                     if (lastWriteTime == touched[i])
                     {
                         break;
                     }
-                    Console.WriteLine(lastWriteTime + ", " + touched[i]);
-                    Console.WriteLine("File: " + e.FullPath + " " + e.ChangeType);
+                    Debug.Log(lastWriteTime + ", " + touched[i]);
+                    Debug.Log("File: " + e.FullPath + " " + e.ChangeType);
                     touched[i] = lastWriteTime;
                     objects[i].InvokeOnFileUpdate();
                     break;
@@ -154,7 +154,7 @@ namespace JLUtility
         private void OnRenamed(object source, RenamedEventArgs e)
         {
             // Specify what is done when a file is renamed.
-            Console.WriteLine("File: {0} renamed to {1}", e.OldFullPath, e.FullPath);
+            Debug.LogFormat("File: {0} renamed to {1}", e.OldFullPath, e.FullPath);
         }
     }
 }

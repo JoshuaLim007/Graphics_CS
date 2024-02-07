@@ -43,15 +43,10 @@ namespace JLGraphics
             shader.SetBool("GammaCorrection", GammaCorrection);
             if (Graphics.Window.Size != new Vector2i(postProcessTexture.Width, postProcessTexture.Height))
             {
-                postProcessTexture.Dispose();
                 postProcessTexture = new FrameBuffer(Graphics.Window.Size.X, Graphics.Window.Size.Y, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
             }
             cmd.Blit(frameBuffer, postProcessTexture, true, shader);
             cmd.Blit(postProcessTexture, frameBuffer, false);
-        }
-        public override void Dispose()
-        {
-            postProcessTexture.Dispose();
         }
     }
 }

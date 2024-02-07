@@ -10,6 +10,7 @@ namespace JLGraphics
     using System.IO;
     using Assimp;
     using global::ObjLoader.Loader.Loaders;
+    using JLUtility;
     using OpenTK;
     using OpenTK.Mathematics;
 
@@ -108,7 +109,7 @@ namespace JLGraphics
             var scene = LoadScene(path);
             if (!scene.HasMeshes)
             {
-                Console.WriteLine("ERROR::Cannot load asset at path " + path + ", no meshes found!");
+                Debug.Log("Cannot load asset at path " + path + ", no meshes found!", Debug.Flag.Error);
                 return null;
             }
 

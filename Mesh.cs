@@ -22,7 +22,7 @@ namespace JLGraphics
         public int IndiciesCount;
         public bool HasEBO;
     }
-    public class Mesh: FileObject, IDisposable
+    public class Mesh : SafeDispose, IFileObject
     {
         public static MeshPrimative CreateCubeMesh()
         {
@@ -115,6 +115,11 @@ namespace JLGraphics
         public int VertexArrayObject { get; private set; }
         public int VertexCount { get; private set; }
 
+        public List<Action> FileChangeCallback => new List<Action>();
+        public string FilePath { get; }
+
+        public override string Name => "Mesh: " + ElementArrayBuffer;
+
         public void ApplyMesh(GlMeshData Data)
         {
             float[] vertices = Data.vertexData;
@@ -151,19 +156,20 @@ namespace JLGraphics
             VertexCount = (int)(Data.vertexData.Count() / (float)Data.elementsPerVertex);
         }
 
-        public void Dispose()
+        protected override void OnDispose()
         {
-            GL.DeleteBuffer(ElementArrayBuffer);
-            GL.DeleteVertexArray(VertexArrayObject);
+            DestructorCommands.Instance.QueueAction(() => GL.DeleteBuffer(ElementArrayBuffer));
+            DestructorCommands.Instance.QueueAction(() => GL.DeleteVertexArray(VertexArrayObject));
         }
-
-        public Mesh(string path) : base(path)
+        public Mesh(string path)
         {
             var Data = AssetLoader.Load(path);
+            FilePath = path;
             ApplyMesh(Data);
         }
-        public Mesh(GlMeshData data, string path) : base(path)
+        public Mesh(GlMeshData data, string path)
         {
+            FilePath = path;
             ApplyMesh(data);
         }
     }
