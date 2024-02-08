@@ -411,6 +411,7 @@ namespace JLGraphics
             Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
             Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
+            Shader.SetGlobalVector2("RenderSize", new Vector2(camera.Width * RenderScale, camera.Height * RenderScale));
             Shader.SetGlobalFloat("RenderScale", RenderScale);
         }
         void SetDrawMode(bool wireframe)
@@ -579,7 +580,6 @@ namespace JLGraphics
 
                 Window.SwapBuffers();
             }
-            Shader.NewGlobalUniformAddedFlag = false;
         }
 
         /// <summary>

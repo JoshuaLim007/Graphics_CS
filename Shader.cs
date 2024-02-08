@@ -642,15 +642,12 @@ namespace JLGraphics
 
                 //if there was a recently added global uniform check
                 //if the uniform value is a default value, remove it if it is
-                if (NewGlobalUniformAddedFlag)
+                if (m_uniformValuesDefaultFlag[i] && mFindGlobalUniformIndex(current.uniformName) != -1)
                 {
-                    if (m_uniformValuesDefaultFlag[i] && mFindGlobalUniformIndex(current.uniformName) != -1)
-                    {
-                        m_uniformValues.RemoveAt(i);
-                        m_uniformValuesDefaultFlag.RemoveAt(i);
-                        i--;
-                        current = m_uniformValues[i];
-                    }
+                    m_uniformValues.RemoveAt(i);
+                    m_uniformValuesDefaultFlag.RemoveAt(i);
+                    i--;
+                    current = m_uniformValues[i];
                 }
 
                 var type = current.UniformType;
@@ -688,11 +685,6 @@ namespace JLGraphics
         static ShaderProgram PreviousProgram { get; set; } = null;
         static List<UniformValue> GlobalUniformValues { get; } = new();
         static Dictionary<string, int> GlobalUniformIndexCache { get; } = new();
-        /// <summary>
-        /// Make sure to reset this to false after rendering every camera.
-        /// Set true everytime we add a new global uniform. Existing uniform would not raise this flag.
-        /// </summary>
-        internal static bool NewGlobalUniformAddedFlag { get; set; } = true;
         private static int mFindGlobalUniformIndex(string uniformName)
         {
             if(GlobalUniformIndexCache.TryGetValue(uniformName, out var index))
@@ -708,7 +700,6 @@ namespace JLGraphics
             {
                 GlobalUniformValues.Add(new UniformValue(uniformName, globalUniformType, value));
                 GlobalUniformIndexCache.Add(uniformName, GlobalUniformValues.Count-1);
-                NewGlobalUniformAddedFlag = true;
             }
             else
             {
