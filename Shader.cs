@@ -640,7 +640,6 @@ namespace JLGraphics
             {
                 var current = m_uniformValues[i];
 
-                //if there was a recently added global uniform check
                 //if the uniform value is a default value, remove it if it is
                 if (m_uniformValuesDefaultFlag[i] && mFindGlobalUniformIndex(current.uniformName) != -1)
                 {
