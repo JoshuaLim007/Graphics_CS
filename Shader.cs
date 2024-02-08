@@ -642,6 +642,7 @@ namespace JLGraphics
 
                 //if the uniform value is a default value, remove it if it is
                 if (m_uniformValuesDefaultFlag[i] && mFindGlobalUniformIndex(current.uniformName) != -1)
+                if (m_uniformValuesDefaultFlag[i] && mIsGlobalUniform(current.uniformName))
                 {
                     m_uniformValues.RemoveAt(i);
                     m_uniformValuesDefaultFlag.RemoveAt(i);
@@ -684,7 +685,7 @@ namespace JLGraphics
         static ShaderProgram PreviousProgram { get; set; } = null;
         static List<UniformValue> GlobalUniformValues { get; } = new();
         static Dictionary<string, int> GlobalUniformIndexCache { get; } = new();
-        private static int mFindGlobalUniformIndex(string uniformName)
+        private static int mFindGlobalUniformIndex(in string uniformName)
         {
             if(GlobalUniformIndexCache.TryGetValue(uniformName, out var index))
             {
@@ -692,7 +693,11 @@ namespace JLGraphics
             }
             return -1;
         }
-        private static void mSetGlobalUniformValue(UniformType globalUniformType, object value, string uniformName)
+        private bool mIsGlobalUniform(in string name)
+        {
+            return GlobalUniformIndexCache.ContainsKey(name);
+        }
+        private static void mSetGlobalUniformValue(in UniformType globalUniformType, in object value, in string uniformName)
         {
             var index = mFindGlobalUniformIndex(uniformName);
             if (index == -1)
