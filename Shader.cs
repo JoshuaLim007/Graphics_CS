@@ -318,8 +318,30 @@ namespace JLGraphics
             Name = name;
             Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
             Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
-            Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
-            Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
+            Id = GL.CreateProgram();
+            AllShaderPrograms.Add(this);
+        }
+        public ShaderProgram(string name, string fragPath, string targetFragShaderName, int targetFragPass, string vertPath, string targetVertShaderName, int targetVertPass)
+        {
+            Name = name;
+            Vert = new ShaderFile(vertPath, targetVertShaderName, targetVertPass);
+            Frag = new ShaderFile(fragPath, targetFragShaderName, targetFragPass);
+            Id = GL.CreateProgram();
+            AllShaderPrograms.Add(this);
+        }
+        public ShaderProgram(string name, string fragPath, string vertPath, string targetVertShaderName, int targetVertPass)
+        {
+            Name = name;
+            Vert = new ShaderFile(vertPath, targetVertShaderName, targetVertPass);
+            Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
+            Id = GL.CreateProgram();
+            AllShaderPrograms.Add(this);
+        }
+        public ShaderProgram(string name, string fragPath, string targetFragShaderName, int targetFragPass, string vertPath)
+        {
+            Name = name;
+            Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
+            Frag = new ShaderFile(fragPath, targetFragShaderName, targetFragPass);
             Id = GL.CreateProgram();
             AllShaderPrograms.Add(this);
         }
@@ -328,8 +350,6 @@ namespace JLGraphics
             Name = shaderProgram.Name;
             Vert = new ShaderFile(shaderProgram.VertFile.FilePath, ShaderType.VertexShader);
             Frag = new ShaderFile(shaderProgram.FragFile.FilePath, ShaderType.FragmentShader);
-            Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
-            Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
             Id = GL.CreateProgram();
             AllShaderPrograms.Add(this);
         }
@@ -353,6 +373,8 @@ namespace JLGraphics
             isCompiled = true;
             Frag.CompileShader();
             Vert.CompileShader();
+            Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
+            Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
             UpdateProgram();
             //UpdateProgram called via callback
         }
@@ -652,7 +674,8 @@ namespace JLGraphics
             {
                 GL.ActiveTexture(TextureUnit.Texture0);
             }
-            mPushAllGlobalUniformsToShaderProgram();
+            if (!dontFetchGlobals)
+                mPushAllGlobalUniformsToShaderProgram();
             return Program;
         }
         bool IntToBool(int val, int index)
@@ -754,7 +777,8 @@ namespace JLGraphics
             GL.ColorMask(ColorMask[0], ColorMask[1], ColorMask[2], ColorMask[3]);
 
             //apply all material specific uniforms
-            mFetchGlobalTextures();
+            if(!dontFetchGlobals)
+                mFetchGlobalTextures();
 
             //set default values once
             if (!initialDefaultValueSet)
