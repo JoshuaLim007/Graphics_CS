@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenTK.Mathematics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,8 +10,11 @@ namespace JLGraphics
     public enum RenderQueue
     {
         Prepass = 0,
+        BeforeOpaques = AfterOpaques - 1,
         AfterOpaques = 2000,
+        BeforeTransparents = AfterTransparents - 1,
         AfterTransparents = 3000,
+        BeforePostProcessing = AfterPostProcessing - 1,
         AfterPostProcessing = 4000,
     }
     public class CommandBuffer
@@ -61,5 +65,10 @@ namespace JLGraphics
             }
         }
         public virtual void Dispose() { }
+    
+        public Vector2i GetResolution(FrameBuffer frameBuffer, float scale)
+        {
+            return new Vector2i((int)MathF.Ceiling(frameBuffer.Width * scale), (int)MathF.Ceiling(frameBuffer.Height * scale));
+        }
     }
 }

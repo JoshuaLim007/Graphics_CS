@@ -18,7 +18,7 @@ namespace JLGraphics
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
         FrameBuffer postProcessTexture = null;
-        public PostProcessPass() : base(RenderQueue.AfterTransparents, 100)
+        public PostProcessPass() : base(RenderQueue.BeforePostProcessing, 100)
         {
             PostProcessShader = new ShaderProgram("PostProcess", "./Shaders/PostProcess.frag", "./Shaders/Passthrough.vert");
             if (Graphics.Instance.GetFileTracker(out var ft))
@@ -26,10 +26,7 @@ namespace JLGraphics
                 ft.AddFileObject(PostProcessShader.FragFile);
             }
             PostProcessShader.CompileProgram();
-
             shader = new Shader("Postprocessing material", PostProcessShader);
-            shader.SetFloat("FogDensity", .002f);
-            shader.SetVector3("FogColor", new Vector3(1, 1, 1));
         }
         public override void Execute(in CommandBuffer cmd, in FrameBuffer frameBuffer)
         {
@@ -37,8 +34,8 @@ namespace JLGraphics
             {
                 postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
             }
-            shader.SetFloat("FogDensity", FogDensity);
-            shader.SetVector3("FogColor", FogColor);
+            Shader.SetGlobalFloat("FogDensity", FogDensity);
+            Shader.SetGlobalVector3("FogColor", FogColor);
             shader.SetBool("Tonemapping", Tonemapping);
             shader.SetBool("GammaCorrection", GammaCorrection);
             if (Graphics.Instance.Window.Size != new Vector2i(postProcessTexture.Width, postProcessTexture.Height))

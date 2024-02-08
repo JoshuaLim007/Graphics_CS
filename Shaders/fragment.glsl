@@ -117,10 +117,15 @@ vec4 GetAmbientColor(vec3 normal) {
 	vec3 finalCol = SkyColor * mixValues.x + HorizonColor * mixValues.y + GroundColor * mixValues.z;
 	return vec4(finalCol, 0);
 }
+
+uniform sampler2D _CameraDepthTexture;
+uniform vec3 FogColor;
+uniform float FogDensity;
 uniform vec4 CameraParams;
-float get_depth()
+uniform vec2 RenderSize;
+float get_depth(vec2 pos)
 {
-	float d = gl_FragCoord.z * 2 - 1;
+	float d = texture(_CameraDepthTexture, pos).r * 2 - 1;
 	return d;
 }
 float linearDepth(float depthSample)
@@ -158,6 +163,10 @@ void main(){
 	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
 	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
 	vec4 c = color * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor, 0);
+
+	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
+	float density = 1.0 / exp(pow(depth * FogDensity, 2));
+	c = mix(vec4(c), vec4(FogColor, 1), 1 - density);
 
 	frag = c;
 }

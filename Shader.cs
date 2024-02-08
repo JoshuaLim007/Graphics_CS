@@ -10,6 +10,9 @@ using Assimp.Unmanaged;
 using System;
 using static JLGraphics.Shader;
 using System.Data;
+using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations;
+using Assimp;
 
 namespace JLGraphics
 {
@@ -52,41 +55,215 @@ namespace JLGraphics
         }
         public static implicit operator UniformValueWithLocation(UniformValue uniformValue) => new UniformValueWithLocation(uniformValue.uniformName, uniformValue.uniformType, uniformValue.value);
     }
-    internal sealed class ShaderFile : IFileObject, IDisposable
+    public sealed class ShaderParser
     {
-        internal ShaderType ShaderType { get; }
+        struct Shader
+        {
+            public string name;
+            public ShaderType shaderType;
+            public List<string> Passes;
+            public Shader()
+            {
+                name = "";
+                shaderType = ShaderType.FragmentShader;
+                Passes = new List<string>();
+            }
+        }
+        public struct ParsedShader
+        {
+            public string ShaderCode;
+            public ShaderType ShaderType;
+        }
+        static string ReplaceFirst(string text, string search, string replace)
+        {
+            int pos = text.IndexOf(search);
+            if (pos < 0)
+            {
+                return text;
+            }
+            return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
+        }
+        static string mHandleInclude(string filePath, string fromPath)
+        {
+            var outString = "";
+            var data = File.ReadAllText(filePath);
+            var includeStatement = Regex.Match(data, "INCLUDE *\"(.*)\"", RegexOptions.Multiline);
+            while(includeStatement != null)
+            {
+                if(includeStatement.Length == 0)
+                {
+                    data += "\n";
+                    break;
+                }
+                var includeFile = includeStatement.Groups[1];
+                var moreIncluded = mHandleInclude(includeFile.Value.Trim(), filePath);
+                data = ReplaceFirst(data, includeStatement.Value, moreIncluded);
+                includeStatement = includeStatement.NextMatch();
+            }
+            outString += data + "//Shader Parser: Auto generated file include: " + filePath  + " from: " + fromPath + "\n";
+            return outString;
+        }
+        public static ParsedShader? ParseShader(string filePath, string targetShadernName, int targetShaderPass)
+        {
+            string data = File.ReadAllText(filePath);
+            List<Shader> shaders = new List<Shader>();
+            var match = Regex.Match(data, "SHADER +(.*) +(.*)", RegexOptions.Multiline);
+            var splits = Regex.Split(data, "SHADER +.* +.*", RegexOptions.Multiline).ToList();
+            splits.RemoveAt(0);
+            if (match.Length == 0)
+            {
+                Debug.Log("Missing: SHADER (FRAG | VERT) (SHADER_NAME) in " + filePath, Debug.Flag.Error);
+                return null;
+            }
+            while (match != null)
+            {
+                if(match.Length == 0)
+                {
+                    break;
+                }
+                var ShaderProgram = new Shader();
+                var type = match.Groups[1].ToString().Trim();
+                var name = match.Groups[2].ToString().Trim();
+                ShaderProgram.name = name;
+                if (type == "FRAG")
+                {
+                    ShaderProgram.shaderType = ShaderType.FragmentShader;
+                }
+                else if(type == "VERT")
+                {
+                    ShaderProgram.shaderType = ShaderType.VertexShader;
+                }
+                else
+                {
+                    Debug.Log("Unknown shader type! Use FRAG or VERT for " + name + " in " + filePath, Debug.Flag.Error);
+                    break;
+                }
+                shaders.Add(ShaderProgram);
+                match = match.NextMatch();
+            }
 
+            for (int i = 0; i < shaders.Count; i++)
+            {
+                var includeStatement = Regex.Match(splits[i], "INCLUDE *\"(.*)\"", RegexOptions.Multiline);
+                List<string> includedFiles = new List<string>();
+                while(includeStatement != null)
+                {
+                    if(includeStatement.Length == 0)
+                    {
+                        break;
+                    }
+                    includedFiles.Add(mHandleInclude(includeStatement.Groups[1].Value.Trim(), filePath));
+                    splits[i] = splits[i].Replace(includeStatement.Value, "");
+                    includeStatement = includeStatement.NextMatch();
+                }
+                splits[i] = splits[i].Trim();
+                var passSplits = Regex.Split(splits[i], "PASS\\s*", RegexOptions.Multiline);
+                if(passSplits.Length <= 1)
+                {
+                    Debug.Log("Missing pass: " + shaders[i].shaderType.ToString() + " " + shaders[i].name + " in " + filePath, Debug.Flag.Error);
+                }
+                for (int j = 1; j < passSplits.Length; j++)
+                {
+                    var passString = "";
+
+                    for (int k = 0; k < includedFiles.Count; k++)
+                    {
+                        passString += includedFiles[k];
+                    }
+
+                    passString += passSplits[j].Trim();
+                    shaders[i].Passes.Add(passString);
+                }
+            }
+
+            int index = 0;
+            for (int i = 0; i < shaders.Count; i++)
+            {
+                if (shaders[i].name == targetShadernName)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            data = shaders[index].Passes[targetShaderPass];
+
+            return new ParsedShader() { ShaderCode = data, ShaderType = shaders[index].shaderType };
+        }
+    }
+    internal sealed class ShaderFile : SafeDispose, IFileObject
+    {
+        internal ShaderType ShaderType { get; private set; }
         public List<Action> FileChangeCallback => new List<Action>();
         public string FilePath { get; }
 
+        public override string Name => FilePath;
+
         public static implicit operator int(ShaderFile d) => d.compiledShader;
 
-        int compiledShader;
+        int compiledShader = 0;
+        bool addedCallback = false;
         internal ShaderFile(string path, ShaderType shaderType)
         {
             FilePath = path;
             ShaderType = shaderType;
             if (!File.Exists(path))
             {
-                Console.WriteLine("Shader not found: " + path);
+                Debug.Log("Shader not found: " + path, Debug.Flag.Error);
                 return;
             }
-            //read the shader datas
-            compiledShader = GL.CreateShader(ShaderType);
-            FileChangeCallback.Add(()=> {
-                GL.DeleteShader(compiledShader);
-                compiledShader = GL.CreateShader(shaderType);
-                CompileShader();
-            });
         }
-        internal void CompileShader() { 
-            Console.WriteLine("Compiling Shader: " + FilePath);
-            if (!File.Exists(FilePath))
+
+        bool useShaderParser = false;
+        string shaderToUse = "";
+        int passToUse = 0;
+        internal ShaderFile(string path, string targetShaderName, int targetShaderPass)
+        {
+            useShaderParser = true;
+            this.shaderToUse = targetShaderName;
+            this.passToUse = targetShaderPass;
+            FilePath = path;
+            if (!File.Exists(path))
             {
-                Console.WriteLine("Shader not found: " + FilePath);
+                Debug.Log("Shader not found: " + path, Debug.Flag.Error);
                 return;
             }
-            GL.ShaderSource(compiledShader, File.ReadAllText(FilePath));
+        }
+        internal void CompileShader() {
+            Console.WriteLine("Compiling Shader: " + FilePath);
+            string data;
+            if (useShaderParser)
+            {
+                var shaders = ShaderParser.ParseShader(FilePath, shaderToUse, passToUse);
+                if(shaders != null)
+                {
+                    data = shaders.Value.ShaderCode;
+                    ShaderType = shaders.Value.ShaderType;
+                }
+                else
+                {
+                    Debug.Log("Cannot find shader within parsed shader " + FilePath + ". Are your shader name and pass correct?", Debug.Flag.Warning);
+                    data = "";
+                    ShaderType = ShaderType.FragmentShader;
+                }
+            }
+            else
+            {
+                data = File.ReadAllText(FilePath);
+            }
+
+            if (!addedCallback)
+            {
+                FileChangeCallback.Add(() => {
+                    GL.DeleteShader(compiledShader);
+                    compiledShader = GL.CreateShader(ShaderType);
+                    CompileShader();
+                });
+                addedCallback = true;
+            }
+
+            compiledShader = GL.CreateShader(ShaderType);
+
+            GL.ShaderSource(compiledShader, data);
 
             //compile the shaders
             GL.CompileShader(compiledShader);
@@ -98,11 +275,10 @@ namespace JLGraphics
                 return;
             }
         }
-        public void Dispose()
+        protected override void OnDispose()
         {
             GL.DeleteShader(compiledShader);
         }
-
     }
     public sealed class ShaderProgram : IDisposable
     {
