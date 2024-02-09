@@ -133,6 +133,10 @@ float linearDepth(float depthSample)
 	float zLinear = 2.0 * CameraParams.z * CameraParams.w / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
 	return zLinear;
 }
+vec3 reinhard(vec3 v)
+{
+	return v / (1.0f + v);
+}
 uniform samplerCube SkyBox;
 void main(){
 
@@ -159,6 +163,7 @@ void main(){
 	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
 
 	vec4 envColor = vec4(texture(SkyBox, reflectedVector).rgb, 1.0);
+	envColor.xyz = reinhard(envColor.xyz);
 
 	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
 	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);

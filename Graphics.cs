@@ -143,7 +143,7 @@ namespace JLGraphics
             var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
             var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
             var depthOnlyShader = new ShaderProgram("DepthOnlyShader", "./Shaders/DepthOnly.frag", "./Shaders/vertexSimple.glsl");
-            var skyBoxShaderProrgam = new ShaderProgram("Skybox Shader", "./Shaders/cubemapFrag.glsl", "./Shaders/skyboxVert.glsl");
+            var skyBoxShaderProrgam = new ShaderProgram("Skybox Shader", "./Shaders/SkyBoxFrag.glsl", "./Shaders/skyboxVert.glsl");
             var skyboxDepthPrepassProgram = new ShaderProgram("Skybox Shader", "./Shaders/fragmentEmpty.glsl", "./Shaders/skyboxVert.glsl");
 #if DEBUG
             fileTracker = new FileTracker();

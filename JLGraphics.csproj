@@ -55,13 +55,13 @@
     <None Remove="Shaders\BloomComposite.glsl" />
     <None Remove="Shaders\BloomPrepass.glsl" />
     <None Remove="shaders\CopyToScreen.frag" />
-    <None Remove="Shaders\cubemapFrag.glsl" />
     <None Remove="Shaders\DepthOnly.frag" />
     <None Remove="Shaders\fragmentEmpty.glsl" />
     <None Remove="shaders\Passthrough.vert" />
     <None Remove="Shaders\PostProcess.frag" />
     <None Remove="Shaders\Rect2CubeFrag.glsl" />
     <None Remove="Shaders\Rect2CubeVert.glsl" />
+    <None Remove="Shaders\SkyBoxFrag.glsl" />
     <None Remove="Shaders\skyboxVert.glsl" />
     <None Remove="Shaders\vertexSimple.glsl" />
   </ItemGroup>
@@ -70,7 +70,7 @@
     <Content Update="Shaders\CopyToScreen.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\cubemapFrag.glsl">
+    <Content Update="Shaders\SkyBoxFrag.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="Shaders\DepthOnly.frag">

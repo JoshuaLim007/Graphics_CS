@@ -20,9 +20,9 @@ namespace JLGraphics
 
         int blurIterations = 8;
         bool initializeRts = false;
-        float threshold = 50.0f;
+        float threshold = 15.0f;
         float intensity = 1.0f;
-        float clamp = 200.0f;
+        float clamp = (1 << 16);
 
         public float Threshold {
             get => threshold;
@@ -152,6 +152,8 @@ namespace JLGraphics
             }
 
             bloomCompositeShader.SetFloat("intensity", Intensity);
+            bloomCompositeShader.SetInt("doNormalize", 0);
+            bloomCompositeShader.SetInt("iterations", blurIterations);
             for (int i = blurIterations - 2; i >= 0; i--)
             {
                 bloomCompositeShader.SetTexture("HighResTex", blurTexture[i].ColorAttachments[0]);
@@ -159,6 +161,7 @@ namespace JLGraphics
             }
 
             bloomCompositeShader.SetTexture("HighResTex", frameBuffer.ColorAttachments[0]);
+            bloomCompositeShader.SetInt("doNormalize", 1);
             Blit(blurTexture[0], frameBuffer, bloomCompositeShader);
         }
     }
