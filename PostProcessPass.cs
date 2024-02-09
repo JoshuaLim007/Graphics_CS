@@ -28,7 +28,10 @@ namespace JLGraphics
             PostProcessShader.CompileProgram();
             shader = new Shader("Postprocessing material", PostProcessShader);
         }
-        public override void Execute(in CommandBuffer cmd, in FrameBuffer frameBuffer)
+
+        public override string Name => "Post process effects pass";
+
+        public override void Execute(in FrameBuffer frameBuffer)
         {
             if(postProcessTexture == null)
             {
@@ -42,8 +45,14 @@ namespace JLGraphics
             {
                 postProcessTexture = new FrameBuffer(Graphics.Instance.Window.Size.X, Graphics.Instance.Window.Size.Y, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
             }
-            cmd.Blit(frameBuffer, postProcessTexture, true, shader);
-            cmd.Blit(postProcessTexture, frameBuffer, false);
+            Blit(frameBuffer, postProcessTexture, shader);
+            Blit(postProcessTexture, frameBuffer);
+        }
+
+        protected override void OnDispose()
+        {
+            PostProcessShader.Dispose();
+            postProcessTexture.Dispose();
         }
     }
 }

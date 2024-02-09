@@ -51,7 +51,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Shaders\Blur.glsl" />
+    <None Remove="Shaders\Bloom.glsl" />
+    <None Remove="Shaders\BloomComposite.glsl" />
+    <None Remove="Shaders\BloomPrepass.glsl" />
     <None Remove="shaders\CopyToScreen.frag" />
     <None Remove="Shaders\cubemapFrag.glsl" />
     <None Remove="Shaders\DepthOnly.frag" />

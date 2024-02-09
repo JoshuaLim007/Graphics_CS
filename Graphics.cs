@@ -184,7 +184,6 @@ namespace JLGraphics
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
             InitFramebuffers();
-            renderPassCommandBuffer = new CommandBuffer();
         }
         public void Dispose()
         {
@@ -203,7 +202,6 @@ namespace JLGraphics
             PassthroughShader = null;
             MainFrameBuffer = null;
             DepthTextureBuffer = null;
-            renderPassCommandBuffer = null;
             DefaultMaterial = null;
             Window = null;
             fileTracker = null;
@@ -451,7 +449,7 @@ namespace JLGraphics
             GL.Viewport(0, 0, width, height);
 
             Shader blitShader = shader ?? PassthroughShader;
-            blitShader.SetVector2("MainTex_Size", new Vector2(width, height));
+            blitShader.SetVector2("MainTex_TexelSize", new Vector2(1.0f / width, 1.0f / height));
             blitShader.UseProgram();
             blitShader.SetTextureUnsafe("MainTex", src.ColorAttachments[0]);
             blitShader.UpdateUniforms();
@@ -482,6 +480,17 @@ namespace JLGraphics
         {
             renderPasses.Remove(renderPass);
         }
+        public T GetRenderPass<T>() where T : RenderPass
+        {
+            for (int i = 0; i < renderPasses.Count; i++)
+            {
+                if (renderPasses[i].GetType() == typeof(T))
+                {
+                    return (T)renderPasses[i];
+                }
+            }
+            return null;
+        }
         int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
         {
             int renderPassIndex;
@@ -491,12 +500,10 @@ namespace JLGraphics
                 {
                     return renderPassIndex;
                 }
-                renderPasses[renderPassIndex].Execute(renderPassCommandBuffer, MainFrameBuffer);
-                renderPassCommandBuffer.Invoke();
+                renderPasses[renderPassIndex].Execute(MainFrameBuffer);
             }
             return renderPassIndex;
         }
-        CommandBuffer renderPassCommandBuffer;
 
         void RenderSkyBox(bool doDepthPrepass, Camera camera)
         {
@@ -559,8 +566,6 @@ namespace JLGraphics
 
                 //Post opaque pass (Opaque -> Transparent - 1)
                 renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
-                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-                GL.Enable(EnableCap.Blend);
                 //render Transparents
 
                 //Post transparent render pass (Transparent -> PostProcess - 1)
@@ -733,38 +738,6 @@ namespace JLGraphics
             }
 
             var final = new Renderer[totalRenderers];
-
-            //if (AlsoSortMaterials)
-            //{
-            //    Renderer[][] parallelSort = new Renderer[programIndex.Count][];
-            //    var results = Parallel.For(0, programIndex.Count, i => {
-            //        var renderers = SortRenderersByMaterial(programs[i], uniqueMaterialsAtIndex[i].Count, new Dictionary<Shader, int>());
-            //        parallelSort[i] = renderers;
-            //    });
-            //    index = 0;
-            //    for (int i = 0; i < parallelSort.Length; i++)
-            //    {
-            //        Renderer[] sortedList = parallelSort[i];
-            //        for (int j = 0; j < sortedList.Length; j++)
-            //        {
-            //            final[index] = sortedList[j];
-            //            index++;
-            //        }
-            //    }
-            //}
-            //else
-            //{
-            //    index = 0;
-            //    for (int i = 0; i < programIndex.Count; i++)
-            //    {
-            //        var sorted = programs[i];
-            //        for (int j = 0; j < sorted.Count; j++)
-            //        {
-            //            final[index] = sorted[j];
-            //            index++;
-            //        }
-            //    }
-            //}
 
             index = 0;
             for (int i = 0; i < programIndex.Count; i++)

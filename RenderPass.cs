@@ -17,29 +17,7 @@ namespace JLGraphics
         BeforePostProcessing = AfterPostProcessing - 1,
         AfterPostProcessing = 4000,
     }
-    public class CommandBuffer
-    {
-        Queue<Action> actions = new Queue<Action>();
-        public void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
-        {
-            actions.Enqueue(() => { Graphics.Instance.Blit(src, dst, restoreSrc, shader); });
-        }
-        public void Add(Action action)
-        {
-            actions.Enqueue(action);
-        }
-        internal void Invoke()
-        {
-            Action action;
-            actions.TryDequeue(out action);
-            while (action != null)
-            {
-                action.Invoke();
-                actions.TryDequeue(out action);
-            }
-        }
-    }
-    public abstract class RenderPass : IComparable<RenderPass>, IDisposable
+    public abstract class RenderPass : SafeDispose, IComparable<RenderPass>
     {
         public RenderPass(RenderQueue queue, int queueOffset)
         {
@@ -47,7 +25,7 @@ namespace JLGraphics
         }
         public int Queue { get; set; }
         public virtual void FrameSetup() { }
-        public abstract void Execute(in CommandBuffer cmd, in FrameBuffer frameBuffer);
+        public abstract void Execute(in FrameBuffer frameBuffer);
         public virtual void FrameCleanup() { }
         public int CompareTo(RenderPass? other)
         {
@@ -64,11 +42,13 @@ namespace JLGraphics
                 return 1;
             }
         }
-        public virtual void Dispose() { }
-    
+        public void Blit(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        {
+            Graphics.Instance.Blit(src, dst, false, shader);
+        }
         public Vector2i GetResolution(FrameBuffer frameBuffer, float scale)
         {
-            return new Vector2i((int)MathF.Ceiling(frameBuffer.Width * scale), (int)MathF.Ceiling(frameBuffer.Height * scale));
+            return new Vector2i((int)MathF.Max(MathF.Floor(frameBuffer.Width * scale), 1), (int)MathF.Max(MathF.Floor(frameBuffer.Height * scale),1));
         }
     }
 }

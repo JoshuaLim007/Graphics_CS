@@ -233,6 +233,8 @@ namespace JLGraphics
             string data;
             if (useShaderParser)
             {
+                Console.WriteLine("Compiling Shader name: " + shaderToUse);
+                Console.WriteLine("Compiling Shader pass: " + passToUse);
                 var shaders = ShaderParser.ParseShader(FilePath, shaderToUse, passToUse);
                 if(shaders != null)
                 {
@@ -466,6 +468,8 @@ namespace JLGraphics
         public bool DepthTest { get; set; } = true;
         public bool DepthMask { get; set; } = true;
         public bool[] ColorMask { get; private set; } = new bool[4] { true, true, true, true };
+        public bool IsTransparent { get; set; } = false;
+        public BlendingFactor BlendingFactor { get; set; } = BlendingFactor.SrcAlpha;
         private int textureMask = 0;
         const int TotalTextures = 32;
         private Texture[] textures = new Texture[TotalTextures];
@@ -483,7 +487,7 @@ namespace JLGraphics
         Stack<int> availableTextureSlots = new Stack<int>();
         int textureIndexFromUniform(string uniformName)
         {
-            for (int i = 0; i < TotalTextures; i++)
+            for (int i = TotalTextures - 1; i >= 0; i--)
             {
                 if (textureUniformNames[i] == uniformName)
                 {
@@ -582,11 +586,12 @@ namespace JLGraphics
         {
             m_uniformValues = new List<UniformValueWithLocation>(other.m_uniformValues);
             m_uniformValuesDefaultFlag = new List<bool>(other.m_uniformValuesDefaultFlag);
+            m_cachedUniformValueIndex = new Dictionary<string, int>(other.m_cachedUniformValueIndex);
+
             availableTextureSlots = new Stack<int>(new Stack<int>(other.availableTextureSlots));
 
             Array.Copy(other.textures, textures, TotalTextures);
             Array.Copy(other.textureUniformNames, textureUniformNames, TotalTextures);
-            m_cachedUniformValueIndex = new Dictionary<string, int>(other.m_cachedUniformValueIndex);
             textureMask = other.textureMask;
             SetAllTextureUnitToUniform();
         }
@@ -773,6 +778,15 @@ namespace JLGraphics
             {
                 GL.Disable(EnableCap.DepthTest);
             }
+            if (IsTransparent)
+            {
+                GL.BlendFunc(BlendingFactor, BlendingFactor + 1);
+                GL.Enable(EnableCap.Blend);
+            }
+            else
+            {
+                GL.Disable(EnableCap.Blend);
+            }
             GL.DepthMask(DepthMask);
             GL.ColorMask(ColorMask[0], ColorMask[1], ColorMask[2], ColorMask[3]);
 
@@ -840,13 +854,10 @@ namespace JLGraphics
             {
                 var current = m_uniformValues[i];
 
-                //if the uniform value is a default value, remove it if it is
+                //if the uniform value is a default value but we have a global uniform with same name skip it
                 if (m_uniformValuesDefaultFlag[i] && mIsGlobalUniform(current.uniformName))
                 {
-                    m_uniformValues.RemoveAt(i);
-                    m_uniformValuesDefaultFlag.RemoveAt(i);
-                    i--;
-                    current = m_uniformValues[i];
+                    continue;
                 }
 
                 var type = current.UniformType;

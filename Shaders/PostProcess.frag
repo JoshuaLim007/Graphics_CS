@@ -5,7 +5,7 @@ uniform sampler2D MainTex;
 uniform sampler2D _CameraDepthTexture;
 uniform vec3 FogColor;
 uniform float FogDensity;
-uniform vec2 MainTex_Size;
+uniform vec2 MainTex_TexelSize;
 uniform vec4 CameraParams;
 uniform int Tonemapping;
 uniform int GammaCorrection;
@@ -38,7 +38,7 @@ float linearDepth(float depthSample)
 }
 void main()
 { 
-    vec4 col = texture(MainTex, gl_FragCoord.xy / MainTex_Size);
+    vec4 col = texture(MainTex, gl_FragCoord.xy * MainTex_TexelSize);
 
 //    float depth = linearDepth(get_depth(gl_FragCoord.xy / MainTex_Size));
 //    float density = 1.0 / exp(pow(depth * FogDensity, 2));
@@ -55,5 +55,5 @@ void main()
         col.rgb = pow(col.rgb, vec3(1.0/gamma));
     }
 
-    FragColor = col;
+    FragColor = vec4(col.xyz, 1.0);
 }
