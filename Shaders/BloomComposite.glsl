@@ -30,17 +30,18 @@ void main()
 		color = vec4(high + low * intensity, 1.0);
 	}
 	else {
-		//low = low * intensity / iterations;
-		//color = vec4(high + low, 1.0);
-
 		high = max(high, vec3(0));
 		low = low * intensity / iterations;
-		vec3 highToned = reinhard(high);
-		vec3 lowToned = reinhard(low);
-		float backgroundBrightness = lum(highToned);
-		float foregroundBrightness = lum(lowToned);
-		float diff = max(foregroundBrightness - backgroundBrightness, 0);
-		vec3 final = mix(high, low, diff);
-		color = vec4(final, 1.0);
+		color = vec4(high + low, 1.0);
+
+		//high = max(high, vec3(0));
+		//low = low * intensity / iterations;
+		//vec3 highToned = reinhard(high);
+		//vec3 lowToned = reinhard(low);
+		//float backgroundBrightness = lum(highToned);
+		//float foregroundBrightness = lum(lowToned);
+		//float diff = max(foregroundBrightness - backgroundBrightness, 0);
+		//vec3 final = mix(high, low, diff);
+		//color = vec4(final, 1.0);
 	}
 }

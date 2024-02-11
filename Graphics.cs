@@ -435,7 +435,37 @@ namespace JLGraphics
         FrameBuffer DepthTextureBuffer = null;
         internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
-            if(src == null)
+            StartBlitUnsafe(shader);
+            BlitUnsafe(src, dst);
+            EndBlitUnsafe(shader);
+            if (restoreSrc)
+            {
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, src.FrameBufferObject);
+                GL.Viewport(0, 0, src.Width, src.Height);
+            }
+        }
+        
+        bool blitUnsafeFlag = false;
+        Shader unsafeBlitShader = null;
+        internal void StartBlitUnsafe(Shader shader)
+        {
+            if (blitUnsafeFlag)
+            {
+                Debug.Log("StartBlitUnsafe already started!", Debug.Flag.Error);
+            }
+            blitUnsafeFlag = true;
+            Shader blitShader = shader ?? PassthroughShader;
+            blitShader.DepthTest = false;
+            blitShader.UseProgram();
+            this.unsafeBlitShader = blitShader;
+        }
+        internal void BlitUnsafe(FrameBuffer src, FrameBuffer dst)
+        {
+            if (!blitUnsafeFlag)
+            {
+                Debug.Log("BlitUnsafe out of range!", Debug.Flag.Error);
+            }
+            if (src == null)
             {
                 Debug.Log("Cannot blit with null src!", Debug.Flag.Error);
                 return;
@@ -445,17 +475,13 @@ namespace JLGraphics
             int width = dst != null ? dst.Width : Window.Size.X;
             int height = dst != null ? dst.Height : Window.Size.Y;
             int fbo = dst != null ? dst.FrameBufferObject : 0;
+            
+            unsafeBlitShader.SetVector2("MainTex_TexelSize", new Vector2(1.0f / width, 1.0f / height));
+            unsafeBlitShader.SetTextureUnsafe("MainTex", src.TextureAttachments[0]);
+            unsafeBlitShader.UpdateUniforms();
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Viewport(0, 0, width, height);
-
-            Shader blitShader = shader ?? PassthroughShader;
-            blitShader.SetVector2("MainTex_TexelSize", new Vector2(1.0f / width, 1.0f / height));
-            blitShader.UseProgram();
-            blitShader.SetTextureUnsafe("MainTex", src.TextureAttachments[0]);
-            blitShader.UpdateUniforms();
-            blitShader.DepthTest = false;
-
             GL.BindVertexArray(FullScreenQuad.VAO);
 
             m_drawCount++;
@@ -464,14 +490,20 @@ namespace JLGraphics
             m_meshBindCount++;
 
             GL.DrawArrays(PrimitiveType.Triangles, 0, FullScreenQuad.VertexCount);
-
-            if (restoreSrc)
-            {
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, src.FrameBufferObject);
-                GL.Viewport(0, 0, src.Width, src.Height);
-            }
         }
-        
+        internal void EndBlitUnsafe(Shader shader)
+        {
+            Shader blitShader = shader ?? PassthroughShader;
+            if (!blitUnsafeFlag)
+            {
+                Debug.Log("EndBlitUnsafe already ended!", Debug.Flag.Error);
+            }
+            if(blitShader != unsafeBlitShader)
+            {
+                Debug.Log("EndBlitUnsafe blit shader mismatch!", Debug.Flag.Error);
+            }
+            blitUnsafeFlag = false;
+        }
         List<RenderPass> renderPasses = new List<RenderPass>();
         public void EnqueueRenderPass(RenderPass renderPass)
         {

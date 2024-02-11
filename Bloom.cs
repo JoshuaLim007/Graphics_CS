@@ -83,9 +83,12 @@ namespace JLGraphics
                 temporaryRt[i]?.Dispose();
             }
         }
+        double timer = 0;
+        double elapsedTime = 0;
         public override void Execute(in FrameBuffer frameBuffer)
         {
-            if(intensity == 0)
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            if (intensity == 0)
             {
                 return;
             }
@@ -132,31 +135,44 @@ namespace JLGraphics
             bloomPrepassShader.SetFloat("ClampValue", ClampValue);
             Blit(frameBuffer, prepassFitlerRt, bloomPrepassShader);
 
+            StartBlitUnsafe(bloomShader);
             bloomShader.SetInt("Horizontal", 0);
-            Blit(prepassFitlerRt, temporaryRt[0], bloomShader);
+            BlitUnsafe(prepassFitlerRt, temporaryRt[0]);
             bloomShader.SetInt("Horizontal", 1);
-            Blit(temporaryRt[0], blurTexture[0], bloomShader);
-
+            BlitUnsafe(temporaryRt[0], blurTexture[0]);
             for (int i = 1; i < blurIterations; i++)
             {
                 bloomShader.SetInt("Horizontal", 0);
-                Blit(blurTexture[i - 1], temporaryRt[i], bloomShader);
+                BlitUnsafe(blurTexture[i - 1], temporaryRt[i]);
                 bloomShader.SetInt("Horizontal", 1);
-                Blit(temporaryRt[i], blurTexture[i], bloomShader);
+                BlitUnsafe(temporaryRt[i], blurTexture[i]);
             }
-            //float gamInt = 255.0f * MathF.Pow(Intensity / 255.0f, 2.2f);
+            EndBlitUnsafe(bloomShader);
+
             bloomCompositeShader.SetFloat("intensity", Intensity);
             bloomCompositeShader.SetInt("doNormalize", 0);
             bloomCompositeShader.SetInt("iterations", blurIterations);
+
+            StartBlitUnsafe(bloomCompositeShader);
             for (int i = blurIterations - 2; i >= 0; i--)
             {
                 bloomCompositeShader.SetTexture("HighResTex", blurTexture[i].TextureAttachments[0]);
-                Blit(blurTexture[i + 1], blurTexture[i], bloomCompositeShader);
+                BlitUnsafe(blurTexture[i + 1], blurTexture[i]);
             }
+            EndBlitUnsafe(bloomCompositeShader);
 
             bloomCompositeShader.SetTexture("HighResTex", frameBuffer.TextureAttachments[0]);
             bloomCompositeShader.SetInt("doNormalize", 1);
             Blit(blurTexture[0], frameBuffer, bloomCompositeShader);
+            watch.Stop();
+            elapsedTime += watch.Elapsed.TotalMilliseconds;
+            timer++;
+            if (timer > 100)
+            {
+                Console.WriteLine("Bloom time: " + elapsedTime / timer + " ms");
+                timer = 0;
+                elapsedTime = 0;
+            }
         }
     }
 }

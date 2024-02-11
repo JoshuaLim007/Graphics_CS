@@ -46,6 +46,18 @@ namespace JLGraphics
         {
             Graphics.Instance.Blit(src, dst, false, shader);
         }
+        public void StartBlitUnsafe(Shader _)
+        {
+            Graphics.Instance.StartBlitUnsafe(_);
+        }
+        public void BlitUnsafe(FrameBuffer src, FrameBuffer dst)
+        {
+            Graphics.Instance.BlitUnsafe(src, dst);
+        }
+        public void EndBlitUnsafe(Shader _)
+        {
+            Graphics.Instance.EndBlitUnsafe(_);
+        }
         public Vector2i GetResolution(FrameBuffer frameBuffer, float scale)
         {
             return new Vector2i((int)MathF.Max(MathF.Floor(frameBuffer.Width * scale), 1), (int)MathF.Max(MathF.Floor(frameBuffer.Height * scale),1));
