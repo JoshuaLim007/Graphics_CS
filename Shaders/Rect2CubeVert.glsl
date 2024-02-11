@@ -7,7 +7,6 @@ out vec3 localPos;
 
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
-invariant gl_Position;
 
 void main() {
     localPos = aPosition;

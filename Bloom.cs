@@ -20,7 +20,7 @@ namespace JLGraphics
 
         int blurIterations = 8;
         bool initializeRts = false;
-        float threshold = 15.0f;
+        float threshold = 10.0f;
         float intensity = 1.0f;
         float clamp = (1 << 16);
 
@@ -99,7 +99,7 @@ namespace JLGraphics
                     pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb,
                     magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
-                    MaxMipmap = 0,
+                    maxMipmap = 0,
                     wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.MirroredRepeat,
                 });
                 for (int i = 0; i < blurIterations; i++)
@@ -112,7 +112,7 @@ namespace JLGraphics
                         pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb,
                         magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                         minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
-                        MaxMipmap = 0,
+                        maxMipmap = 0,
                         wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.MirroredRepeat,
                     });
 
@@ -122,19 +122,13 @@ namespace JLGraphics
                         pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb,
                         magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                         minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
-                        MaxMipmap = 0,
+                        maxMipmap = 0,
                         wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.MirroredRepeat,
                     });
                 }
             }
 
-            Vector4 threshold = new Vector4();
-            threshold.X = Threshold;
-            threshold.Y = threshold.X * 0.0f;
-            threshold.Z = 2f * threshold.Y;
-            threshold.W = 0.25f / (threshold.W + 0.00001f);
-            threshold.Y -= threshold.X;
-            bloomPrepassShader.SetVector4("_BloomThreshold", threshold);
+            bloomPrepassShader.SetFloat("_BloomThreshold", Threshold);
             bloomPrepassShader.SetFloat("ClampValue", ClampValue);
             Blit(frameBuffer, prepassFitlerRt, bloomPrepassShader);
 
@@ -150,17 +144,17 @@ namespace JLGraphics
                 bloomShader.SetInt("Horizontal", 1);
                 Blit(temporaryRt[i], blurTexture[i], bloomShader);
             }
-
+            //float gamInt = 255.0f * MathF.Pow(Intensity / 255.0f, 2.2f);
             bloomCompositeShader.SetFloat("intensity", Intensity);
             bloomCompositeShader.SetInt("doNormalize", 0);
             bloomCompositeShader.SetInt("iterations", blurIterations);
             for (int i = blurIterations - 2; i >= 0; i--)
             {
-                bloomCompositeShader.SetTexture("HighResTex", blurTexture[i].ColorAttachments[0]);
+                bloomCompositeShader.SetTexture("HighResTex", blurTexture[i].TextureAttachments[0]);
                 Blit(blurTexture[i + 1], blurTexture[i], bloomCompositeShader);
             }
 
-            bloomCompositeShader.SetTexture("HighResTex", frameBuffer.ColorAttachments[0]);
+            bloomCompositeShader.SetTexture("HighResTex", frameBuffer.TextureAttachments[0]);
             bloomCompositeShader.SetInt("doNormalize", 1);
             Blit(blurTexture[0], frameBuffer, bloomCompositeShader);
         }

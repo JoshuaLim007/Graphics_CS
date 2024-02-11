@@ -7,6 +7,7 @@ in VS_OUT{
 	vec2 TexCoord;
 	vec3 Position;
 	vec3 Tangent;
+	vec4 PositionLightSpace;
 } fs_in;
 
 uniform struct POINT_LIGHT {
@@ -22,6 +23,8 @@ uniform struct DIRECT_LIGHT {
 	vec3 Direction;
 	vec3 Color;
 } DirectionalLight;
+uniform sampler2DShadow DirectionalShadowDepthMap;
+uniform vec2 DirectionalShadowDepthMapTexelSize;
 
 //out to render texture
 layout(location = 0) out vec4 frag;
@@ -58,10 +61,44 @@ uniform mat4 ModelMatrix;
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
 
-vec4 GetDirectionalLight(vec3 normal, vec3 reflectedVector) {
+float rand(vec4 seed4) {
+	float dot_product = dot(seed4, vec4(12.9898, 78.233, 45.164, 94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
+
+float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
+	float bias = mix(0.0001f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
+
+	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
+
+	if (projCoords.z > 1.0) {
+		return 0;
+	}
+
+	float percentCovered = 0.0f;
+	const int kernalHalfSize = 1;
+	int size = kernalHalfSize * 2 + 1;
+	float currentDepth = projCoords.z;
+	
+	for (int i = -kernalHalfSize; i <= kernalHalfSize; i++)
+	{
+		for (int j = -kernalHalfSize; j <= kernalHalfSize; j++)
+		{
+			vec2 Offsets = vec2(i * DirectionalShadowDepthMapTexelSize.x, j * DirectionalShadowDepthMapTexelSize.y);
+			vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
+			percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
+		}
+	}
+	return percentCovered / (size * size);
+}
+
+vec4 GetDirectionalLight(vec3 normal, vec3 geoNormal, vec3 reflectedVector) {
 
 	//diffuse color
+	float shadow = GetDirectionalShadow(fs_in.PositionLightSpace, geoNormal);
 	float shade = min(max(dot(normal, DirectionalLight.Direction), 0), 1);
+	shade = min(shade, 1 - shadow);
 	vec3 sunColor = DirectionalLight.Color * shade;
 
 	//specular color
@@ -159,7 +196,7 @@ void main(){
 	vec3 normal = mix(bump.xyz, fs_in.Normal, 0.0f);
 	vec3 reflectedVector = reflect(viewVector, normal);
 
-	vec4 sunColor = GetDirectionalLight(normal, reflectedVector);
+	vec4 sunColor = GetDirectionalLight(normal, fs_in.Normal, reflectedVector);
 	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
 
 	vec4 envColor = vec4(texture(SkyBox, reflectedVector).rgb, 1.0);

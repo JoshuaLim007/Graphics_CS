@@ -4,17 +4,15 @@ layout(location = 0) out vec4 color;
 
 uniform sampler2D MainTex;
 uniform vec2 MainTex_TexelSize;
-uniform vec4 _BloomThreshold;
+uniform float _BloomThreshold;
 uniform float ClampValue;
-
-vec3 ApplyBloomThreshold(vec3 color) {
-	float brightness = max(max(color.r, color.g), color.b);
-	float soft = brightness + _BloomThreshold.y;
-	soft = clamp(soft, 0.0, _BloomThreshold.z);
-	soft = soft * soft * _BloomThreshold.w;
-	float contribution = max(soft, brightness - _BloomThreshold.x);
-	contribution /= max(brightness, 0.00001);
-	return color * contribution;
+float lum(vec3 color) {
+	return (0.299 * color.x + 0.587 * color.y + 0.114 * color.z);
+}
+vec3 ApplyBloomThreshold(vec3 col) {
+	float b = lum(col);
+	float w = max(0, b - _BloomThreshold) / max(b, 0.00001);
+	return col * w;
 }
 
 void main()

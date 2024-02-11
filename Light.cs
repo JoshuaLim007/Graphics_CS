@@ -52,11 +52,20 @@ namespace JLGraphics
     }
     public class DirectionalLight : Light
     {
+        public DirectionalShadowMap ShadowMap { get; }
+        public DirectionalLight()
+        {
+            ShadowMap = new DirectionalShadowMap(this);
+        }
+        public void RenderShadowMap(Camera camera)
+        {
+            ShadowMap.RenderDepthmap(camera);
+        }
     }
     public class PointLight : Light
     {
         public float AttenConstant { get; set; } = 0.1f;
-        public float AttenLinear { get; set; } = 0.2f;
-        public float AttenExp { get; set; } = 0.8f;
+        public float AttenLinear { get; set; } = 0.05f;
+        public float AttenExp { get; set; } = 0.95f;
     }
 }

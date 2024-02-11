@@ -9,6 +9,7 @@ uniform vec2 MainTex_TexelSize;
 uniform vec4 CameraParams;
 uniform int Tonemapping;
 uniform int GammaCorrection;
+uniform sampler2D DirectionalShadowDepthMap;
 
 vec3 aces_tonemap(vec3 color){	
 	mat3 m1 = mat3(
@@ -43,6 +44,8 @@ void main()
 //    float depth = linearDepth(get_depth(gl_FragCoord.xy / MainTex_Size));
 //    float density = 1.0 / exp(pow(depth * FogDensity, 2));
 //    col = mix(vec4(col), vec4(FogColor, 1), 1 - density);
+    vec2 shadowPos = gl_FragCoord.xy * vec2(1.0 / 512.0, 1.0 / 512.0);
+    float sr = texture(DirectionalShadowDepthMap, shadowPos).r * 1;
 
     //aces tonemapping
     if(Tonemapping == 1){
@@ -54,6 +57,10 @@ void main()
         float gamma = 2.2;
         col.rgb = pow(col.rgb, vec3(1.0/gamma));
     }
-
-    FragColor = vec4(col.xyz, 1.0);
+    if(gl_FragCoord.x >= 512 || gl_FragCoord.y >= 512){
+        FragColor = vec4(col.xyz, 1.0);
+    }
+    else{
+        FragColor = vec4(sr,sr,sr, 1.0);
+    }
 }

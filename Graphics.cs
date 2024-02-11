@@ -100,7 +100,7 @@ namespace JLGraphics
             var colorSettings = new TFP()
             {
                 wrapMode = TextureWrapMode.ClampToEdge,
-                MaxMipmap = 0,
+                maxMipmap = 0,
                 minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.Rgb32f,
@@ -108,7 +108,7 @@ namespace JLGraphics
             };
             var depthSettings = new TFP() { 
                 wrapMode = TextureWrapMode.ClampToEdge,
-                MaxMipmap = 0,
+                maxMipmap = 0,
                 minFilter = TextureMinFilter.Nearest,
                 magFilter = TextureMagFilter.Nearest,
                 internalFormat = PixelInternalFormat.R32f,
@@ -116,7 +116,7 @@ namespace JLGraphics
             };
             MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(Window.Size.X * scale), (int)MathF.Ceiling(Window.Size.Y * scale), true, colorSettings);
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(Window.Size.X * scale), (int)MathF.Ceiling(Window.Size.Y * scale), false, depthSettings);
-            Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.ColorAttachments[0]);
+            Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.TextureAttachments[0]);
         }
         public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
@@ -406,6 +406,7 @@ namespace JLGraphics
         {
             Shader.SetGlobalMat4("ProjectionMatrix", camera.ProjectionMatrix);
             Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
+            Shader.SetGlobalMat4("ProjectionViewMatrix", camera.ViewMatrix * camera.ProjectionMatrix);
             Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
             Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
@@ -451,7 +452,7 @@ namespace JLGraphics
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.SetVector2("MainTex_TexelSize", new Vector2(1.0f / width, 1.0f / height));
             blitShader.UseProgram();
-            blitShader.SetTextureUnsafe("MainTex", src.ColorAttachments[0]);
+            blitShader.SetTextureUnsafe("MainTex", src.TextureAttachments[0]);
             blitShader.UpdateUniforms();
             blitShader.DepthTest = false;
 
@@ -537,6 +538,8 @@ namespace JLGraphics
             renderPasses.Sort();
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
             {
+                SetupLights(AllCameras[cameraIndex]);
+
                 for (int i = 0; i < renderPasses.Count; i++)
                 {
                     renderPasses[i].FrameSetup();
@@ -548,7 +551,7 @@ namespace JLGraphics
 
                 //render depth prepass
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
-                RenderCamera(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
+                RenderScene(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
                 Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
                 RenderSkyBox(true, AllCameras[cameraIndex]);
 
@@ -560,8 +563,7 @@ namespace JLGraphics
 
                 //render Opaques
                 //TODO: move to render pass class
-                SetupLights(AllCameras[cameraIndex]);
-                RenderCamera(AllCameras[cameraIndex], RenderingSortMode);
+                RenderScene(AllCameras[cameraIndex], RenderingSortMode);
                 RenderSkyBox(false, AllCameras[cameraIndex]);
 
                 //Post opaque pass (Opaque -> Transparent - 1)
@@ -603,7 +605,6 @@ namespace JLGraphics
         /// Sets rendering sorting
         /// </summary>
         public RenderSort RenderingSortMode { get; set; } = RenderSort.ShaderProgramMaterial;
-
         void SetupLights(Camera camera)
         {
             List<PointLight> pointLights = new List<PointLight>();
@@ -613,6 +614,7 @@ namespace JLGraphics
                 switch (lights[i])
                 {
                     case DirectionalLight t0:
+                        t0.RenderShadowMap(camera);
                         Shader.SetGlobalVector3("DirectionalLight.Color", t0.Color);
                         Shader.SetGlobalVector3("DirectionalLight.Direction", t0.Transform.Forward);
                         break;
@@ -795,14 +797,23 @@ namespace JLGraphics
             }
             return output;
         }
-        void RenderCamera(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
+        public void RenderScene(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
         {
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
 
-            SetShaderCameraData(camera);
-            InvokeOnRenders(camera);
-            SetDrawMode(camera.EnabledWireFrame);
+            if(camera == null)
+            {
+                if(renderingMode == RenderSort.FrontToBack)
+                {
+                    renderingMode = RenderSort.None;
+                }
+            }
+            else
+            {
+                SetShaderCameraData(camera);
+                InvokeOnRenders(camera);
+            }
 
             bool useOverride = false;
             int overrideModelLoc = 0;

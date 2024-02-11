@@ -14,18 +14,19 @@ out VS_OUT{
 	vec2 TexCoord;
 	vec3 Position;
 	vec3 Tangent;
+	vec4 PositionLightSpace;
 } vs_out;
 
-uniform mat4 ViewMatrix;
-uniform mat4 ProjectionMatrix;
+uniform mat4 ProjectionViewMatrix;
 uniform mat4 ModelMatrix;
-invariant gl_Position;
+uniform mat4 DirectionalLightMatrix;
 
 void main(){
 	vs_out.Color = aColor;
 	vs_out.TexCoord = aTexCoord;
 	vs_out.Normal = normalize((ModelMatrix * vec4(aNormal, 0.0)).xyz);
 	vs_out.Position = (ModelMatrix * vec4(aPosition,1)).xyz;
+	vs_out.PositionLightSpace = DirectionalLightMatrix * vec4(vs_out.Position, 1);
 	vs_out.Tangent = normalize((ModelMatrix * vec4(atangent, 0.0)).xyz);
-	gl_Position = ProjectionMatrix * ViewMatrix * ModelMatrix * vec4(aPosition, 1.0);
+	gl_Position = ProjectionViewMatrix * vec4(vs_out.Position, 1);
 }

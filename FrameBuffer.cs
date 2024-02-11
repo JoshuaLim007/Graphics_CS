@@ -17,7 +17,10 @@ namespace JLGraphics
         public TextureMinFilter minFilter;
         public TextureMagFilter magFilter;
         public TextureWrapMode wrapMode;
-        public int MaxMipmap;
+        public Vector4 borderColor;
+        public int maxMipmap;
+        public bool isShadowMap;
+
         public TFP()
         {
             internalFormat = PixelInternalFormat.Rgb8;
@@ -25,14 +28,16 @@ namespace JLGraphics
             minFilter = TextureMinFilter.Nearest;
             magFilter = TextureMagFilter.Nearest;
             wrapMode = TextureWrapMode.Repeat;
-            MaxMipmap = 0;
+            borderColor = Vector4.Zero;
+            maxMipmap = 0;
         }
         public TFP(PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
         {
+            borderColor = Vector4.Zero;
             minFilter = TextureMinFilter.Nearest;
             magFilter = TextureMagFilter.Nearest;
             wrapMode = TextureWrapMode.Repeat;
-            MaxMipmap = 0;
+            maxMipmap = 0;
 
             internalFormat = pixelInternalFormat;
             this.pixelFormat = pixelFormat;
@@ -40,7 +45,7 @@ namespace JLGraphics
     }
     public class FrameBuffer : SafeDispose, IGlobalScope
     {
-        internal Texture[] ColorAttachments { get; } = null;
+        internal Texture[] TextureAttachments { get; } = null;
         internal int FrameBufferObject { get; } = 0;
         internal int RenderBufferObject { get; } = 0;
         public int Width { get; } = 0;
@@ -55,21 +60,29 @@ namespace JLGraphics
             FrameBufferObject = GL.GenFramebuffer();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, FrameBufferObject);
 
-            ColorAttachments = new Texture[colorAttachmentCount];
+            TextureAttachments = new Texture[colorAttachmentCount];
             for (int i = 0; i < colorAttachmentCount; i++)
             {
-                ColorAttachments[i] = new Texture();
-                ColorAttachments[i].Width = width;
-                ColorAttachments[i].Height = height;
-                ColorAttachments[i].internalPixelFormat = textureFormat[i].internalFormat;
-                ColorAttachments[i].pixelFormat = textureFormat[i].pixelFormat;
-                ColorAttachments[i].textureMagFilter = textureFormat[i].magFilter;
-                ColorAttachments[i].textureMinFilter = textureFormat[i].minFilter;
-                ColorAttachments[i].textureWrapMode = textureFormat[i].wrapMode;
-                ColorAttachments[i].MipmapLevels = textureFormat[i].MaxMipmap;
-                ColorAttachments[i].generateMipMaps = textureFormat[i].MaxMipmap != 0;
-                ColorAttachments[i].ResolveTexture();
-                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureTarget.Texture2D, ColorAttachments[i].GlTextureID, 0);
+                TextureAttachments[i] = new Texture();
+                TextureAttachments[i].Width = width;
+                TextureAttachments[i].Height = height;
+                TextureAttachments[i].internalPixelFormat = textureFormat[i].internalFormat;
+                TextureAttachments[i].pixelFormat = textureFormat[i].pixelFormat;
+                TextureAttachments[i].textureMagFilter = textureFormat[i].magFilter;
+                TextureAttachments[i].textureMinFilter = textureFormat[i].minFilter;
+                TextureAttachments[i].textureWrapMode = textureFormat[i].wrapMode;
+                TextureAttachments[i].MipmapLevels = textureFormat[i].maxMipmap;
+                TextureAttachments[i].generateMipMaps = textureFormat[i].maxMipmap != 0;
+                TextureAttachments[i].BorderColor = textureFormat[i].borderColor;
+                TextureAttachments[i].ResolveTexture(textureFormat[i].isShadowMap);
+                if (textureFormat[i].pixelFormat == PixelFormat.DepthComponent || textureFormat[i].pixelFormat == PixelFormat.DepthStencil)
+                {
+                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, TextureAttachments[i].GlTextureID, 0);
+                }
+                else
+                {
+                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureTarget.Texture2D, TextureAttachments[i].GlTextureID, 0);
+                }
             }
 
             if (enableDepthRenderBuffer)
@@ -84,18 +97,23 @@ namespace JLGraphics
 
 
             GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, FrameBufferObject);
-            if (colorAttachmentCount == 0)
+            GL.DrawBuffer(DrawBufferMode.None);
+
+            if(colorAttachmentCount != 0)
             {
-                GL.DrawBuffer(DrawBufferMode.None);
-            }
-            else
-            {
-                DrawBuffersEnum[] attachments = new DrawBuffersEnum[colorAttachmentCount];// { DrawBuffersEnum.ColorAttachment0 };
+                List<DrawBuffersEnum> attachments = new List<DrawBuffersEnum>(colorAttachmentCount);// { DrawBuffersEnum.ColorAttachment0 };
                 for (int i = 0; i < colorAttachmentCount; i++)
                 {
-                    attachments[i] = DrawBuffersEnum.ColorAttachment0 + i;
+                    if (TextureAttachments[i].pixelFormat == PixelFormat.DepthComponent || TextureAttachments[i].pixelFormat == PixelFormat.DepthStencil)
+                    {
+                        continue;
+                    }
+                    attachments.Add(DrawBuffersEnum.ColorAttachment0 + i);
                 }
-                GL.DrawBuffers(attachments.Length, attachments);
+                if(attachments.Count > 0)
+                {
+                    GL.DrawBuffers(attachments.Count, attachments.ToArray());
+                }
             }
 
             GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, FrameBufferObject);
@@ -109,9 +127,9 @@ namespace JLGraphics
         {
             GL.DeleteFramebuffer(FrameBufferObject);
             GL.DeleteRenderbuffer(RenderBufferObject);
-            for (int i = 0; i < ColorAttachments.Length; i++)
+            for (int i = 0; i < TextureAttachments.Length; i++)
             {
-                ColorAttachments[i].Dispose();
+                TextureAttachments[i].Dispose();
             }
         }
         //public void Dispose()
