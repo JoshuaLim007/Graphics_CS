@@ -61,11 +61,6 @@ uniform mat4 ModelMatrix;
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
 
-float rand(vec4 seed4) {
-	float dot_product = dot(seed4, vec4(12.9898, 78.233, 45.164, 94.673));
-	return fract(sin(dot_product) * 43758.5453);
-}
-
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 	float bias = mix(0.0001f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
 
