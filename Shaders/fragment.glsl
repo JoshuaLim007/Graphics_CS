@@ -73,19 +73,22 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 
 	float percentCovered = 0.0f;
 	const int kernalHalfSize = 1;
+	const float stepSize = 1;
+	int samples = 0;
 	int size = kernalHalfSize * 2 + 1;
 	float currentDepth = projCoords.z;
 	
-	for (int i = -kernalHalfSize; i <= kernalHalfSize; i++)
+	for (float i = -kernalHalfSize; i <= kernalHalfSize; i += stepSize)
 	{
-		for (int j = -kernalHalfSize; j <= kernalHalfSize; j++)
+		for (float j = -kernalHalfSize; j <= kernalHalfSize; j += stepSize)
 		{
+			samples++;
 			vec2 Offsets = vec2(i * DirectionalShadowDepthMapTexelSize.x, j * DirectionalShadowDepthMapTexelSize.y);
 			vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
 			percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
 		}
 	}
-	return percentCovered / (size * size);
+	return percentCovered / samples;
 }
 
 vec4 GetDirectionalLight(vec3 normal, vec3 geoNormal, vec3 reflectedVector) {

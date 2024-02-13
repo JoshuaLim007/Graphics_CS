@@ -60,11 +60,20 @@ namespace JLGraphics
 
         public virtual int Width { get; set; } = 0;
         public virtual int Height { get; set; } = 0;
-        public int GlTextureID { get; protected set; } = 0;
 
+        int textureId = 0;
+        public int GlTextureID {
+            get
+            {
+                return textureId;
+            }
+            protected set
+            {
+                textureId = value;
+            }
+        }
         public override string Name => "Texture: " + GlTextureID;
-
-        public static explicit operator Texture(int ptr) => new Texture() {GlTextureID = ptr};
+        public static explicit operator Texture(int textureId) => new Texture() {GlTextureID = textureId};
         public static explicit operator int(Texture texture) => texture.GlTextureID;
         protected virtual IntPtr LoadPixelData()
         {

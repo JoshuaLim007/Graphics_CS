@@ -12,8 +12,8 @@ namespace JLGraphics
         public bool EnabledWireFrame { get; set; } = false;
 
         public float Fov { get; set; } = 90;
-        public float Width => Graphics.Instance.Window.Size.X;
-        public float Height => Graphics.Instance.Window.Size.Y;
+        public float Width => Graphics.Instance.GetRenderWindowSize().X;
+        public float Height => Graphics.Instance.GetRenderWindowSize().Y;
         public float Near { get; set; } = 0.03f;
         public float Far { get; set; } = 1000.0f;
         public float Size { get; set; } = 100;

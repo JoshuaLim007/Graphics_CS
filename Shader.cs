@@ -229,12 +229,12 @@ namespace JLGraphics
             }
         }
         internal void CompileShader() {
-            Console.WriteLine("Compiling Shader: " + FilePath);
+            Debug.Log("Compiling Shader: " + FilePath);
             string data;
             if (useShaderParser)
             {
-                Console.WriteLine("Compiling Shader name: " + shaderToUse);
-                Console.WriteLine("Compiling Shader pass: " + passToUse);
+                Debug.Log("Compiling Shader name: " + shaderToUse);
+                Debug.Log("Compiling Shader pass: " + passToUse);
                 var shaders = ShaderParser.ParseShader(FilePath, shaderToUse, passToUse);
                 if(shaders != null)
                 {
@@ -273,7 +273,7 @@ namespace JLGraphics
             string d = GL.GetShaderInfoLog(compiledShader);
             if (d != "")
             {
-                Console.WriteLine(d);
+                Debug.Log(d);
                 return;
             }
         }
@@ -383,7 +383,7 @@ namespace JLGraphics
         List<KeyValuePair<string, ActiveUniformType>> uniformTypes = new List<KeyValuePair<string, ActiveUniformType>>();
         void UpdateProgram()
         {
-            Console.WriteLine("\tLinking shader to program " + Id + ", " + Name);
+            Debug.Log("\tLinking shader to program " + Id + ", " + Name);
             //attach shaders
             GL.AttachShader(Id, Frag);
             GL.AttachShader(Id, Vert);
@@ -406,7 +406,7 @@ namespace JLGraphics
 
             var d = GL.GetProgramInfoLog(Id);
             if (d != "")
-                Console.WriteLine(d);
+                Debug.Log(d);
             uniformLocations.Clear();
         }
         public List<KeyValuePair<string, ActiveUniformType>> GetUniformTypes()
@@ -547,11 +547,8 @@ namespace JLGraphics
         {
             if (!isWithinShader)
             {
-                int previousProgram;
-                previousProgram = GL.GetInteger(GetPName.CurrentProgram);
                 GL.UseProgram(Program);
                 SetTextureUnsafe(uniformName, texture, textureTarget);
-                GL.UseProgram(previousProgram);
             }
             else
             {
@@ -621,7 +618,7 @@ namespace JLGraphics
         }
         void ShaderReload()
         {
-            Console.WriteLine("\tShader Reload.. Rebinding Textures, Setting uniforms for program " + Program.Id + " for material " + Name);
+            Debug.Log("\tShader Reload.. Rebinding Textures, Setting uniforms for program " + Program.Id + " for material " + Name);
             SetInt("textureMask", textureMask);
             UseProgram();
             SetAllTextureUnitToUniform();
