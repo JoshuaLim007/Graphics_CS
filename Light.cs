@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using JLUtility;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,7 +60,11 @@ namespace JLGraphics
         }
         public void RenderShadowMap(Camera camera)
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             ShadowMap.RenderDepthmap(camera);
+            stopwatch.Stop();
+            var ms = stopwatch.Elapsed.TotalMilliseconds;
+            Debug.Log("Directional shadow map: " + ms + " ms");
         }
     }
     public class PointLight : Light

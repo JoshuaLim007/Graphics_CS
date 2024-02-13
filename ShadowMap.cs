@@ -37,7 +37,7 @@ namespace JLGraphics
         {
             DepthOnlyFramebuffer.Dispose();
         }
-        public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
+        public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 10240) : base(resolution)
         {
             this.size = size;
             ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader", "./Shaders/fragmentEmpty.glsl", "./Shaders/vertexSimple.glsl");
@@ -89,20 +89,12 @@ namespace JLGraphics
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.CullFace(CullFaceMode.Front);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, DepthOnlyFramebuffer.FrameBufferObject);
-            //float mult = size / Resolution;
 
             var offset = DirectionalLight.Transform.Forward * farPlane * 0.5f;
             var cameraPosition = camera.Transform.Position;
             bool isUp = DirectionalLight.Transform.Forward == Vector3.UnitY || DirectionalLight.Transform.Forward == -Vector3.UnitY;
             var lightProjectionMatrix = Matrix4.CreateOrthographic(size, size, nearPlane, farPlane);
             var view = Matrix4.LookAt(offset, Vector3.Zero, isUp ? Vector3.UnitX : Vector3.UnitY);
-
-            //var viewSpacePosition = view * new Vector4(cameraPosition, 1.0f);
-            //viewSpacePosition.X = -MathF.Floor(viewSpacePosition.X / mult) * mult;
-            //viewSpacePosition.Y = -MathF.Floor(viewSpacePosition.Y / mult) * mult;
-            //viewSpacePosition.Z = -MathF.Floor(viewSpacePosition.Z / mult) * mult;
-            //var offsetPostViewMatrix = Matrix4.CreateTranslation(new Vector3(viewSpacePosition.X, viewSpacePosition.Y, viewSpacePosition.Z));
-            //var ShadowMatrix = view * offsetPostViewMatrix * lightProjectionMatrix;
 
             float perSize = size * 0.05f;
             cameraPosition.X = MathF.Floor(cameraPosition.X / perSize) * perSize;
