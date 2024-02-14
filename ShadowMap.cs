@@ -1,16 +1,18 @@
 ﻿using JLUtility;
+using Microsoft.VisualBasic;
 using ObjLoader.Loader.Data;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace JLGraphics
 {
-    public class ShadowMap : SafeDispose
+    public abstract class ShadowMap : SafeDispose
     {
         public int Resolution { get; protected set; }
 
@@ -24,6 +26,8 @@ namespace JLGraphics
         protected override void OnDispose()
         {
         }
+
+        public abstract void RenderShadowMap(Camera camera);
     }
     public class DirectionalShadowMap : ShadowMap
     {
@@ -84,7 +88,7 @@ namespace JLGraphics
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
             Shader.SetGlobalVector2("DirectionalShadowDepthMapTexelSize", texelSize);
         }
-        public void RenderDepthmap(Camera camera)
+        public override void RenderShadowMap(Camera camera)
         {
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.CullFace(CullFaceMode.Front);
@@ -110,5 +114,103 @@ namespace JLGraphics
             Shader.SetGlobalMat4("DirectionalLightMatrix", ShadowMatrix);
             GL.CullFace(CullFaceMode.Back);
         }
+    }
+
+    public class PointLightShadowMap : ShadowMap
+    {
+        PointLight point;
+        int fbo;
+        public Texture DepthCubemap { get; private set; }
+        static Shader shadowShader = null;
+        static int shaderShadowReferenceCount = 0;
+
+        public PointLightShadowMap(PointLight pointLight, int resolution = 2048) : base(resolution)
+        {
+            point = pointLight;
+            shaderShadowReferenceCount++;
+        }
+        protected override void OnDispose()
+        {
+            point = null;
+            init = false;
+            GL.DeleteFramebuffer(fbo);
+            DepthCubemap.Dispose();
+            DepthCubemap = null;
+            shaderShadowReferenceCount--;
+            if(shaderShadowReferenceCount <= 0)
+            {
+                shadowShader.Program.Dispose();
+                shadowShader = null;
+            }
+        }
+        public float FarPlane { get; set; } = 25.0f;
+        bool init = false;
+        public override void RenderShadowMap(Camera camera)
+        {
+            if (shadowShader == null)
+            {
+                var program = new ShaderProgram("point light shadow program", "./Shaders/PointLightShadowsFrag.glsl", "./Shaders/vertexSimple.glsl", "./Shaders/PointLightShadowsGeo.glsl");
+                program.CompileProgram();
+                shadowShader = new Shader("point light shadow", program);
+                shadowShader.DepthTestFunction = DepthFunction.Lequal;
+                shadowShader.DepthTest = true;
+            }
+
+            if (!init)
+            {
+                int DepthTexture = GL.GenTexture();
+                GL.BindTexture(TextureTarget.TextureCubeMap, DepthTexture);
+                for (int i = 0; i < 6; i++)
+                {
+                    GL.TexImage2D(TextureTarget.TextureCubeMapPositiveX + i, 0, PixelInternalFormat.DepthComponent, Resolution, Resolution, 0, PixelFormat.DepthComponent, PixelType.Float, IntPtr.Zero);
+                    GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMagFilter, (float)TextureMagFilter.Nearest);
+                    GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMinFilter, (float)TextureMinFilter.Nearest);
+                    GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+                    GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+                    GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapR, (int)TextureWrapMode.ClampToEdge);
+                }
+                this.DepthCubemap = Texture.CreateTextureObjectFromID(DepthTexture, TextureTarget.TextureCubeMap, PixelFormat.DepthComponent, PixelInternalFormat.DepthComponent, Resolution, Resolution);
+
+                fbo = GL.GenFramebuffer();
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
+                GL.FramebufferTexture(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, DepthTexture, 0);
+                GL.DrawBuffer(DrawBufferMode.None);
+                GL.ReadBuffer(ReadBufferMode.None);
+
+                if (GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != FramebufferErrorCode.FramebufferComplete)
+                    Debug.Log("Framebuffer is not complete!", Debug.Flag.Error);
+
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+                init = true;
+            }
+
+            float aspect = 1.0f;
+            float near = 1.0f;
+            float far = FarPlane;
+            var proj =  Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(90.0f), aspect, near, far);
+            var lightPos = point.Transform.Position;
+            Matrix4[] shadowTransforms = new Matrix4[6];
+            shadowTransforms[0] = Matrix4.LookAt(lightPos, lightPos + new Vector3(1.0f, 0.0f, 0.0f), new Vector3(0.0f, -1.0f, 0.0f)) * proj;
+            shadowTransforms[1] = Matrix4.LookAt(lightPos, lightPos + new Vector3(-1.0f, 0.0f, 0.0f), new Vector3(0.0f, -1.0f, 0.0f)) * proj;
+            shadowTransforms[2] = Matrix4.LookAt(lightPos, lightPos + new Vector3(0.0f, 1.0f, 0.0f), new Vector3(0.0f, 0.0f, 1.0f)) * proj;
+            shadowTransforms[3] = Matrix4.LookAt(lightPos, lightPos + new Vector3(0.0f, -1.0f, 0.0f), new Vector3(0.0f, 0.0f, -1.0f)) * proj;
+            shadowTransforms[4] = Matrix4.LookAt(lightPos, lightPos + new Vector3(0.0f, 0.0f, 1.0f), new Vector3(0.0f, -1.0f, 0.0f)) * proj;
+            shadowTransforms[5] = Matrix4.LookAt(lightPos, lightPos + new Vector3(0.0f, 0.0f, -1.0f), new Vector3(0.0f, -1.0f, 0.0f)) * proj;
+
+            for (int i = 0; i < 6; i++)
+            {
+                shadowShader.SetMat4("shadowMatrices[" + i + "]", shadowTransforms[i]);
+            }
+
+            shadowShader.SetMat4("ProjectionViewMatrix", Matrix4.Identity);
+            shadowShader.SetVector3("lightPos", lightPos);
+            shadowShader.SetFloat("far_plane", far);
+
+            GL.Viewport(0, 0, Resolution, Resolution);
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
+            GL.Clear(ClearBufferMask.DepthBufferBit);
+            Graphics.Instance.RenderScene(camera, Graphics.RenderSort.None, shadowShader);
+        }
+
     }
 }

@@ -71,9 +71,9 @@ namespace JLGraphics
                 TextureAttachments[i].textureMagFilter = textureFormat[i].magFilter;
                 TextureAttachments[i].textureMinFilter = textureFormat[i].minFilter;
                 TextureAttachments[i].textureWrapMode = textureFormat[i].wrapMode;
-                TextureAttachments[i].MipmapLevels = textureFormat[i].maxMipmap;
+                TextureAttachments[i].mipmapLevels = textureFormat[i].maxMipmap;
                 TextureAttachments[i].generateMipMaps = textureFormat[i].maxMipmap != 0;
-                TextureAttachments[i].BorderColor = textureFormat[i].borderColor;
+                TextureAttachments[i].borderColor = textureFormat[i].borderColor;
                 TextureAttachments[i].ResolveTexture(textureFormat[i].isShadowMap);
                 if (textureFormat[i].pixelFormat == PixelFormat.DepthComponent || textureFormat[i].pixelFormat == PixelFormat.DepthStencil)
                 {

@@ -22,7 +22,7 @@ namespace JLGraphics
         public ImageResult image { get; }
         public ImageTexture(ImageResult image)
         {
-            TextureTarget = TextureTarget.Texture2D;
+            textureTarget = TextureTarget.Texture2D;
             this.image = image;
         }
         public override int Width

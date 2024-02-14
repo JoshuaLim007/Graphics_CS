@@ -112,7 +112,7 @@ namespace JLGraphics
 
             Window.UpdateFrame += UpdateFrame;
         }
-        CubemapTexture SkyBox;
+        FileImageCubemapTexture SkyBox;
         ShaderProgram DefaultShaderProgram;
         ShaderProgram PassthroughShaderProgram;
         ShaderProgram DepthPrepassShaderProgram;
@@ -184,7 +184,7 @@ namespace JLGraphics
             depthOnlyShader.CompileProgram();
             skyboxDepthPrepassProgram.CompileProgram();
 
-            SkyBox = new CubemapTexture();
+            SkyBox = new FileImageCubemapTexture();
             SkyBox.Path = "D:\\joshu\\Downloads\\rural_asphalt_road_4k.hdr";
             SkyBox.RenderCubemap(2048, "SkyBox");
 
@@ -258,6 +258,7 @@ namespace JLGraphics
         }
         float statsInterval = 0.0f;
         float fixedTimer = 0;
+        int frameIncrement = 0;
         DateTime time = DateTime.Now;
         DateTime time1 = DateTime.Now;
         List<Action> temporaryUpdateFrameCommands = new List<Action>();
@@ -378,6 +379,9 @@ namespace JLGraphics
                     IsCursorInSceneWindow = false;
                 }
             }
+            
+            frameIncrement++;
+            Shader.SetGlobalInt("_Frame", frameIncrement);
 
             DoRenderUpdate();
 
@@ -505,6 +509,8 @@ namespace JLGraphics
         {
             Shader.SetGlobalMat4("ProjectionMatrix", camera.ProjectionMatrix);
             Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
+            var vp = camera.ViewMatrix * camera.ProjectionMatrix;
+            Shader.SetGlobalMat4("InvProjectionViewMatrix", vp.Inverted());
             Shader.SetGlobalMat4("ProjectionViewMatrix", camera.ViewMatrix * camera.ProjectionMatrix);
             Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
             Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
@@ -637,7 +643,7 @@ namespace JLGraphics
                 renderPasses[renderPassIndex].Execute(MainFrameBuffer);
                 stopw.Stop();
                 var ms = stopw.Elapsed.TotalMilliseconds;
-                Debug.Log(renderPasses[renderPassIndex].Name + ": " + ms + " ms");
+                //Debug.Log(renderPasses[renderPassIndex].Name + ": " + ms + " ms");
             }
             return renderPassIndex;
         }
@@ -760,6 +766,10 @@ namespace JLGraphics
                         Shader.SetGlobalVector3("DirectionalLight.Direction", t0.Transform.Forward);
                         break;
                     case PointLight t0:
+                        if (t0.HasShadows)
+                        {
+                            t0.RenderShadowMap(camera);
+                        }
                         pointLights.Add(t0);
                         break;
                 }
@@ -788,6 +798,13 @@ namespace JLGraphics
                 Shader.SetGlobalFloat("PointLights[" + i + "].Constant", pointLights[i].AttenConstant);
                 Shader.SetGlobalFloat("PointLights[" + i + "].Linear", pointLights[i].AttenLinear);
                 Shader.SetGlobalFloat("PointLights[" + i + "].Exp", pointLights[i].AttenExp);
+                Shader.SetGlobalFloat("PointLights[" + i + "].Range", pointLights[i].Range);
+                Shader.SetGlobalBool("PointLights[" + i + "].HasShadows", pointLights[i].HasShadows);
+                if (pointLights[i].HasShadows)
+                {
+                    Shader.SetGlobalTexture("PointLights[" + i + "].ShadowMap", pointLights[i].GetShadowMapper().DepthCubemap);
+                    Shader.SetGlobalFloat("PointLights[" + i + "].ShadowFarPlane", pointLights[i].GetShadowMapper().FarPlane);
+                }
             }
             Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }

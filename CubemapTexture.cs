@@ -6,15 +6,11 @@ using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
 
 namespace JLGraphics
 {
-    internal class CubemapTexture : SafeDispose
+    internal class FileImageCubemapTexture : SafeDispose
     {
-        int ImageTextureID;
         MeshPrimative cubeMesh;
         protected override void OnDispose()
         {
-            if (ImageTextureID != 0)
-                GL.DeleteTexture(ImageTextureID);
-
             cubeMapTextureInstances--;
             if (cubeMapTextureInstances == 0)
             {
@@ -23,7 +19,8 @@ namespace JLGraphics
             }
             Mesh.FreeMeshObject(cubeMesh);
             disposed = true;
-
+            CubemapTexture.Dispose();
+            imageTex.Dispose();
             imageResult.Dispose();
         }
         public string Path { get; set; }
@@ -34,7 +31,7 @@ namespace JLGraphics
         static Shader CubeMapProjectionShader = null;
         static ShaderProgram CubemapShaderProgram = null;
         static int cubeMapTextureInstances = 0;
-        public CubemapTexture()
+        public FileImageCubemapTexture()
         {
             if(CubeMapProjectionShader == null)
             {
@@ -61,14 +58,13 @@ namespace JLGraphics
             imageResult = image;
             return image.Data;
         }
-        void ResolveTexture()
+        int ResolveTexture()
         {
             if (disposed)
             {
                 Debug.Log("Cubemap texture is disposed!", Debug.Flag.Error);
             }
-            if (ImageTextureID == 0)
-                ImageTextureID = GL.GenTexture();
+            int ImageTextureID = GL.GenTexture();
 
             GL.BindTexture(TextureTarget.Texture2D, ImageTextureID);
             var imageData = LoadPixelData();
@@ -84,10 +80,15 @@ namespace JLGraphics
 
             imageFileData.Close();
             imageFile.Close();
+
+            return ImageTextureID;
         }
+        Texture imageTex;
+        public Texture CubemapTexture { get; private set; }
         public void RenderCubemap(int size = 512, string uniformTextureId = "")
         {
-            ResolveTexture();
+            int ImageTextureID = ResolveTexture();
+            imageTex = Texture.CreateTextureObjectFromID(ImageTextureID, TextureTarget.Texture2D, PixelFormat.Rgb, PixelInternalFormat.Rgb32f, imageResult.Width, imageResult.Height);
             GL.Enable(EnableCap.TextureCubeMapSeamless);
 
             if (disposed)
@@ -167,7 +168,7 @@ namespace JLGraphics
             };
 
             
-            CubeMapProjectionShader.SetTexture("equirectangularMap", ImageTextureID, TextureTarget.Texture2D);
+            CubeMapProjectionShader.SetTexture("equirectangularMap", imageTex);
             CubeMapProjectionShader.DepthTest = false;
             GL.Viewport(0, 0, width, height);
 
@@ -205,16 +206,18 @@ namespace JLGraphics
 
                 GL.DrawElements(PrimitiveType.Triangles, cubeMesh.IndiciesCount, DrawElementsType.UnsignedInt, 0);
             }
-
-            if(uniformTextureId != "")
+            CubemapTexture = Texture.CreateTextureObjectFromID(tColorCubeMap, TextureTarget.TextureCubeMap, PixelFormat.Rgb, PixelInternalFormat.Rgb16f, width, height);
+            if (uniformTextureId != "")
             {
-                Shader.SetGlobalTexture(uniformTextureId, tColorCubeMap, TextureTarget.TextureCubeMap);
+                Shader.SetGlobalTexture(uniformTextureId, CubemapTexture);
             }
             GL.Enable(EnableCap.CullFace);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.DeleteFramebuffer(fbo);
 
-            GL.Viewport(0, 0, Graphics.Instance.Window.Size.X, Graphics.Instance.Window.Size.Y); 
+            GL.Viewport(0, 0, Graphics.Instance.Window.Size.X, Graphics.Instance.Window.Size.Y);
+
+            GL.DeleteTexture(tDepthCubeMap);
         }
     }
 }

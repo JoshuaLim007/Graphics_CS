@@ -285,11 +285,13 @@ namespace JLGraphics
     public sealed class ShaderProgram : IDisposable
     {
         internal bool Disposed { get; private set; } = false;
-        internal ShaderFile Frag { get; }
-        internal ShaderFile Vert { get; }
+        internal ShaderFile Frag { get; } = null;
+        internal ShaderFile Geo { get; } = null;
+        internal ShaderFile Vert { get; } = null;
 
         public IFileObject FragFile => Frag;
         public IFileObject VertFile => Vert;
+        public IFileObject GeoFile => Geo;
 
         string Name { get; }
         public int Id { get; private set; } = 0;
@@ -303,6 +305,7 @@ namespace JLGraphics
             Id = GL.CreateProgram();
             //recompile vert shader
             Vert.CompileShader();
+            Geo.CompileShader();
             UpdateProgram();
             OnShaderReload?.Invoke();
         }
@@ -312,14 +315,29 @@ namespace JLGraphics
             Id = GL.CreateProgram();
             //recompile frag shader
             Frag.CompileShader();
+            Geo.CompileShader();
             UpdateProgram();
             OnShaderReload?.Invoke();
         }
-        public ShaderProgram(string name, string fragPath, string vertPath)
+        void OnGeoFileChangeShaderRecompile()
+        {
+            GL.DeleteProgram(Id);
+            Id = GL.CreateProgram();
+            //recompile frag shader
+            Vert.CompileShader();
+            Frag.CompileShader();
+            UpdateProgram();
+            OnShaderReload?.Invoke();
+        }
+        public ShaderProgram(string name, string fragPath, string vertPath, string geometryPath = "")
         {
             Name = name;
             Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
             Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
+            if(geometryPath.Trim() != "")
+            {
+                Geo = new ShaderFile(geometryPath, ShaderType.GeometryShader);
+            }
             Id = GL.CreateProgram();
             AllShaderPrograms.Add(this);
         }
@@ -352,6 +370,9 @@ namespace JLGraphics
             Name = shaderProgram.Name;
             Vert = new ShaderFile(shaderProgram.VertFile.FilePath, ShaderType.VertexShader);
             Frag = new ShaderFile(shaderProgram.FragFile.FilePath, ShaderType.FragmentShader);
+            if(shaderProgram.Geo != null)
+                Geo = new ShaderFile(shaderProgram.GeoFile.FilePath, ShaderType.GeometryShader);
+            
             Id = GL.CreateProgram();
             AllShaderPrograms.Add(this);
         }
@@ -375,8 +396,10 @@ namespace JLGraphics
             isCompiled = true;
             Frag.CompileShader();
             Vert.CompileShader();
+            Geo?.CompileShader();
             Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
             Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
+            Geo?.FileChangeCallback.Add(OnGeoFileChangeShaderRecompile);
             UpdateProgram();
             //UpdateProgram called via callback
         }
@@ -387,6 +410,8 @@ namespace JLGraphics
             //attach shaders
             GL.AttachShader(Id, Frag);
             GL.AttachShader(Id, Vert);
+            if(Geo != null)
+                GL.AttachShader(Id, Geo);
 
             //link to program
             GL.LinkProgram(Id);
@@ -394,6 +419,8 @@ namespace JLGraphics
             //detach shaders
             GL.DetachShader(Id, Frag);
             GL.DetachShader(Id, Vert);
+            if (Geo != null)
+                GL.DetachShader(Id, Geo);
 
             GL.GetProgram(Id, GetProgramParameterName.ActiveUniforms, out int uniformCount);
             for (int i = 0; i < uniformCount; i++)
@@ -428,10 +455,12 @@ namespace JLGraphics
             Disposed = true;
             Frag.Dispose();
             Vert.Dispose();
+            Geo?.Dispose();
             GL.DeleteProgram(Id);
             AllShaderPrograms.Remove(this);
             Vert.FileChangeCallback.Remove(OnVertFileChangeShaderRecompile);
             Frag.FileChangeCallback.Remove(OnFragFileChangeShaderRecompile);
+            Geo?.FileChangeCallback.Remove(OnGeoFileChangeShaderRecompile);
         }
 
         public static int ProgramCounts => AllShaderPrograms.Count;
@@ -513,7 +542,7 @@ namespace JLGraphics
             int textureIndex = textureIndexFromUniform(uniformName);
 
             if (textureTarget != null)
-                texture.TextureTarget = textureTarget.Value;
+                texture.textureTarget = textureTarget.Value;
 
             if (textureIndex == -1)
             {
@@ -543,27 +572,16 @@ namespace JLGraphics
                 availableTextureSlots.Push(textureIndex);
             }
         }
-        public void SetTexture(string uniformName, Texture texture, TextureTarget? textureTarget = null)
+        public void SetTexture(string uniformName, Texture texture)
         {
             if (!isWithinShader)
             {
                 GL.UseProgram(Program);
-                SetTextureUnsafe(uniformName, texture, textureTarget);
+                SetTextureUnsafe(uniformName, texture, texture.textureTarget);
             }
             else
             {
-                SetTextureUnsafe(uniformName, texture, textureTarget);
-            }
-        }
-        public void SetTexture(string uniformName, int texturePtr, TextureTarget textureTarget)
-        {
-            if(texturePtr == 0)
-            {
-                SetTexture(uniformName, null, textureTarget);
-            }
-            else
-            {
-                SetTexture(uniformName, (Texture)texturePtr, textureTarget);
+                SetTextureUnsafe(uniformName, texture, texture.textureTarget);
             }
         }
 
@@ -670,6 +688,11 @@ namespace JLGraphics
         }
         internal ShaderProgram UseProgram()
         {
+            if (Program.Disposed)
+            {
+                Debug.Log("Shader program has been dispoed!", Debug.Flag.Error);
+                return null;
+            }
             GL.UseProgram(Program);
             //rarely the case
             if(textureMask == 0)
@@ -764,6 +787,11 @@ namespace JLGraphics
         }
         internal bool UpdateUniforms()
         {
+            if (Program.Disposed)
+            {
+                Debug.Log("Shader program has been dispoed!", Debug.Flag.Error);
+                return false;
+            }
             bool hasUpdated = false;
             isWithinShader = true;
             if (DepthTest)
@@ -821,13 +849,13 @@ namespace JLGraphics
                         GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
                         
                         //bind the texture to it
-                        GL.BindTexture(textures[i].TextureTarget, textures[i].GlTextureID);
+                        GL.BindTexture(textures[i].textureTarget, textures[i].GlTextureID);
                         hasUpdated = true;
                     }
 
 
                     PreviousTextureState[i].TexturePtr = textures[i].GlTextureID;
-                    PreviousTextureState[i].textureTarget = textures[i].TextureTarget;
+                    PreviousTextureState[i].textureTarget = textures[i].textureTarget;
                 }
                 else
                 {
@@ -922,12 +950,6 @@ namespace JLGraphics
         public static void SetGlobalTexture(string id, Texture texture)
         {
             mSetGlobalUniformValue(UniformType.texture, texture, id);
-        }
-        public static void SetGlobalTexture(string id, int texture, TextureTarget textureTarget)
-        {
-            Texture texture1 = (Texture)texture;
-            texture1.TextureTarget = textureTarget;
-            mSetGlobalUniformValue(UniformType.texture, texture1, id);
         }
         public static void SetGlobalMat4(string id, Matrix4 matrix4)
         {

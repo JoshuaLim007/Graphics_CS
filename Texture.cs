@@ -2,6 +2,7 @@
 using OpenTK.Mathematics;
 using StbImageSharp;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.CompilerServices;
 
 namespace JLGraphics
 {
@@ -48,15 +49,15 @@ namespace JLGraphics
     }
     public class Texture : SafeDispose
     {
-        public TextureTarget TextureTarget { get; set; } = TextureTarget.Texture2D;
+        public TextureTarget textureTarget { get; set; } = TextureTarget.Texture2D;
         public PixelFormat pixelFormat { get; set; } = PixelFormat.Rgba;
         public PixelInternalFormat internalPixelFormat { get; set; } = PixelInternalFormat.Rgba;
         public bool generateMipMaps { get; set; } = true;
         public TextureWrapMode textureWrapMode { get; set; } = TextureWrapMode.ClampToEdge;
         public TextureMinFilter textureMinFilter { get; set; } = TextureMinFilter.Nearest;
         public TextureMagFilter textureMagFilter { get; set; } = TextureMagFilter.Nearest;
-        public Vector4 BorderColor { get; set; } = Vector4.Zero;
-        public int MipmapLevels { get; set; } = 11;
+        public Vector4 borderColor { get; set; } = Vector4.Zero;
+        public int mipmapLevels { get; set; } = 11;
 
         public virtual int Width { get; set; } = 0;
         public virtual int Height { get; set; } = 0;
@@ -73,8 +74,40 @@ namespace JLGraphics
             }
         }
         public override string Name => "Texture: " + GlTextureID;
+        [System.Obsolete("Use CreateTextureObjectFromID", true)]
         public static explicit operator Texture(int textureId) => new Texture() {GlTextureID = textureId};
+
         public static explicit operator int(Texture texture) => texture.GlTextureID;
+
+        public static Texture CreateTextureObjectFromID(int glId, TextureTarget textureTarget, PixelFormat pixelFormat, PixelInternalFormat pixelInternalFormat, int width, int height)
+        {
+            var texture = new Texture() { GlTextureID = glId };
+            
+            GL.BindTexture(textureTarget, glId);
+            GL.GetTexParameter(textureTarget, GetTextureParameter.TextureWrapS, out int textureWrapMode);
+            GL.GetTexParameter(textureTarget, GetTextureParameter.TextureMinFilter, out int textureMinFilter);
+            GL.GetTexParameter(textureTarget, GetTextureParameter.TextureMagFilter, out int textureMagFilter);
+            float[] colors = new float[4];
+            GL.GetTexParameter(textureTarget, GetTextureParameter.TextureBorderColor, colors);
+            GL.GetTexParameter(textureTarget, GetTextureParameter.GenerateMipmap, out int generateMipMaps);
+            GL.GetTexParameter(textureTarget, GetTextureParameter.TextureMaxLevel, out int MipmapLevels);
+
+            texture.textureWrapMode = (TextureWrapMode)textureWrapMode;
+            texture.textureMinFilter = (TextureMinFilter)textureMinFilter;
+            texture.textureMagFilter = (TextureMagFilter)textureMagFilter;
+            texture.borderColor = new Vector4(colors[0], colors[1], colors[2], colors[3]);
+            texture.generateMipMaps = generateMipMaps == 1 ? true : false;
+            texture.mipmapLevels = MipmapLevels;
+            texture.internalPixelFormat = pixelInternalFormat;
+            texture.pixelFormat = pixelFormat;
+            texture.Width = width;
+            texture.textureTarget = textureTarget;
+            texture.Height = height;
+
+            GL.BindTexture(textureTarget, 0);
+            return texture;
+        }
+
         protected virtual IntPtr LoadPixelData()
         {
             return IntPtr.Zero;
@@ -82,33 +115,39 @@ namespace JLGraphics
         public virtual void ResolveTexture(bool isShadowMap = false)
         {
             if (GlTextureID == 0)
+            {
                 GlTextureID = GL.GenTexture();
-
-            GL.BindTexture(TextureTarget, GlTextureID);
-            GL.TexParameter(TextureTarget, TextureParameterName.TextureWrapS, (int)textureWrapMode);
-            GL.TexParameter(TextureTarget, TextureParameterName.TextureWrapT, (int)textureWrapMode);
-            GL.TexParameter(TextureTarget, TextureParameterName.TextureMinFilter, (int)textureMinFilter);
-            GL.TexParameter(TextureTarget, TextureParameterName.TextureMagFilter, (int)textureMagFilter);
-            if (isShadowMap)
-            {
-                GL.TexParameter(TextureTarget, TextureParameterName.TextureCompareMode, (int)TextureCompareMode.CompareRefToTexture);
-                GL.TexParameter(TextureTarget, TextureParameterName.TextureCompareFunc, (int)DepthFunction.Lequal);
-            }
-            if (generateMipMaps)
-            {
-                GL.TexParameter(TextureTarget, TextureParameterName.TextureMaxLevel, MipmapLevels);
-                GL.TexParameter(TextureTarget, TextureParameterName.TextureBaseLevel, 0);
-            }
-            float[] borderColor = { BorderColor.X, BorderColor.Y, BorderColor.Z, BorderColor.W };
-            GL.TexParameter(TextureTarget, TextureParameterName.TextureBorderColor, borderColor);
-
-            if(pixelFormat == PixelFormat.DepthComponent || pixelFormat == PixelFormat.DepthStencil)
-            {
-                GL.TexImage2D(TextureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.Float, LoadPixelData());
             }
             else
             {
-                GL.TexImage2D(TextureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.UnsignedByte, LoadPixelData());
+                GL.DeleteTexture(GlTextureID);
+            }
+
+            GL.BindTexture(textureTarget, GlTextureID);
+            GL.TexParameter(textureTarget, TextureParameterName.TextureWrapS, (int)textureWrapMode);
+            GL.TexParameter(textureTarget, TextureParameterName.TextureWrapT, (int)textureWrapMode);
+            GL.TexParameter(textureTarget, TextureParameterName.TextureMinFilter, (int)textureMinFilter);
+            GL.TexParameter(textureTarget, TextureParameterName.TextureMagFilter, (int)textureMagFilter);
+            if (isShadowMap)
+            {
+                GL.TexParameter(textureTarget, TextureParameterName.TextureCompareMode, (int)TextureCompareMode.CompareRefToTexture);
+                GL.TexParameter(textureTarget, TextureParameterName.TextureCompareFunc, (int)DepthFunction.Lequal);
+            }
+            if (generateMipMaps)
+            {
+                GL.TexParameter(textureTarget, TextureParameterName.TextureMaxLevel, mipmapLevels);
+                GL.TexParameter(textureTarget, TextureParameterName.TextureBaseLevel, 0);
+            }
+            float[] borderColor = { this.borderColor.X, this.borderColor.Y, this.borderColor.Z, this.borderColor.W };
+            GL.TexParameter(textureTarget, TextureParameterName.TextureBorderColor, borderColor);
+
+            if(pixelFormat == PixelFormat.DepthComponent || pixelFormat == PixelFormat.DepthStencil)
+            {
+                GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.Float, LoadPixelData());
+            }
+            else
+            {
+                GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.UnsignedByte, LoadPixelData());
             }
 
             if (generateMipMaps)

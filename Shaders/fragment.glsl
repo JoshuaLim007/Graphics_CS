@@ -16,6 +16,10 @@ uniform struct POINT_LIGHT {
 	float Constant;
 	float Linear;
 	float Exp;
+	bool HasShadows;
+	samplerCube ShadowMap;
+	float ShadowFarPlane;
+	float Range;
 } PointLights[MAX_POINT_LIGHTS];
 uniform int PointLightCount;
 
@@ -31,9 +35,9 @@ layout(location = 0) out vec4 frag;
 
 //textures
 uniform sampler2D AlbedoTex;	//rgba texture
-uniform sampler2D NormalTex;		//normal map in tangent space
+uniform sampler2D NormalTex;	//normal map in tangent space
 uniform sampler2D MAOSTex;		//r = metallicness, g = ambient occlusion, b = smoothness
-uniform sampler2D EmissionTex;		//r = metallicness, g = ambient occlusion, b = smoothness
+uniform sampler2D EmissionTex;	//r = metallicness, g = ambient occlusion, b = smoothness
 uniform int textureMask;		//texture masks
 
 //environment
@@ -60,6 +64,16 @@ uniform mat4 ModelMatrix;
 //misc
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
+uniform int _Frame;
+const uint k = 1103515245U;
+vec3 hash(uvec3 x)
+{
+	x = ((x >> 8U) ^ x.yzx) * k;
+	x = ((x >> 8U) ^ x.yzx) * k;
+	x = ((x >> 8U) ^ x.yzx) * k;
+
+	return vec3(x) * (1.0 / float(0xffffffffU));
+}
 
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 	float bias = mix(0.0001f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
@@ -73,22 +87,67 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 
 	float percentCovered = 0.0f;
 	const int kernalHalfSize = 1;
-	const float stepSize = 1;
-	int samples = 0;
+	const float stepSize = 0.5f;
 	int size = kernalHalfSize * 2 + 1;
 	float currentDepth = projCoords.z;
-	
-	for (float i = -kernalHalfSize; i <= kernalHalfSize; i += stepSize)
+	const int samples = 16;
+	const int scale = 1000;
+	const float spread = 1;
+	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+
+	for (int i = 0; i < samples; i++)
 	{
-		for (float j = -kernalHalfSize; j <= kernalHalfSize; j += stepSize)
-		{
-			samples++;
-			vec2 Offsets = vec2(i * DirectionalShadowDepthMapTexelSize.x, j * DirectionalShadowDepthMapTexelSize.y);
-			vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
-			percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
-		}
+		int iscale = i * scale + _Frame;
+		vec2 Offsets = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
+		Offsets.x *= DirectionalShadowDepthMapTexelSize.x * spread;
+		Offsets.y *= DirectionalShadowDepthMapTexelSize.y * spread;
+		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
+		percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
 	}
+
+	//int samples = 0;
+	//for (float i = -kernalHalfSize; i <= kernalHalfSize; i += stepSize)
+	//{
+	//	for (float j = -kernalHalfSize; j <= kernalHalfSize; j += stepSize)
+	//	{
+	//		samples++;
+	//		vec2 Offsets = vec2(i * DirectionalShadowDepthMapTexelSize.x, j * DirectionalShadowDepthMapTexelSize.y);
+	//		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
+	//		percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
+	//	}
+	//}
+
 	return percentCovered / samples;
+}
+float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube depthMap, float far_plane, vec3 normal) {
+	// get vector between fragment position and light position
+	vec3 fragToLight = fragPos - lightPos;
+	// now get current linear depth as the length between the fragment and light position
+	float currentDepth = length(fragToLight);
+	// now test for shadows
+	float dot = abs(dot(normal, normalize(fragToLight)));
+	float bias = mix(.75, 0.025f, dot);
+
+	float shadow = 0.0;
+	int samples = 16;
+	float viewDistance = length(lightPos - fragPos);
+	float diskRadius = 0.1f;
+	const int scale = 1000;
+	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+	for (int i = 0; i < samples; ++i)
+	{
+		int iscale = i * scale + _Frame;
+		vec3 randDir = hash(uvec3(scaledPos.x, scaledPos.y, iscale));
+		randDir = normalize(randDir);
+		float closestDepth = texture(depthMap, fragToLight + randDir * diskRadius).r;
+		closestDepth *= far_plane;   // undo mapping [0;1]
+		if (currentDepth - bias > closestDepth)
+			shadow += 1.0;
+	}
+	shadow /= float(samples);
+
+
+	return shadow;
 }
 
 vec4 GetDirectionalLight(vec3 normal, vec3 geoNormal, vec3 reflectedVector) {
@@ -109,8 +168,7 @@ vec4 GetDirectionalLight(vec3 normal, vec3 geoNormal, vec3 reflectedVector) {
 	vec4 c = vec4(sunColor, 0) + specColor;
 	return c;
 }
-
-vec4 GetPointLight(vec3 worldPosition, vec3 normal, vec3 reflectedVector) {
+vec4 GetPointLight(vec3 cameraPosition, vec3 worldPosition, vec3 normal, vec3 reflectedVector) {
 	float lightFactor = 1.0f;
 	vec4 col = vec4(0, 0, 0, 0);
 	for (int i = 0; i < PointLightCount; i++)
@@ -127,8 +185,14 @@ vec4 GetPointLight(vec3 worldPosition, vec3 normal, vec3 reflectedVector) {
 			+ PointLights[i].Linear * dist
 		);
 		float shade = min(max(dot(normal, dirFromLight), 0), 1) / atten;
-		vec3 lCol = PointLights[i].Color * lightFactor * shade;
 
+		if (PointLights[i].HasShadows == true) {
+			shade *= (1 - GetPointLightShadow(cameraPosition, worldPosition, PointLights[i].Position, PointLights[i].ShadowMap, PointLights[i].ShadowFarPlane, fs_in.Normal));
+		}
+
+		shade *= 1 - smoothstep(PointLights[i].Range * 0.75f, PointLights[i].Range, dist);
+
+		vec3 lCol = PointLights[i].Color * lightFactor * shade;
 		//specular color
 		float specular = min(max(dot(reflectedVector, dirFromLight), 0), 1);
 		specular = pow(specular, pow(Smoothness, 3) * 32);
@@ -195,10 +259,9 @@ void main(){
 	vec3 reflectedVector = reflect(viewVector, normal);
 
 	vec4 sunColor = GetDirectionalLight(normal, fs_in.Normal, reflectedVector);
-	vec4 pointLightColor = GetPointLight(fs_in.Position.xyz, normal, reflectedVector);
+	vec4 pointLightColor = GetPointLight(CameraWorldSpacePos, fs_in.Position.xyz, normal, reflectedVector);
 
-	vec4 envColor = vec4(texture(SkyBox, reflectedVector).rgb, 1.0);
-	envColor.xyz = reinhard(envColor.xyz);
+	vec4 envColor = vec4(0, 0, 0, 0);// vec4(texture(SkyBox, reflectedVector).rgb, 1.0);
 
 	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
 	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
@@ -207,6 +270,8 @@ void main(){
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));
 	c = mix(vec4(c), vec4(FogColor, 1), 1 - density);
+
+	//float shadow = 1 - GetPointLightShadow(CameraWorldSpacePos, fs_in.Position.xyz, PointLights[0].Position, PointLights[0].ShadowMap, PointLights[0].ShadowFarPlane, fs_in.Normal);
 
 	frag = c;
 }

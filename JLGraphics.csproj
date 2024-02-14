@@ -59,6 +59,8 @@
     <None Remove="Shaders\DepthOnly.frag" />
     <None Remove="Shaders\fragmentEmpty.glsl" />
     <None Remove="shaders\Passthrough.vert" />
+    <None Remove="Shaders\PointLightShadowsFrag.glsl" />
+    <None Remove="Shaders\PointLightShadowsGeo.glsl" />
     <None Remove="Shaders\PostProcess.frag" />
     <None Remove="Shaders\Rect2CubeFrag.glsl" />
     <None Remove="Shaders\Rect2CubeVert.glsl" />

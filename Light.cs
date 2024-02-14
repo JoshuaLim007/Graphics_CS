@@ -11,6 +11,7 @@ namespace JLGraphics
 {
     public abstract class Light : Component
     {
+        public bool HasShadows { get; protected set; } = false;
         protected Light()
         {
             InternalGlobalScope<Light>.Values.Add(this);
@@ -34,6 +35,7 @@ namespace JLGraphics
                 blackBodyColor = GetBlackBodyColor(temperature);
             }
         }
+        public abstract void RenderShadowMap(Camera camera);
         public static Vector3 GetBlackBodyColor(float temp)
         {
             Vector3 color = new Vector3(255.0f, 255.0f, 255.0f);
@@ -53,24 +55,47 @@ namespace JLGraphics
     }
     public class DirectionalLight : Light
     {
-        public DirectionalShadowMap ShadowMap { get; }
+        DirectionalShadowMap ShadowMapper;
         public DirectionalLight()
         {
-            ShadowMap = new DirectionalShadowMap(this);
+            HasShadows = true;
+            ShadowMapper = new DirectionalShadowMap(this);
         }
-        public void RenderShadowMap(Camera camera)
+        public override void RenderShadowMap(Camera camera)
         {
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            ShadowMap.RenderDepthmap(camera);
-            stopwatch.Stop();
-            var ms = stopwatch.Elapsed.TotalMilliseconds;
-            Debug.Log("Directional shadow map: " + ms + " ms");
+            ShadowMapper.RenderShadowMap(camera);
+        }
+        public DirectionalShadowMap GetShadowMapper()
+        {
+            return ShadowMapper;
         }
     }
     public class PointLight : Light
     {
+        PointLightShadowMap ShadowMapper;
         public float AttenConstant { get; set; } = 0.1f;
         public float AttenLinear { get; set; } = 0.05f;
         public float AttenExp { get; set; } = 0.95f;
+        public float Range { get; set; } = 10.0f;
+        public void AddShadows(int resolution = 1024)
+        {
+            HasShadows = true;
+            ShadowMapper = new PointLightShadowMap(this, resolution);
+        }
+        public override void RenderShadowMap(Camera camera)
+        {
+            ShadowMapper.FarPlane = Range;
+            ShadowMapper.RenderShadowMap(camera);
+        }
+        public void RemoveShadows()
+        {
+            HasShadows = false;
+            ShadowMapper.Dispose();
+            ShadowMapper = null;
+        }
+        public PointLightShadowMap GetShadowMapper()
+        {
+            return ShadowMapper;
+        }
     }
 }
