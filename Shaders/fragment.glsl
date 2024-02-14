@@ -262,10 +262,10 @@ void main(){
 	vec4 pointLightColor = GetPointLight(CameraWorldSpacePos, fs_in.Position.xyz, normal, reflectedVector);
 
 	vec4 envColor = vec4(0, 0, 0, 0);// vec4(texture(SkyBox, reflectedVector).rgb, 1.0);
-
+	vec4 diffuseAmbientColor = vec4(0, 0, 0, 0); // GetAmbientColor(normal);
 	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
 	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
-	vec4 c = color * (sunColor + pointLightColor + GetAmbientColor(normal)) + vec4(EmissiveColor, 0);
+	vec4 c = color * (sunColor + pointLightColor + diffuseAmbientColor) + vec4(EmissiveColor, 0);
 
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));
@@ -273,5 +273,5 @@ void main(){
 
 	//float shadow = 1 - GetPointLightShadow(CameraWorldSpacePos, fs_in.Position.xyz, PointLights[0].Position, PointLights[0].ShadowMap, PointLights[0].ShadowFarPlane, fs_in.Normal);
 
-	frag = c;
+	frag = c;// vec4(shadow);
 }
