@@ -709,6 +709,12 @@ namespace JLGraphics
         }
 
         //#################### PREVIOUS UNIFORM STATE ####################
+        /// <summary>
+        /// These are cached values from the last time you call update uniforms
+        /// These are used to check if the previous update uniform (from any instance of the shader class) contains overlapping
+        /// Shader program, uniform location, and uniform values
+        /// If the last UniformUpdate call contains the same program, uniform location and uniform value, it will skip sending that uniform to the gpu
+        /// </summary>
         struct TextureBindState
         {
             public int TexturePtr;
@@ -815,7 +821,7 @@ namespace JLGraphics
             GL.DepthMask(DepthMask);
             GL.ColorMask(ColorMask[0], ColorMask[1], ColorMask[2], ColorMask[3]);
 
-            //apply all material specific uniforms
+            //fetch global textures
             if(!dontFetchGlobals)
                 mFetchGlobalTextures();
 
@@ -837,7 +843,7 @@ namespace JLGraphics
                 }
             }
 
-            //apply texture units
+            //apply texture units, set local textures
             //optimized such that the update uniform wont update the same uniforms with same values as the previously update uniform
             for (int i = 0; i < TotalTextures; i++)
             {
@@ -914,9 +920,18 @@ namespace JLGraphics
             GL.BindTexture(TextureTarget.Texture2D, 0);
         }
 
+        //##################### CACHED LOCAL UNIFORM VALUES #################################
+        /// <summary>
+        /// These store data about this instance's local uniforms (non global uniforms)
+        /// Dictionary to convert uniform name to index, index that can be used to index uniform value and uniform isdefault flag
+        /// uniforms that are flagged as default will be overriden by any global uniforms that contain the same uniform name (ignores type and actual location)
+        /// uniforms that are flagged as non-default will override any global uniforms that contain the same uniform name (ignores type and actual location)
+        /// </summary>
         private Dictionary<string, int> m_cachedUniformValueIndex = new Dictionary<string, int>();
         private List<UniformValueWithLocation> m_uniformValues = new List<UniformValueWithLocation>();
         private List<bool> m_uniformValuesDefaultFlag = new List<bool>();
+        //##################################################################################
+
         static ShaderProgram PreviousProgram { get; set; } = null;
         static List<UniformValue> GlobalUniformValues { get; } = new();
         static Dictionary<string, int> GlobalUniformIndexCache { get; } = new();
@@ -1011,6 +1026,10 @@ namespace JLGraphics
                 {
                     continue;
                 }
+                //we operate a little different here, unlike other global uniform values we 
+                //actually get the global texture uniform and set it as a local uniform
+                //other global uniforms have there own cache space, thats why on their side
+                //we check if there are existing local uniforms before we send it to the gpu
                 Texture? tex = (Texture)cur.value;
                 SetTexture(cur.uniformName, tex);
             }
