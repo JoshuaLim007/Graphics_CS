@@ -983,12 +983,22 @@ namespace JLGraphics
         {
             for (int i = 0; i < GlobalUniformValues.Count; i++)
             {
-                //we will fetch global texture data via update uniforms
+                //Fetch global texture data via update uniforms, not here
                 var cur = GlobalUniformValues[i];
                 if(cur.uniformType == UniformType.texture)
                 {
                     continue;
                 }
+
+                //if there is a non default local uniform, then dont push to gpu
+                if (m_cachedUniformValueIndex.TryGetValue(cur.uniformName, out int index))
+                {
+                    if (m_uniformValuesDefaultFlag[index] == false)
+                    {
+                        continue;
+                    }
+                }
+
                 SendUniformDataToGPU(Program.GetUniformLocation(cur.uniformName), cur.uniformType, cur.value);
             }
         }
