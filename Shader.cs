@@ -765,9 +765,7 @@ namespace JLGraphics
         {
             if (PreviousUniformState.TryGetValue(current.uniformLocation, out UniformBindState prevState))
             {
-                if (prevState.value.GetType() == current.value.GetType()
-                    && prevState.value.Equals(current.value)
-                    && PreviousProgram == Program)
+                if (PreviousProgram == Program && prevState.value.Equals(current.value))
                 {
                     return true;
                 }
