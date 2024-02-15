@@ -13,6 +13,15 @@ using Debug = JLUtility.Debug;
 
 namespace JLGraphics
 {
+    public static class GlobalUniformNames
+    {
+        readonly static public string SkyBox = "SkyBox";
+        readonly static public string ViewProjectionMatrix = "ProjectionViewMatrix";
+        readonly static public string SkyBoxIntensity = "skyBoxIntensity";
+        readonly static public string AmbientSkyColor = "SkyColor";
+        readonly static public string AmbientHorizonColor = "HorizonColor";
+        readonly static public string AmbientGroundColor = "GroundColor";
+    }
     public struct Time
     {
         public static float FixedDeltaTime { get => Graphics.Instance.FixedDeltaTime; set => Graphics.Instance.FixedDeltaTime = Math.Clamp(value, float.Epsilon, 1.0f); }
@@ -112,7 +121,6 @@ namespace JLGraphics
 
             Window.UpdateFrame += UpdateFrame;
         }
-        FileImageCubemapTexture SkyBox;
         ShaderProgram DefaultShaderProgram;
         ShaderProgram PassthroughShaderProgram;
         ShaderProgram DepthPrepassShaderProgram;
@@ -184,11 +192,6 @@ namespace JLGraphics
             depthOnlyShader.CompileProgram();
             skyboxDepthPrepassProgram.CompileProgram();
 
-            SkyBox = new FileImageCubemapTexture();
-            SkyBox.Path = "D:\\joshu\\Downloads\\rural_asphalt_road_4k.hdr";
-            SkyBox.RenderCubemap(2048);
-            Shader.SetGlobalTexture("SkyBox", SkyBox);
-
             DefaultShaderProgram = defaultShader;
             PassthroughShaderProgram = passThroughShader;
             DepthPrepassShaderProgram = depthOnlyShader;
@@ -223,7 +226,6 @@ namespace JLGraphics
             temporaryUpdateFrameCommands.Clear();
             SkyboxDepthPrepassShader.Program.Dispose();
             SkyboxShader.Program.Dispose();
-            SkyBox.Dispose();
             Window.Close();
             Window.Dispose();
             MainFrameBuffer = null;

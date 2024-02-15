@@ -56,11 +56,6 @@ uniform float AoStrength;
 uniform vec3 AlbedoColor;
 uniform vec3 EmissiveColor;
 
-//matrices
-uniform mat4 ViewMatrix;
-uniform mat4 ProjectionMatrix;
-uniform mat4 ModelMatrix;
-
 //misc
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;

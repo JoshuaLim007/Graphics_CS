@@ -6,7 +6,7 @@ using TextureWrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode;
 
 namespace JLGraphics
 {
-    internal class FileImageCubemapTexture : SafeDispose
+    public class FileImageCubemapTexture : SafeDispose
     {
         MeshPrimative cubeMesh;
         protected override void OnDispose()

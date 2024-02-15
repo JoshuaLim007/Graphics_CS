@@ -451,7 +451,7 @@ namespace JLGraphics
         public void Dispose()
         {
             isCompiled = false;
-            OnDispose.Invoke();
+            OnDispose?.Invoke();
             Disposed = true;
             Frag.Dispose();
             Vert.Dispose();
