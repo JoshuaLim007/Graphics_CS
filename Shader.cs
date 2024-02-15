@@ -601,7 +601,7 @@ namespace JLGraphics
         {
             m_uniformValues = new List<UniformValueWithLocation>(other.m_uniformValues);
             m_uniformValuesDefaultFlag = new List<bool>(other.m_uniformValuesDefaultFlag);
-            m_cachedUniformValueIndex = new Dictionary<string, int>(other.m_cachedUniformValueIndex);
+            //m_cachedUniformValueIndex = new List<(string, int)>(other.m_cachedUniformValueIndex);
 
             availableTextureSlots = new Stack<int>(new Stack<int>(other.availableTextureSlots));
 
@@ -703,7 +703,7 @@ namespace JLGraphics
                 mPushAllGlobalUniformsToShaderProgram();
             return Program;
         }
-        bool IntToBool(int val, int index)
+        static bool IntToBool(int val, int index)
         {
             return ((val >> index) & 1) == 1;
         }
@@ -722,11 +722,11 @@ namespace JLGraphics
         }
         struct UniformBindState
         {
-            public int uniformLocation;
+            public string uniformName;
             public object value;
         }
-        static TextureBindState[] PreviousTextureState { get; } = new TextureBindState[TotalTextures];
-        static Dictionary<string, UniformBindState> PreviousUniformState { get; } = new Dictionary<string, UniformBindState>();
+        readonly static TextureBindState[] PreviousTextureState = new TextureBindState[TotalTextures];
+        readonly static Dictionary<int, UniformBindState> PreviousUniformState = new Dictionary<int, UniformBindState>();
         //######################################################
 
         internal static void ClearStateCheckCache()
@@ -763,30 +763,29 @@ namespace JLGraphics
         }
         bool checkIfPreviousUniformUpdatePushed(in UniformValueWithLocation current)
         {
-            if (PreviousUniformState.TryGetValue(current.uniformName, out UniformBindState prevState))
+            if (PreviousUniformState.TryGetValue(current.uniformLocation, out UniformBindState prevState))
             {
                 if (prevState.value.GetType() == current.value.GetType()
                     && prevState.value.Equals(current.value)
-                    && prevState.uniformLocation == current.uniformLocation
                     && PreviousProgram == Program)
                 {
                     return true;
                 }
                 else
                 {
-                    PreviousUniformState[current.uniformName] = new UniformBindState()
+                    PreviousUniformState[current.uniformLocation] = new UniformBindState()
                     {
                         value = current.value,
-                        uniformLocation = current.uniformLocation,
+                        uniformName = current.uniformName,
                     };
                 }
             }
             else
             {
-                PreviousUniformState.Add(current.uniformName, new UniformBindState()
+                PreviousUniformState.Add(current.uniformLocation, new UniformBindState()
                 {
                     value = current.value,
-                    uniformLocation = current.uniformLocation
+                    uniformName = current.uniformName
                 });
             }
             return false;
@@ -835,7 +834,7 @@ namespace JLGraphics
                     var name = types[i].Key;
                     var type = types[i].Value;
                     //dont add a default value if there is a global uniform already existing
-                    if (m_cachedUniformValueIndex.ContainsKey(name) || mFindGlobalUniformIndex(name) != -1)
+                    if (mFindLocalUniformIndex(name, out int li) || mFindGlobalUniformIndex(name, out int gi))
                     {
                         continue;
                     }
@@ -927,21 +926,38 @@ namespace JLGraphics
         /// uniforms that are flagged as default will be overriden by any global uniforms that contain the same uniform name (ignores type and actual location)
         /// uniforms that are flagged as non-default will override any global uniforms that contain the same uniform name (ignores type and actual location)
         /// </summary>
-        private Dictionary<string, int> m_cachedUniformValueIndex = new Dictionary<string, int>();
+        //private List<(string, int)> m_cachedUniformValueIndex = new List<(string, int)>();
         private List<UniformValueWithLocation> m_uniformValues = new List<UniformValueWithLocation>();
         private List<bool> m_uniformValuesDefaultFlag = new List<bool>();
+        private bool mFindLocalUniformIndex(in string value, out int index)
+        {
+            for (int i = 0; i < m_uniformValues.Count; i++)
+            {
+                if (m_uniformValues[i].uniformName == value)
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            index = -1;
+            return false;
+        }
         //##################################################################################
 
         static ShaderProgram PreviousProgram { get; set; } = null;
-        static List<UniformValue> GlobalUniformValues { get; } = new();
-        static Dictionary<string, int> GlobalUniformIndexCache { get; } = new();
-        private static int mFindGlobalUniformIndex(in string uniformName)
+
+        //##################### CACHED GLOBAL UNIFORM VALUES #################################
+        readonly static List<UniformValue> GlobalUniformValues = new();
+        readonly static Dictionary<string, int> GlobalUniformIndexCache = new();
+        //##################################################################################
+
+        private static bool mFindGlobalUniformIndex(in string uniformName, out int index)
         {
-            if(GlobalUniformIndexCache.TryGetValue(uniformName, out var index))
+            if(GlobalUniformIndexCache.TryGetValue(uniformName, out index))
             {
-                return index;
+                return true;
             }
-            return -1;
+            return false;
         }
         private bool mIsGlobalUniform(in string name)
         {
@@ -949,8 +965,8 @@ namespace JLGraphics
         }
         private static void mSetGlobalUniformValue(in UniformType globalUniformType, in object value, in string uniformName)
         {
-            var index = mFindGlobalUniformIndex(uniformName);
-            if (index == -1)
+            var has = mFindGlobalUniformIndex(uniformName, out int index);
+            if (!has)
             {
                 GlobalUniformValues.Add(new UniformValue(uniformName, globalUniformType, value));
                 GlobalUniformIndexCache.Add(uniformName, GlobalUniformValues.Count-1);
@@ -1006,7 +1022,7 @@ namespace JLGraphics
                 }
 
                 //if there is a non default local uniform, then dont push to gpu
-                if (m_cachedUniformValueIndex.TryGetValue(cur.uniformName, out int index))
+                if (mFindLocalUniformIndex(cur.uniformName, out int index))
                 {
                     if (m_uniformValuesDefaultFlag[index] == false)
                     {
@@ -1036,7 +1052,7 @@ namespace JLGraphics
         }
         private void mAddUniform(string uniformName, UniformType uniformType, object uniformValue, bool isDefault = false)
         {
-            if (m_cachedUniformValueIndex.TryGetValue(uniformName, out int value))
+            if (mFindLocalUniformIndex(uniformName, out int value))
             {
                 int index = value;
                 var temp = m_uniformValues[index];
@@ -1046,16 +1062,16 @@ namespace JLGraphics
             }
             else
             {
-                m_cachedUniformValueIndex.Add(uniformName, m_uniformValues.Count);
+                //m_cachedUniformValueIndex.Add((uniformName, m_uniformValues.Count));
                 m_uniformValues.Add(new UniformValueWithLocation(uniformName, uniformType, uniformValue));
                 m_uniformValuesDefaultFlag.Add(isDefault);
             }
         }
         public T GetUniformValue<T>(string id)
         {
-            if (m_cachedUniformValueIndex.ContainsKey(id))
+            if (mFindLocalUniformIndex(id, out int index))
             {
-                return (T)m_uniformValues[m_cachedUniformValueIndex[id]].value;
+                return (T)m_uniformValues[index].value;
             }
             return default(T);
         }

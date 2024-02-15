@@ -518,17 +518,6 @@ namespace JLGraphics
             Shader.SetGlobalVector2("RenderSize", new Vector2(camera.Width * RenderScale, camera.Height * RenderScale));
             Shader.SetGlobalFloat("RenderScale", RenderScale);
         }
-        void SetDrawMode(bool wireframe)
-        {
-            if (wireframe)
-            {
-                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
-            }
-            else
-            {
-                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
-            }
-        }
 
         MeshPrimative FullScreenQuad;
         MeshPrimative BasicCube;
