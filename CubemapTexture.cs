@@ -85,7 +85,8 @@ namespace JLGraphics
         }
         Texture imageTex;
         public Texture CubemapTexture { get; private set; }
-        public void RenderCubemap(int size = 512, string uniformTextureId = "")
+        public static implicit operator Texture(FileImageCubemapTexture d) => d.CubemapTexture;
+        public void RenderCubemap(int size = 512)
         {
             int ImageTextureID = ResolveTexture();
             imageTex = Texture.CreateTextureObjectFromID(ImageTextureID, TextureTarget.Texture2D, PixelFormat.Rgb, PixelInternalFormat.Rgb32f, imageResult.Width, imageResult.Height);
@@ -207,10 +208,7 @@ namespace JLGraphics
                 GL.DrawElements(PrimitiveType.Triangles, cubeMesh.IndiciesCount, DrawElementsType.UnsignedInt, 0);
             }
             CubemapTexture = Texture.CreateTextureObjectFromID(tColorCubeMap, TextureTarget.TextureCubeMap, PixelFormat.Rgb, PixelInternalFormat.Rgb16f, width, height);
-            if (uniformTextureId != "")
-            {
-                Shader.SetGlobalTexture(uniformTextureId, CubemapTexture);
-            }
+
             GL.Enable(EnableCap.CullFace);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             GL.DeleteFramebuffer(fbo);
