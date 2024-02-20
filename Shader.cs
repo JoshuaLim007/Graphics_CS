@@ -676,5 +676,13 @@ namespace JLGraphics
             GetShaderPropertyId(id);
             return Program.GetUniformLocation(id);
         }
+        public int GetUniformLocation(int propertyId)
+        {
+            if(mFindLocalUniformIndex(propertyId, out int index))
+            {
+                return m_uniformValues[index].uniformLocation;
+            }
+            return -1;
+        }
     }
 }

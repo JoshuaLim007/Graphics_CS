@@ -978,12 +978,13 @@ namespace JLGraphics
                 SetShaderCameraData(camera);
                 InvokeOnRenders(camera);
             }
+            int modelMatrixPropertyId = Shader.GetShaderPropertyId("ModelMatrix");
 
             bool useOverride = false;
             int overrideModelLoc = 0;
             if (overrideShader != null)
             {
-                overrideModelLoc = overrideShader.GetUniformLocation("ModelMatrix");
+                overrideModelLoc = overrideShader.GetUniformLocation(modelMatrixPropertyId);
                 useOverride = true;
             }
 
@@ -1059,7 +1060,7 @@ namespace JLGraphics
                 }
                 else
                 {
-                    GL.UniformMatrix4(current.Material.GetUniformLocation("ModelMatrix"), false, ref worlToLocalMatrix);
+                    GL.UniformMatrix4(current.Material.GetUniformLocation(modelMatrixPropertyId), false, ref worlToLocalMatrix);
                 }
 
                 m_verticesCount += meshData.VertexCount;
