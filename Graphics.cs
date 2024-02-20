@@ -282,7 +282,8 @@ namespace JLGraphics
             {
                 guiController.Update(Window, Time.DeltaTime);
                 ImGui.DockSpaceOverViewport();
-                ImGui.ShowDemoWindow();
+                ImGui.ShowDebugLogWindow();
+                ImGui.ShowMetricsWindow();
             }
 
             InvokeNewStarts();
