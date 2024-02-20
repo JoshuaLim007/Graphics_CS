@@ -10,7 +10,6 @@ using Assimp.Unmanaged;
 using System;
 using static JLGraphics.Shader;
 using System.Data;
-using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
 using Assimp;
 
@@ -54,451 +53,6 @@ namespace JLGraphics
             uniformLocation = -1;
         }
         public static implicit operator UniformValueWithLocation(UniformValue uniformValue) => new UniformValueWithLocation(uniformValue.uniformName, uniformValue.uniformType, uniformValue.value);
-    }
-    public sealed class ShaderParser
-    {
-        struct Shader
-        {
-            public string name;
-            public ShaderType shaderType;
-            public List<string> Passes;
-            public Shader()
-            {
-                name = "";
-                shaderType = ShaderType.FragmentShader;
-                Passes = new List<string>();
-            }
-        }
-        public struct ParsedShader
-        {
-            public string ShaderCode;
-            public ShaderType ShaderType;
-        }
-        static string ReplaceFirst(string text, string search, string replace)
-        {
-            int pos = text.IndexOf(search);
-            if (pos < 0)
-            {
-                return text;
-            }
-            return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
-        }
-        static string mHandleInclude(string filePath, string fromPath)
-        {
-            var outString = "";
-            var data = File.ReadAllText(filePath);
-            var includeStatement = Regex.Match(data, "INCLUDE *\"(.*)\"", RegexOptions.Multiline);
-            while(includeStatement != null)
-            {
-                if(includeStatement.Length == 0)
-                {
-                    data += "\n";
-                    break;
-                }
-                var includeFile = includeStatement.Groups[1];
-                var moreIncluded = mHandleInclude(includeFile.Value.Trim(), filePath);
-                data = ReplaceFirst(data, includeStatement.Value, moreIncluded);
-                includeStatement = includeStatement.NextMatch();
-            }
-            outString += data + "//Shader Parser: Auto generated file include: " + filePath  + " from: " + fromPath + "\n";
-            return outString;
-        }
-        public static ParsedShader? ParseShader(string filePath, string targetShadernName, int targetShaderPass)
-        {
-            string data = File.ReadAllText(filePath);
-            List<Shader> shaders = new List<Shader>();
-            var match = Regex.Match(data, "SHADER +(.*) +(.*)", RegexOptions.Multiline);
-            var splits = Regex.Split(data, "SHADER +.* +.*", RegexOptions.Multiline).ToList();
-            splits.RemoveAt(0);
-            if (match.Length == 0)
-            {
-                Debug.Log("Missing: SHADER (FRAG | VERT) (SHADER_NAME) in " + filePath, Debug.Flag.Error);
-                return null;
-            }
-            while (match != null)
-            {
-                if(match.Length == 0)
-                {
-                    break;
-                }
-                var ShaderProgram = new Shader();
-                var type = match.Groups[1].ToString().Trim();
-                var name = match.Groups[2].ToString().Trim();
-                ShaderProgram.name = name;
-                if (type == "FRAG")
-                {
-                    ShaderProgram.shaderType = ShaderType.FragmentShader;
-                }
-                else if(type == "VERT")
-                {
-                    ShaderProgram.shaderType = ShaderType.VertexShader;
-                }
-                else
-                {
-                    Debug.Log("Unknown shader type! Use FRAG or VERT for " + name + " in " + filePath, Debug.Flag.Error);
-                    break;
-                }
-                shaders.Add(ShaderProgram);
-                match = match.NextMatch();
-            }
-
-            for (int i = 0; i < shaders.Count; i++)
-            {
-                var includeStatement = Regex.Match(splits[i], "INCLUDE *\"(.*)\"", RegexOptions.Multiline);
-                List<string> includedFiles = new List<string>();
-                while(includeStatement != null)
-                {
-                    if(includeStatement.Length == 0)
-                    {
-                        break;
-                    }
-                    includedFiles.Add(mHandleInclude(includeStatement.Groups[1].Value.Trim(), filePath));
-                    splits[i] = splits[i].Replace(includeStatement.Value, "");
-                    includeStatement = includeStatement.NextMatch();
-                }
-                splits[i] = splits[i].Trim();
-                var passSplits = Regex.Split(splits[i], "PASS\\s*", RegexOptions.Multiline);
-                if(passSplits.Length <= 1)
-                {
-                    Debug.Log("Missing pass: " + shaders[i].shaderType.ToString() + " " + shaders[i].name + " in " + filePath, Debug.Flag.Error);
-                }
-                for (int j = 1; j < passSplits.Length; j++)
-                {
-                    var passString = "";
-
-                    for (int k = 0; k < includedFiles.Count; k++)
-                    {
-                        passString += includedFiles[k];
-                    }
-
-                    passString += passSplits[j].Trim();
-                    shaders[i].Passes.Add(passString);
-                }
-            }
-
-            int index = 0;
-            for (int i = 0; i < shaders.Count; i++)
-            {
-                if (shaders[i].name == targetShadernName)
-                {
-                    index = i;
-                    break;
-                }
-            }
-            data = shaders[index].Passes[targetShaderPass];
-
-            return new ParsedShader() { ShaderCode = data, ShaderType = shaders[index].shaderType };
-        }
-    }
-    internal sealed class ShaderFile : SafeDispose, IFileObject
-    {
-        internal ShaderType ShaderType { get; private set; }
-        public List<Action> FileChangeCallback => new List<Action>();
-        public string FilePath { get; }
-
-        public override string Name => FilePath;
-
-        public static implicit operator int(ShaderFile d) => d.compiledShader;
-
-        int compiledShader = 0;
-        bool addedCallback = false;
-        internal ShaderFile(string path, ShaderType shaderType)
-        {
-            FilePath = path;
-            ShaderType = shaderType;
-            if (!File.Exists(path))
-            {
-                Debug.Log("Shader not found: " + path, Debug.Flag.Error);
-                return;
-            }
-        }
-
-        bool useShaderParser = false;
-        string shaderToUse = "";
-        int passToUse = 0;
-        internal ShaderFile(string path, string targetShaderName, int targetShaderPass)
-        {
-            useShaderParser = true;
-            this.shaderToUse = targetShaderName;
-            this.passToUse = targetShaderPass;
-            FilePath = path;
-            if (!File.Exists(path))
-            {
-                Debug.Log("Shader not found: " + path, Debug.Flag.Error);
-                return;
-            }
-        }
-        internal void CompileShader() {
-            Debug.Log("Compiling Shader: " + FilePath);
-            string data;
-            if (useShaderParser)
-            {
-                Debug.Log("Compiling Shader name: " + shaderToUse);
-                Debug.Log("Compiling Shader pass: " + passToUse);
-                var shaders = ShaderParser.ParseShader(FilePath, shaderToUse, passToUse);
-                if(shaders != null)
-                {
-                    data = shaders.Value.ShaderCode;
-                    ShaderType = shaders.Value.ShaderType;
-                }
-                else
-                {
-                    Debug.Log("Cannot find shader within parsed shader " + FilePath + ". Are your shader name and pass correct?", Debug.Flag.Warning);
-                    data = "";
-                    ShaderType = ShaderType.FragmentShader;
-                }
-            }
-            else
-            {
-                data = File.ReadAllText(FilePath);
-            }
-
-            if (!addedCallback)
-            {
-                FileChangeCallback.Add(() => {
-                    GL.DeleteShader(compiledShader);
-                    compiledShader = GL.CreateShader(ShaderType);
-                    CompileShader();
-                });
-                addedCallback = true;
-            }
-
-            compiledShader = GL.CreateShader(ShaderType);
-
-            GL.ShaderSource(compiledShader, data);
-
-            //compile the shaders
-            GL.CompileShader(compiledShader);
-
-            string d = GL.GetShaderInfoLog(compiledShader);
-            if (d != "")
-            {
-                Debug.Log(d);
-                return;
-            }
-        }
-        protected override void OnDispose()
-        {
-            GL.DeleteShader(compiledShader);
-        }
-    }
-    public sealed class ShaderProgram : IDisposable
-    {
-        internal bool Disposed { get; private set; } = false;
-        internal ShaderFile Frag { get; } = null;
-        internal ShaderFile Geo { get; } = null;
-        internal ShaderFile Vert { get; } = null;
-
-        public IFileObject FragFile => Frag;
-        public IFileObject VertFile => Vert;
-        public IFileObject GeoFile => Geo;
-
-        string Name { get; }
-        public int Id { get; private set; } = 0;
-        public static implicit operator int(ShaderProgram d) => d.Id;
-        internal static List<ShaderProgram> AllShaderPrograms { get; private set; } = new List<ShaderProgram>();
-        internal Action OnShaderReload { get; set; } = null;
-        internal Action OnDispose { get; set; } = null;
-        void OnFragFileChangeShaderRecompile()
-        {
-            GL.DeleteProgram(Id);
-            Id = GL.CreateProgram();
-            //recompile vert shader
-            Vert.CompileShader();
-            Geo.CompileShader();
-            UpdateProgram();
-            OnShaderReload?.Invoke();
-        }
-        void OnVertFileChangeShaderRecompile()
-        {
-            GL.DeleteProgram(Id);
-            Id = GL.CreateProgram();
-            //recompile frag shader
-            Frag.CompileShader();
-            Geo.CompileShader();
-            UpdateProgram();
-            OnShaderReload?.Invoke();
-        }
-        void OnGeoFileChangeShaderRecompile()
-        {
-            GL.DeleteProgram(Id);
-            Id = GL.CreateProgram();
-            //recompile frag shader
-            Vert.CompileShader();
-            Frag.CompileShader();
-            UpdateProgram();
-            OnShaderReload?.Invoke();
-        }
-        public ShaderProgram(string name, string fragPath, string vertPath, string geometryPath = "")
-        {
-            Name = name;
-            Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
-            Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
-            if(geometryPath.Trim() != "")
-            {
-                Geo = new ShaderFile(geometryPath, ShaderType.GeometryShader);
-            }
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public ShaderProgram(string name, string fragPath, string targetFragShaderName, int targetFragPass, string vertPath, string targetVertShaderName, int targetVertPass)
-        {
-            Name = name;
-            Vert = new ShaderFile(vertPath, targetVertShaderName, targetVertPass);
-            Frag = new ShaderFile(fragPath, targetFragShaderName, targetFragPass);
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public ShaderProgram(string name, string fragPath, string vertPath, string targetVertShaderName, int targetVertPass)
-        {
-            Name = name;
-            Vert = new ShaderFile(vertPath, targetVertShaderName, targetVertPass);
-            Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public ShaderProgram(string name, string fragPath, string targetFragShaderName, int targetFragPass, string vertPath)
-        {
-            Name = name;
-            Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
-            Frag = new ShaderFile(fragPath, targetFragShaderName, targetFragPass);
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public ShaderProgram(ShaderProgram shaderProgram)
-        {
-            Name = shaderProgram.Name;
-            Vert = new ShaderFile(shaderProgram.VertFile.FilePath, ShaderType.VertexShader);
-            Frag = new ShaderFile(shaderProgram.FragFile.FilePath, ShaderType.FragmentShader);
-            if(shaderProgram.Geo != null)
-                Geo = new ShaderFile(shaderProgram.GeoFile.FilePath, ShaderType.GeometryShader);
-            
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public static ShaderProgram FindShaderProgram(string name)
-        {
-            for (int i = 0; i < AllShaderPrograms.Count; i++)
-            {
-                if (AllShaderPrograms[i].Name == name)
-                {
-                    return AllShaderPrograms[i];
-                }
-            }
-            return null;
-        }
-        public void CompileProgram()
-        {
-            if (Disposed)
-            {
-                Debug.Log("Program has been disposed!", Debug.Flag.Error);
-            }
-            isCompiled = true;
-            Frag.CompileShader();
-            Vert.CompileShader();
-            Geo?.CompileShader();
-            Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
-            Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
-            Geo?.FileChangeCallback.Add(OnGeoFileChangeShaderRecompile);
-            UpdateProgram();
-            //UpdateProgram called via callback
-        }
-        List<KeyValuePair<string, ActiveUniformType>> uniformTypes = new List<KeyValuePair<string, ActiveUniformType>>();
-        void UpdateProgram()
-        {
-            Debug.Log("\tLinking shader to program " + Id + ", " + Name);
-            //attach shaders
-            GL.AttachShader(Id, Frag);
-            GL.AttachShader(Id, Vert);
-            if(Geo != null)
-                GL.AttachShader(Id, Geo);
-
-            //link to program
-            GL.LinkProgram(Id);
-
-            //detach shaders
-            GL.DetachShader(Id, Frag);
-            GL.DetachShader(Id, Vert);
-            if (Geo != null)
-                GL.DetachShader(Id, Geo);
-
-            GL.GetProgram(Id, GetProgramParameterName.ActiveUniforms, out int uniformCount);
-            for (int i = 0; i < uniformCount; i++)
-            {
-                string name = GL.GetActiveUniform(Id, i, out int size, out ActiveUniformType type);
-                int loc = GL.GetUniformLocation(Id, name);
-                uniformTypes.Add(new KeyValuePair<string, ActiveUniformType>(name, type));
-                GetUniformLocation(name);
-            }
-
-            var d = GL.GetProgramInfoLog(Id);
-            if (d != "")
-                Debug.Log(d);
-            uniformLocations.Clear();
-        }
-        public List<KeyValuePair<string, ActiveUniformType>> GetUniformTypes()
-        {
-            if (!isCompiled)
-            {
-                Debug.Log("Program is not compiled! " + Name, Debug.Flag.Error);
-            }
-            if (Disposed)
-            {
-                Debug.Log("Program has been disposed! " + Name, Debug.Flag.Error);
-            }
-            return uniformTypes;
-        }
-        public void Dispose()
-        {
-            isCompiled = false;
-            OnDispose?.Invoke();
-            Disposed = true;
-            Frag.Dispose();
-            Vert.Dispose();
-            Geo?.Dispose();
-            GL.DeleteProgram(Id);
-            AllShaderPrograms.Remove(this);
-            Vert.FileChangeCallback.Remove(OnVertFileChangeShaderRecompile);
-            Frag.FileChangeCallback.Remove(OnFragFileChangeShaderRecompile);
-            Geo?.FileChangeCallback.Remove(OnGeoFileChangeShaderRecompile);
-        }
-
-        public static int ProgramCounts => AllShaderPrograms.Count;
-        Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
-        public bool UniformExistsInGLSL(string uniformName)
-        {
-            for (int i = 0; i < uniformTypes.Count; i++)
-            {
-                if(uniformTypes[i].Key == uniformName)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        public bool isCompiled { get; private set; } = false;
-        public int GetUniformLocation(string id)
-        {
-            if (!isCompiled)
-            {
-                Debug.Log("Program is not compiled! " + Name, Debug.Flag.Error);
-            }
-            if (Disposed)
-            {
-                Debug.Log("Program has been disposed! " + Name, Debug.Flag.Error);
-            }
-
-            if (uniformLocations.TryGetValue(id, out int value))
-            {
-                return value;
-            }
-            else
-            {
-                int loc = GL.GetUniformLocation(Id, id);
-                uniformLocations.Add(id, loc);
-                return loc;
-            }
-        }
     }
     public sealed class Shader : IName
     {
@@ -547,7 +101,7 @@ namespace JLGraphics
                 number &= ~(1 << index);
             }
         }
-        bool isWithinShader { get; set; } = false;
+        bool mIsWithinShader = false;
         internal void SetTextureUnsafe(string uniformName, Texture texture, TextureTarget? textureTarget = null)
         {
             int textureIndex = textureIndexFromUniform(uniformName);
@@ -585,7 +139,7 @@ namespace JLGraphics
         }
         public void SetTexture(string uniformName, Texture texture)
         {
-            if (!isWithinShader)
+            if (!mIsWithinShader)
             {
                 GL.UseProgram(Program);
                 SetTextureUnsafe(uniformName, texture, texture.textureTarget);
@@ -699,6 +253,7 @@ namespace JLGraphics
         }
         internal ShaderProgram UseProgram()
         {
+            mIsWithinShader = true;
             if (Program.Disposed)
             {
                 Debug.Log("Shader program has been dispoed!", Debug.Flag.Error);
@@ -712,6 +267,8 @@ namespace JLGraphics
             }
             if (!dontFetchGlobals)
                 mPushAllGlobalUniformsToShaderProgram();
+
+            mIsWithinShader = false;
             return Program;
         }
         static bool IntToBool(int val, int index)
@@ -807,7 +364,7 @@ namespace JLGraphics
                 return false;
             }
             bool hasUpdated = false;
-            isWithinShader = true;
+            mIsWithinShader = true;
             if (DepthTest)
             {
                 GL.Enable(EnableCap.DepthTest);
@@ -925,7 +482,7 @@ namespace JLGraphics
             }
 
             PreviousProgram = Program;
-            isWithinShader = false;
+            mIsWithinShader = false;
             return hasUpdated;
         }
         internal static void Unbind()
