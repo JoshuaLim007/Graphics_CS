@@ -169,7 +169,7 @@ namespace JLGraphics
             };
 
             
-            CubeMapProjectionShader.SetTexture("equirectangularMap", imageTex);
+            CubeMapProjectionShader.SetTexture(Shader.GetShaderPropertyId("equirectangularMap"), imageTex);
             CubeMapProjectionShader.DepthTest = false;
             GL.Viewport(0, 0, width, height);
 
@@ -188,8 +188,8 @@ namespace JLGraphics
             GL.Disable(EnableCap.Blend);
             for (int i = 0; i < 6; ++i)
             {
-                CubeMapProjectionShader.SetMat4("ViewMatrix", captureViews[i]);
-                CubeMapProjectionShader.SetMat4("ProjectionMatrix", captureProjection);
+                CubeMapProjectionShader.SetMat4(Shader.GetShaderPropertyId("ViewMatrix"), captureViews[i]);
+                CubeMapProjectionShader.SetMat4(Shader.GetShaderPropertyId("ProjectionMatrix"), captureProjection);
                 CubeMapProjectionShader.UseProgram();
                 CubeMapProjectionShader.UpdateUniforms();
                 

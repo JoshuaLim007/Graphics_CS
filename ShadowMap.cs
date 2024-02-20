@@ -60,9 +60,9 @@ namespace JLGraphics
                 borderColor = Vector4.One,
                 isShadowMap = true,
             });
-            Shader.SetGlobalTexture("DirectionalShadowDepthMap", DepthOnlyFramebuffer.TextureAttachments[0]);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
-            Shader.SetGlobalVector2("DirectionalShadowDepthMapTexelSize", texelSize);
+            Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
             this.DirectionalLight = directionalLight;
             this.nearPlane = nearPlane;
             this.farPlane = farPlane;
@@ -84,9 +84,9 @@ namespace JLGraphics
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.Repeat,
             });
-            Shader.SetGlobalTexture("DirectionalShadowDepthMap", DepthOnlyFramebuffer.TextureAttachments[0]);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
-            Shader.SetGlobalVector2("DirectionalShadowDepthMapTexelSize", texelSize);
+            Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
         }
         public override void RenderShadowMap(Camera camera)
         {
@@ -108,10 +108,10 @@ namespace JLGraphics
             var ShadowMatrix = offsetMatrix * view * lightProjectionMatrix;
 
             GL.Clear(ClearBufferMask.DepthBufferBit);
-            shader.SetMat4("ProjectionViewMatrix", ShadowMatrix);
+            shader.SetMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), ShadowMatrix);
             Graphics.Instance.RenderScene(null, Graphics.RenderSort.None, shader);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            Shader.SetGlobalMat4("DirectionalLightMatrix", ShadowMatrix);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("DirectionalLightMatrix"), ShadowMatrix);
             GL.CullFace(CullFaceMode.Back);
         }
     }
@@ -199,12 +199,12 @@ namespace JLGraphics
 
             for (int i = 0; i < 6; i++)
             {
-                shadowShader.SetMat4("shadowMatrices[" + i + "]", shadowTransforms[i]);
+                shadowShader.SetMat4(Shader.GetShaderPropertyId("shadowMatrices[" + i + "]"), shadowTransforms[i]);
             }
 
-            shadowShader.SetMat4("ProjectionViewMatrix", Matrix4.Identity);
-            shadowShader.SetVector3("lightPos", lightPos);
-            shadowShader.SetFloat("far_plane", far);
+            shadowShader.SetMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), Matrix4.Identity);
+            shadowShader.SetVector3(Shader.GetShaderPropertyId("lightPos"), lightPos);
+            shadowShader.SetFloat(Shader.GetShaderPropertyId("far_plane"), far);
 
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);

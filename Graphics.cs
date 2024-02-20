@@ -150,7 +150,7 @@ namespace JLGraphics
             var windowSize = GetRenderWindowSize();
             MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings);
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettings);
-            Shader.SetGlobalTexture("_CameraDepthTexture", DepthTextureBuffer.TextureAttachments[0]);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
         }
         public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency, bool renderDebugGui)
         {
@@ -206,11 +206,11 @@ namespace JLGraphics
             DepthPrepassShader.ColorMask[1] = false;
             DepthPrepassShader.ColorMask[2] = false;
             DepthPrepassShader.ColorMask[3] = false;
-            DefaultMaterial.SetVector3("AlbedoColor", new Vector3(1, 1, 1));
-            DefaultMaterial.SetFloat("Smoothness", 0.5f);
+            DefaultMaterial.SetVector3(Shader.GetShaderPropertyId("AlbedoColor"), new Vector3(1, 1, 1));
+            DefaultMaterial.SetFloat(Shader.GetShaderPropertyId("Smoothness"), 0.5f);
             var img = ImageTexture.LoadTextureFromPath("./Textures/1x1_white.bmp");
             img.ResolveTexture();
-            DefaultMaterial.SetTexture("AlbedoTex", img);
+            DefaultMaterial.SetTexture(Shader.GetShaderPropertyId("AlbedoTex"), img);
             FullScreenQuad = Mesh.CreateQuadMesh();
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
@@ -385,7 +385,7 @@ namespace JLGraphics
             }
             
             frameIncrement++;
-            Shader.SetGlobalInt("_Frame", frameIncrement);
+            Shader.SetGlobalInt(Shader.GetShaderPropertyId("_Frame"), frameIncrement);
 
             DoRenderUpdate();
 
@@ -511,16 +511,16 @@ namespace JLGraphics
         }
         void SetShaderCameraData(Camera camera)
         {
-            Shader.SetGlobalMat4("ProjectionMatrix", camera.ProjectionMatrix);
-            Shader.SetGlobalMat4("ViewMatrix", camera.ViewMatrix);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionMatrix"), camera.ProjectionMatrix);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ViewMatrix"), camera.ViewMatrix);
             var vp = camera.ViewMatrix * camera.ProjectionMatrix;
-            Shader.SetGlobalMat4("InvProjectionViewMatrix", vp.Inverted());
-            Shader.SetGlobalMat4("ProjectionViewMatrix", camera.ViewMatrix * camera.ProjectionMatrix);
-            Shader.SetGlobalVector3("CameraWorldSpacePos", camera.Transform.Position);
-            Shader.SetGlobalVector3("CameraDirection", camera.Transform.Forward);
-            Shader.SetGlobalVector4("CameraParams", new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
-            Shader.SetGlobalVector2("RenderSize", new Vector2(camera.Width * RenderScale, camera.Height * RenderScale));
-            Shader.SetGlobalFloat("RenderScale", RenderScale);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("InvProjectionViewMatrix"), vp.Inverted());
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), camera.ViewMatrix * camera.ProjectionMatrix);
+            Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraWorldSpacePos"), camera.Transform.Position);
+            Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraDirection"), camera.Transform.Forward);
+            Shader.SetGlobalVector4(Shader.GetShaderPropertyId("CameraParams"), new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
+            Shader.SetGlobalVector2(Shader.GetShaderPropertyId("RenderSize"), new Vector2(camera.Width * RenderScale, camera.Height * RenderScale));
+            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("RenderScale"), RenderScale);
         }
 
         MeshPrimative FullScreenQuad;
@@ -575,8 +575,8 @@ namespace JLGraphics
             int height = dst != null ? dst.Height : renderWindowSize.Y;
             int fbo = dst != null ? dst.FrameBufferObject : 0;
             
-            unsafeBlitShader.SetVector2("MainTex_TexelSize", new Vector2(1.0f / width, 1.0f / height));
-            unsafeBlitShader.SetTextureUnsafe("MainTex", src.TextureAttachments[0]);
+            unsafeBlitShader.SetVector2(Shader.GetShaderPropertyId("MainTex_TexelSize"), new Vector2(1.0f / width, 1.0f / height));
+            unsafeBlitShader.SetTextureUnsafe(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
             unsafeBlitShader.UpdateUniforms();
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
@@ -656,7 +656,7 @@ namespace JLGraphics
             {
                 mat.DepthTestFunction = DepthFunction.Lequal;
             }
-            mat.SetMat4("ModelMatrix", Matrix4.CreateTranslation(camera.Transform.Position));
+            mat.SetMat4(Shader.GetShaderPropertyId("ModelMatrix"), Matrix4.CreateTranslation(camera.Transform.Position));
             mat.UseProgram();
             mat.UpdateUniforms();
             GL.CullFace(CullFaceMode.Front);
@@ -763,8 +763,8 @@ namespace JLGraphics
                 {
                     case DirectionalLight t0:
                         t0.RenderShadowMap(camera);
-                        Shader.SetGlobalVector3("DirectionalLight.Color", t0.Color);
-                        Shader.SetGlobalVector3("DirectionalLight.Direction", t0.Transform.Forward);
+                        Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Color"), t0.Color);
+                        Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Direction"), t0.Transform.Forward);
                         break;
                     case PointLight t0:
                         if (t0.HasShadows)
@@ -807,12 +807,12 @@ namespace JLGraphics
                 if (pointLights[i].HasShadows)
                 {
                     pointLightSSBOs[i].ShadowFarPlane = pointLights[i].GetShadowMapper().FarPlane;
-                    Shader.SetGlobalTexture("PointLightShadowMap[" + i + "]", pointLights[i].GetShadowMapper().DepthCubemap);
+                    Shader.SetGlobalTexture(Shader.GetShaderPropertyId("PointLightShadowMap[" + i + "]"), pointLights[i].GetShadowMapper().DepthCubemap);
                 }
             }
 
             PointLightBufferData.UpdateData(pointLightSSBOs, Unsafe.SizeOf<PointLightSSBO>() * pointLightSSBOs.Length);
-            Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
+            Shader.SetGlobalInt(Shader.GetShaderPropertyId("PointLightCount"), (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
 
         Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials, Dictionary<Shader, int> caching)

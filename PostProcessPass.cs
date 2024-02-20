@@ -37,10 +37,10 @@ namespace JLGraphics
             {
                 postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
             }
-            Shader.SetGlobalFloat("FogDensity", FogDensity);
-            Shader.SetGlobalVector3("FogColor", FogColor);
-            shader.SetBool("Tonemapping", Tonemapping);
-            shader.SetBool("GammaCorrection", GammaCorrection);
+            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
+            Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
+            shader.SetBool(Shader.GetShaderPropertyId("Tonemapping"), Tonemapping);
+            shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), GammaCorrection);
             var windowSize = Graphics.Instance.GetRenderWindowSize();
             if (windowSize != new Vector2i(postProcessTexture.Width, postProcessTexture.Height))
             {

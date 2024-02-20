@@ -70,7 +70,7 @@ namespace JLGraphics
             program.CompileProgram();
             bloomPrepassShader = new Shader("Kawase Bloom Prepass", program);
 
-            bloomShader.SetInt("Horizontal", 1);
+            bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 1);
             blurTexture = new FrameBuffer[blurIterations];
             temporaryRt = new FrameBuffer[blurIterations];
         }
@@ -130,34 +130,34 @@ namespace JLGraphics
                 }
             }
 
-            bloomPrepassShader.SetFloat("_BloomThreshold", Threshold);
-            bloomPrepassShader.SetFloat("ClampValue", ClampValue);
+            bloomPrepassShader.SetFloat(Shader.GetShaderPropertyId("_BloomThreshold"), Threshold);
+            bloomPrepassShader.SetFloat(Shader.GetShaderPropertyId("ClampValue"), ClampValue);
             Blit(frameBuffer, prepassFitlerRt, bloomPrepassShader);
 
-            bloomShader.SetInt("Horizontal", 0);
+            bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 0);
             Blit(prepassFitlerRt, temporaryRt[0], bloomShader);
-            bloomShader.SetInt("Horizontal", 1);
+            bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 1);
             Blit(temporaryRt[0], blurTexture[0], bloomShader);
             for (int i = 1; i < blurIterations; i++)
             {
-                bloomShader.SetInt("Horizontal", 0);
+                bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 0);
                 Blit(blurTexture[i - 1], temporaryRt[i], bloomShader);
-                bloomShader.SetInt("Horizontal", 1);
+                bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 1);
                 Blit(temporaryRt[i], blurTexture[i], bloomShader);
             }
 
-            bloomCompositeShader.SetFloat("intensity", Intensity);
-            bloomCompositeShader.SetInt("doNormalize", 0);
-            bloomCompositeShader.SetInt("iterations", blurIterations);
+            bloomCompositeShader.SetFloat(Shader.GetShaderPropertyId("intensity"), Intensity);
+            bloomCompositeShader.SetInt(Shader.GetShaderPropertyId("doNormalize"), 0);
+            bloomCompositeShader.SetInt(Shader.GetShaderPropertyId("iterations"), blurIterations);
 
             for (int i = blurIterations - 2; i >= 0; i--)
             {
-                bloomCompositeShader.SetTexture("HighResTex", blurTexture[i].TextureAttachments[0]);
+                bloomCompositeShader.SetTexture(Shader.GetShaderPropertyId("HighResTex"), blurTexture[i].TextureAttachments[0]);
                 Blit(blurTexture[i + 1], blurTexture[i], bloomCompositeShader);
             }
 
-            bloomCompositeShader.SetTexture("HighResTex", frameBuffer.TextureAttachments[0]);
-            bloomCompositeShader.SetInt("doNormalize", 1);
+            bloomCompositeShader.SetTexture(Shader.GetShaderPropertyId("HighResTex"), frameBuffer.TextureAttachments[0]);
+            bloomCompositeShader.SetInt(Shader.GetShaderPropertyId("doNormalize"), 1);
             Blit(blurTexture[0], frameBuffer, bloomCompositeShader);
         }
     }
