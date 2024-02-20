@@ -465,6 +465,17 @@ namespace JLGraphics
 
         public static int ProgramCounts => AllShaderPrograms.Count;
         Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
+        public bool UniformExistsInGLSL(string uniformName)
+        {
+            for (int i = 0; i < uniformTypes.Count; i++)
+            {
+                if(uniformTypes[i].Key == uniformName)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         public bool isCompiled { get; private set; } = false;
         public int GetUniformLocation(string id)
         {
@@ -893,6 +904,12 @@ namespace JLGraphics
                 {
                     var temp = current;
                     temp.uniformLocation = Program.GetUniformLocation(current.uniformName);
+
+                    //check if uniform exists, if it doesnt, skip
+                    if(temp.uniformLocation < 0)
+                    {
+                        continue;
+                    }
                     m_uniformValues[i] = temp;
                     current = temp;
                 }
@@ -914,7 +931,6 @@ namespace JLGraphics
         internal static void Unbind()
         {
             GL.UseProgram(0);
-            GL.BindTexture(TextureTarget.Texture2D, 0);
         }
 
         //##################### CACHED LOCAL UNIFORM VALUES #################################
