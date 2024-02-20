@@ -199,7 +199,7 @@ namespace JLGraphics
             SetInt(GetShaderPropertyId("textureMask"), textureMask);
             UseProgram();
             SetAllTextureUnitToUniform();
-            UpdateUniforms();
+            AttachShaderForRendering();
             Unbind();
             return;
         }
@@ -247,7 +247,6 @@ namespace JLGraphics
         }
         internal ShaderProgram UseProgram()
         {
-            mIsWithinShader = true;
             if (Program.Disposed)
             {
                 Debug.Log("Shader program has been dispoed!", Debug.Flag.Error);
@@ -262,7 +261,6 @@ namespace JLGraphics
             if (!dontFetchGlobals)
                 mPushAllGlobalUniformsToShaderProgram();
 
-            mIsWithinShader = false;
             return Program;
         }
         static bool IntToBool(int val, int index)
@@ -337,13 +335,21 @@ namespace JLGraphics
             }
             return false;
         }
-        internal bool UpdateUniforms()
+        internal int AttachShaderForRendering()
         {
             if (Program.Disposed)
             {
                 Debug.Log("Shader program has been dispoed!", Debug.Flag.Error);
-                return false;
+                return 0;
             }
+
+            bool hasUpdateProgram = false;
+            if (PreviousProgram != Program)
+            {
+                UseProgram();
+                hasUpdateProgram = true;
+            }
+
             bool hasUpdated = false;
             mIsWithinShader = true;
             if (DepthTest)
@@ -466,7 +472,7 @@ namespace JLGraphics
 
             PreviousProgram = Program;
             mIsWithinShader = false;
-            return hasUpdated;
+            return (hasUpdated ? 1 : 0) << 1 | (hasUpdateProgram ? 1 : 0);
         }
         internal static void Unbind()
         {

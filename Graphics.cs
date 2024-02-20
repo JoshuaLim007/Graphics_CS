@@ -577,7 +577,7 @@ namespace JLGraphics
             
             unsafeBlitShader.SetVector2(Shader.GetShaderPropertyId("MainTex_TexelSize"), new Vector2(1.0f / width, 1.0f / height));
             unsafeBlitShader.SetTextureUnsafe(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
-            unsafeBlitShader.UpdateUniforms();
+            unsafeBlitShader.AttachShaderForRendering();
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Viewport(0, 0, width, height);
@@ -657,8 +657,7 @@ namespace JLGraphics
                 mat.DepthTestFunction = DepthFunction.Lequal;
             }
             mat.SetMat4(Shader.GetShaderPropertyId("ModelMatrix"), Matrix4.CreateTranslation(camera.Transform.Position));
-            mat.UseProgram();
-            mat.UpdateUniforms();
+            mat.AttachShaderForRendering();
             GL.CullFace(CullFaceMode.Front);
             GL.DrawElements(PrimitiveType.Triangles, BasicCube.IndiciesCount, DrawElementsType.UnsignedInt, 0);
             GL.CullFace(CullFaceMode.Back);
@@ -1040,14 +1039,14 @@ namespace JLGraphics
 
                 if (material != previousMaterial)
                 {
-                    if (material.Program != previousMaterial?.Program)
-                    {
-                        m_shaderBindCount++;
-                        material.UseProgram();
-                    }
-                    if (material.UpdateUniforms())
+                    int updateFlags = material.AttachShaderForRendering();
+                    if((updateFlags & 0b10) == 0b10)
                     {
                         m_materialUpdateCount++;
+                    }
+                    if ((updateFlags & 0b01) == 0b01)
+                    {
+                        m_shaderBindCount++;
                     }
                     previousMaterial = material;
                 }

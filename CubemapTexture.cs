@@ -190,8 +190,7 @@ namespace JLGraphics
             {
                 CubeMapProjectionShader.SetMat4(Shader.GetShaderPropertyId("ViewMatrix"), captureViews[i]);
                 CubeMapProjectionShader.SetMat4(Shader.GetShaderPropertyId("ProjectionMatrix"), captureProjection);
-                CubeMapProjectionShader.UseProgram();
-                CubeMapProjectionShader.UpdateUniforms();
+                CubeMapProjectionShader.AttachShaderForRendering();
                 
                 GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, targets[i], tColorCubeMap, 0);
                 GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, targets[i], tDepthCubeMap, 0);
