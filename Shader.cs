@@ -508,6 +508,13 @@ namespace JLGraphics
             {
                 return value;
             }
+#if DEBUG
+            uint tempValue = (uint)GlobalUniformPropertyIdCounter;
+            if(tempValue == uint.MaxValue)
+            {
+                throw new OverflowException("No more shader properties available!");
+            }
+#endif
             NameToIdCache.Add(uniformName, GlobalUniformPropertyIdCounter);
             IdToNameCache.Add(GlobalUniformPropertyIdCounter, uniformName);
             return GlobalUniformPropertyIdCounter++;
