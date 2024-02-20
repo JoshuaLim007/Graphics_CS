@@ -1,5 +1,22 @@
-﻿#version 410
-#define MAX_POINT_LIGHTS 16
+﻿#version 430
+#define MAX_POINT_LIGHTS 128
+
+struct PointLight {
+	vec4 Position;
+	vec4 Color;
+	float Constant;
+	float Linear;
+	float Exp;
+	float Range;
+	int HasShadows;
+	float ShadowFarPlane;
+};
+layout(std140, binding = 3) uniform PointLightBuffer
+{
+	PointLight[MAX_POINT_LIGHTS] PointLightData;
+} PL;
+uniform samplerCube PointLightShadowMap[MAX_POINT_LIGHTS];
+uniform int PointLightCount;
 
 in VS_OUT{
 	vec3 Color;
@@ -9,19 +26,6 @@ in VS_OUT{
 	vec3 Tangent;
 	vec4 PositionLightSpace;
 } fs_in;
-
-uniform struct POINT_LIGHT {
-	vec3 Position;
-	vec3 Color;
-	float Constant;
-	float Linear;
-	float Exp;
-	bool HasShadows;
-	samplerCube ShadowMap;
-	float ShadowFarPlane;
-	float Range;
-} PointLights[MAX_POINT_LIGHTS];
-uniform int PointLightCount;
 
 uniform struct DIRECT_LIGHT {
 	vec3 Direction;
@@ -168,31 +172,31 @@ vec4 GetPointLight(vec3 cameraPosition, vec3 worldPosition, vec3 normal, vec3 re
 	vec4 col = vec4(0, 0, 0, 0);
 	for (int i = 0; i < PointLightCount; i++)
 	{
-		float constant = PointLights[i].Constant;
+		float constant = PL.PointLightData[i].Constant;
 
-		vec3 dirFromLight = PointLights[i].Position - worldPosition;
+		vec3 dirFromLight = PL.PointLightData[i].Position.xyz - worldPosition;
 		float dist = length(dirFromLight);
 		dirFromLight = normalize(dirFromLight);
 
 		//diffuse color
 		float atten = (constant 
-			+ PointLights[i].Exp * dist * dist
-			+ PointLights[i].Linear * dist
+			+ PL.PointLightData[i].Exp * dist * dist
+			+ PL.PointLightData[i].Linear * dist
 		);
 		float shade = min(max(dot(normal, dirFromLight), 0), 1) / atten;
 
-		if (PointLights[i].HasShadows == true) {
-			shade *= (1 - GetPointLightShadow(cameraPosition, worldPosition, PointLights[i].Position, PointLights[i].ShadowMap, PointLights[i].ShadowFarPlane, fs_in.Normal));
+		if (PL.PointLightData[i].HasShadows == 1) {
+			shade *= (1 - GetPointLightShadow(cameraPosition, worldPosition, PL.PointLightData[i].Position.xyz, PointLightShadowMap[i], PL.PointLightData[i].ShadowFarPlane, fs_in.Normal));
 		}
 
-		shade *= 1 - smoothstep(PointLights[i].Range * 0.75f, PointLights[i].Range, dist);
+		shade *= 1 - smoothstep(PL.PointLightData[i].Range * 0.75f, PL.PointLightData[i].Range, dist);
 
-		vec3 lCol = PointLights[i].Color * lightFactor * shade;
+		vec3 lCol = PL.PointLightData[i].Color.xyz * lightFactor * shade;
 		//specular color
 		float specular = min(max(dot(reflectedVector, dirFromLight), 0), 1);
 		specular = pow(specular, pow(Smoothness, 3) * 32);
 		specular = smoothstep(0.3, 1., specular) * pow(Smoothness, 3) * 24;
-		vec4 specColor = vec4(PointLights[i].Color * lightFactor, 0) * specular * shade;
+		vec4 specColor = vec4(PL.PointLightData[i].Color.xyz * lightFactor, 0) * specular * shade;
 
 		//combined color
 		col += vec4(lCol, 0) + specColor;

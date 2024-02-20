@@ -9,6 +9,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using StbImageSharp;
 using StbiSharp;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Debug = JLUtility.Debug;
 
 namespace JLGraphics
@@ -44,7 +45,7 @@ namespace JLGraphics
         {
         }
 
-        public const int MAXPOINTLIGHTS = 16;
+        public const int MAXPOINTLIGHTS = 128;
         public GameWindow Window { get; private set; } = null;
         private Vector2i RenderBufferSize { get; set; }
         public Vector2i GetRenderWindowSize()
@@ -744,8 +745,16 @@ namespace JLGraphics
         /// Sets rendering sorting
         /// </summary>
         public RenderSort RenderingSortMode { get; set; } = RenderSort.ShaderProgramMaterial;
+
+        private PointLightSSBO[] pointLightSSBOs = new PointLightSSBO[MAXPOINTLIGHTS];
+        private UBO<PointLightSSBO> PointLightBufferData;
         void SetupLights(Camera camera)
         {
+            if(PointLightBufferData == null)
+            {
+                PointLightBufferData = new UBO<PointLightSSBO>(pointLightSSBOs, pointLightSSBOs.Length, 3);
+            }
+
             List<PointLight> pointLights = new List<PointLight>();
             var lights = InternalGlobalScope<Light>.Values;
             for (int i = 0; i < lights.Count; i++)
@@ -785,19 +794,24 @@ namespace JLGraphics
             });
             for (int i = 0; i < MathF.Min(pointLights.Count, MAXPOINTLIGHTS); i++)
             {
-                Shader.SetGlobalVector3("PointLights[" + i + "].Position", pointLights[i].Transform.Position);
-                Shader.SetGlobalVector3("PointLights[" + i + "].Color", pointLights[i].Color);
-                Shader.SetGlobalFloat("PointLights[" + i + "].Constant", pointLights[i].AttenConstant);
-                Shader.SetGlobalFloat("PointLights[" + i + "].Linear", pointLights[i].AttenLinear);
-                Shader.SetGlobalFloat("PointLights[" + i + "].Exp", pointLights[i].AttenExp);
-                Shader.SetGlobalFloat("PointLights[" + i + "].Range", pointLights[i].Range);
-                Shader.SetGlobalBool("PointLights[" + i + "].HasShadows", pointLights[i].HasShadows);
+                unsafe
+                {
+                    pointLightSSBOs[i].Position = new Vector4(pointLights[i].Transform.Position, 0);
+                    pointLightSSBOs[i].Color = new Vector4(pointLights[i].Color, 0);
+                    pointLightSSBOs[i].Constant = pointLights[i].AttenConstant;
+                    pointLightSSBOs[i].Linear = pointLights[i].AttenLinear;
+                    pointLightSSBOs[i].Exp = pointLights[i].AttenExp;
+                    pointLightSSBOs[i].Range = pointLights[i].Range;
+                    pointLightSSBOs[i].HasShadows = pointLights[i].HasShadows ? 1 : 0;
+                }
                 if (pointLights[i].HasShadows)
                 {
-                    Shader.SetGlobalTexture("PointLights[" + i + "].ShadowMap", pointLights[i].GetShadowMapper().DepthCubemap);
-                    Shader.SetGlobalFloat("PointLights[" + i + "].ShadowFarPlane", pointLights[i].GetShadowMapper().FarPlane);
+                    pointLightSSBOs[i].ShadowFarPlane = pointLights[i].GetShadowMapper().FarPlane;
+                    Shader.SetGlobalTexture("PointLightShadowMap[" + i + "]", pointLights[i].GetShadowMapper().DepthCubemap);
                 }
             }
+
+            PointLightBufferData.UpdateData(pointLightSSBOs, Unsafe.SizeOf<PointLightSSBO>() * pointLightSSBOs.Length);
             Shader.SetGlobalInt("PointLightCount", (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
 

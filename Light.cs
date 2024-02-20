@@ -70,6 +70,23 @@ namespace JLGraphics
             return ShadowMapper;
         }
     }
+    
+    //std140 must be multiple of 16 (vec4)
+    //only 4 byte or 16 byte elements
+    public struct PointLightSSBO
+    {
+        public Vector4 Position;
+        public Vector4 Color;
+        public float Constant;
+        public float Linear;
+        public float Exp;
+        public float Range;
+        public int HasShadows;
+        public float ShadowFarPlane;
+        readonly public float pad0;
+        readonly public float pad1;
+
+    }
     public class PointLight : Light
     {
         PointLightShadowMap ShadowMapper;
