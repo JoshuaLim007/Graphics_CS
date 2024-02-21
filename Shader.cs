@@ -103,6 +103,7 @@ namespace JLGraphics
             if (textureTarget != null)
                 texture.textureTarget = textureTarget.Value;
 
+            //add new texture if we dont have that texture slot added yet
             if (textureIndex == -1)
             {
                 if (texture == null)
@@ -410,8 +411,9 @@ namespace JLGraphics
             }
 
             //apply texture units, set local textures
+            //skip texture0, since it will always have a value
             //optimized such that the update uniform wont update the same uniforms with same values as the previously update uniform
-            for (int i = 0; i < TotalTextures; i++)
+            for (int i = 1; i < TotalTextures; i++)
             {
                 if (IntToBool(textureMask, i))
                 {
