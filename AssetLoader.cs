@@ -257,7 +257,7 @@ namespace JLGraphics
                     materials.Value.SetTexture(Shader.GetShaderPropertyId(DefaultMaterialUniforms.MainTexture), diffuse);
                     usedTextures.Add(diffuse);
                 }
-                else
+                else if(tryDiffuse)
                 {
                     Debug.Log("Couldn't find diffuse texture for material: " + materialName, Debug.Flag.Warning);
                 }
@@ -273,7 +273,7 @@ namespace JLGraphics
                     materials.Value.SetTexture(Shader.GetShaderPropertyId(DefaultMaterialUniforms.NormalTexture), normal);
                     usedTextures.Add(normal);
                 }
-                else
+                else if(tryNormal)
                 {
                     Debug.Log("Couldn't find normal texture for material: " + materialName, Debug.Flag.Warning);
                 }
@@ -289,7 +289,7 @@ namespace JLGraphics
                     materials.Value.SetTexture(Shader.GetShaderPropertyId(DefaultMaterialUniforms.MAOS), maos);
                     usedTextures.Add(maos);
                 }
-                else
+                else if (tryMaos)
                 {
                     Debug.Log("Couldn't find maos texture for material: " + materialName, Debug.Flag.Warning);
                 }
