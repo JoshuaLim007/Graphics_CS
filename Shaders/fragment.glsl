@@ -10,6 +10,7 @@ struct PointLight {
 	float Range;
 	int HasShadows;
 	float ShadowFarPlane;
+	int ShadowIndex;
 };
 layout(std140, binding = 3) uniform PointLightBuffer
 {
@@ -186,7 +187,7 @@ vec4 GetPointLight(vec3 cameraPosition, vec3 worldPosition, vec3 normal, vec3 re
 		float shade = min(max(dot(normal, dirFromLight), 0), 1) / atten;
 
 		if (PL.PointLightData[i].HasShadows == 1) {
-			shade *= (1 - GetPointLightShadow(cameraPosition, worldPosition, PL.PointLightData[i].Position.xyz, PointLightShadowMap[i], PL.PointLightData[i].ShadowFarPlane, fs_in.Normal));
+			shade *= (1 - GetPointLightShadow(cameraPosition, worldPosition, PL.PointLightData[i].Position.xyz, PointLightShadowMap[PL.PointLightData[i].ShadowIndex], PL.PointLightData[i].ShadowFarPlane, fs_in.Normal));
 		}
 
 		shade *= 1 - smoothstep(PL.PointLightData[i].Range * 0.75f, PL.PointLightData[i].Range, dist);

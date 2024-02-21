@@ -83,7 +83,7 @@ namespace JLGraphics
         public float Range;
         public int HasShadows;
         public float ShadowFarPlane;
-        readonly public float pad0;
+        public float ShadowIndex;
         readonly public float pad1;
 
     }

@@ -753,7 +753,7 @@ namespace JLGraphics
                 PointLightBufferData = new UBO<PointLightSSBO>(pointLightSSBOs, pointLightSSBOs.Length, 3);
             }
 
-            List<PointLight> pointLights = new List<PointLight>();
+            List<(PointLight, int)> pointLights = new();
             var lights = InternalGlobalScope<Light>.Values;
             for (int i = 0; i < lights.Count; i++)
             {
@@ -768,8 +768,9 @@ namespace JLGraphics
                         if (t0.HasShadows)
                         {
                             t0.RenderShadowMap(camera);
+                            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("PointLightShadowMap[" + i + "]"), t0.GetShadowMapper().DepthCubemap);
                         }
-                        pointLights.Add(t0);
+                        pointLights.Add((t0, i));
                         break;
                 }
             }
@@ -779,8 +780,8 @@ namespace JLGraphics
             //render closer point lights first
             pointLights.Sort((a, b) =>
             {
-                var distance0 = (a.Transform.Position - camera.Transform.Position).LengthSquared;
-                var distance1 = (b.Transform.Position - camera.Transform.Position).LengthSquared;
+                var distance0 = (a.Item1.Transform.Position - camera.Transform.Position).LengthSquared;
+                var distance1 = (b.Item1.Transform.Position - camera.Transform.Position).LengthSquared;
                 if(distance0 < distance1)
                 {
                     return -1;
@@ -792,20 +793,21 @@ namespace JLGraphics
             });
             for (int i = 0; i < MathF.Min(pointLights.Count, MAXPOINTLIGHTS); i++)
             {
+                PointLight pointLight = pointLights[i].Item1;
                 unsafe
                 {
-                    pointLightSSBOs[i].Position = new Vector4(pointLights[i].Transform.Position, 0);
-                    pointLightSSBOs[i].Color = new Vector4(pointLights[i].Color, 0);
-                    pointLightSSBOs[i].Constant = pointLights[i].AttenConstant;
-                    pointLightSSBOs[i].Linear = pointLights[i].AttenLinear;
-                    pointLightSSBOs[i].Exp = pointLights[i].AttenExp;
-                    pointLightSSBOs[i].Range = pointLights[i].Range;
-                    pointLightSSBOs[i].HasShadows = pointLights[i].HasShadows ? 1 : 0;
+                    pointLightSSBOs[i].Position = new Vector4(pointLight.Transform.Position, 0);
+                    pointLightSSBOs[i].Color = new Vector4(pointLight.Color, 0);
+                    pointLightSSBOs[i].Constant = pointLight.AttenConstant;
+                    pointLightSSBOs[i].Linear = pointLight.AttenLinear;
+                    pointLightSSBOs[i].Exp = pointLight.AttenExp;
+                    pointLightSSBOs[i].Range = pointLight.Range;
+                    pointLightSSBOs[i].HasShadows = pointLight.HasShadows ? 1 : 0;
                 }
-                if (pointLights[i].HasShadows)
+                if (pointLight.HasShadows)
                 {
-                    pointLightSSBOs[i].ShadowFarPlane = pointLights[i].GetShadowMapper().FarPlane;
-                    Shader.SetGlobalTexture(Shader.GetShaderPropertyId("PointLightShadowMap[" + i + "]"), pointLights[i].GetShadowMapper().DepthCubemap);
+                    pointLightSSBOs[i].ShadowFarPlane = pointLight.GetShadowMapper().FarPlane;
+                    pointLightSSBOs[i].ShadowIndex = pointLights[i].Item2;
                 }
             }
 
