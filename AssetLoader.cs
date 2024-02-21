@@ -174,7 +174,7 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                var texture = ImageTexture.LoadTextureFromPath(textureFiles[i], true, StbImageSharp.ColorComponents.RedGreenBlue);
+                var texture = ImageTexture.LoadTextureFromPath(textureFiles[i], true, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
                 textureMapping.Add(name, texture);
             }
             HashSet<ImageTexture> usedTextures = new HashSet<ImageTexture>();
@@ -249,8 +249,8 @@ namespace JLGraphics
                 {
                     if(diffuse.GlTextureID == 0)
                     {
-                        diffuse.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb;
-                        diffuse.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Srgb;
+                        diffuse.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgba;
+                        diffuse.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.SrgbAlpha;
                         diffuse.ResolveTexture();
                     }
                     Debug.Log("Found diffuse texture for material: " + materialName + ", texture name: " + Path.GetFileName(diffuse.Name), Debug.Flag.Normal);
@@ -265,8 +265,8 @@ namespace JLGraphics
                 {
                     if (normal.GlTextureID == 0)
                     {
-                        normal.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb;
-                        normal.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb8;
+                        normal.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgba;
+                        normal.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgba8;
                         normal.ResolveTexture();
                     }
                     Debug.Log("Found normal texture for material: " + materialName + ", texture name: " + Path.GetFileName(normal.Name), Debug.Flag.Normal);
@@ -281,8 +281,8 @@ namespace JLGraphics
                 {
                     if (maos.GlTextureID == 0)
                     {
-                        maos.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb;
-                        maos.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb8;
+                        maos.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgba;
+                        maos.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgba8;
                         maos.ResolveTexture();
                     }
                     Debug.Log("Found maos texture for material: " + materialName + ", texture name: " + Path.GetFileName(maos.Name), Debug.Flag.Normal);
