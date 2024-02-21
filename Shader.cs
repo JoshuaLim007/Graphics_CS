@@ -516,7 +516,7 @@ namespace JLGraphics
         //##################### CACHED GLOBAL UNIFORM VALUES #################################
         readonly static List<UniformValue> GlobalUniformValues = new();
         readonly static Dictionary<int, int> GlobalUniformIndexCache = new();
-        static int GlobalUniformPropertyIdCounter = 0;
+        static int GlobalUniformPropertyIdCounter = 1;
         static Dictionary<string, int> NameToIdCache = new();
         static Dictionary<int, string> IdToNameCache = new();
         //##################################################################################
