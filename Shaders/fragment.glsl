@@ -247,7 +247,7 @@ void main(){
 
 	color = texture(AlbedoTex, fs_in.TexCoord);
 	bump = texture(NormalTex, fs_in.TexCoord);
-	if (bump.x == 0 && bump.y == 0 && bump.z == 0) {
+	if (bump.x == 1 && bump.y == 1 && bump.z == 1) {
 		bump.xyz = vec3(0, 0, 1);
 	}
 	else {

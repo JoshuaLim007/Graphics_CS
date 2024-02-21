@@ -126,21 +126,36 @@ namespace JLGraphics
             }
             else
             {
-                texturePropertyIds[textureIndex] = -1;
+                texturePropertyIds[textureIndex] = 0;
                 set_int_bool(textureIndex, false, ref textureMask);
                 availableTextureSlots.Push(textureIndex);
             }
+        }
+        static Texture DefaultTexture = null;
+        private void SetDefaultTexture()
+        {
+            if(DefaultTexture == null)
+            {
+                DefaultTexture = ImageTexture.LoadTextureFromPath("./Textures/1x1_white.bmp");
+                DefaultTexture.ResolveTexture();
+            }
+            GL.UseProgram(Program);
+            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.BindTexture(TextureTarget.Texture2D, DefaultTexture.GlTextureID);
         }
         public void SetTexture(int propertyId, Texture texture)
         {
             if (!mIsWithinShader)
             {
                 GL.UseProgram(Program);
+            }
+            if (texture != null)
+            {
                 SetTextureUnsafe(propertyId, texture, texture.textureTarget);
             }
             else
             {
-                SetTextureUnsafe(propertyId, texture, texture.textureTarget);
+                SetTextureUnsafe(propertyId, null, null);
             }
         }
 
@@ -188,7 +203,8 @@ namespace JLGraphics
             myWeakRef = new WeakReference<Shader>(this);
             AllInstancedShaders.Add(myWeakRef);
             init();
-            for (int i = 0; i < TotalTextures; i++)
+            //omit 0 from available slot for default texture
+            for (int i = 1; i < TotalTextures; i++)
             {
                 availableTextureSlots.Push(i);
             }
@@ -207,6 +223,7 @@ namespace JLGraphics
         {
             Program.OnShaderReload += ShaderReload;
             SetInt(GetShaderPropertyId("textureMask"), textureMask);
+            SetDefaultTexture();
         }
         ~Shader()
         {
@@ -253,11 +270,6 @@ namespace JLGraphics
                 return null;
             }
             GL.UseProgram(Program);
-            //rarely the case
-            if(textureMask == 0)
-            {
-                GL.ActiveTexture(TextureUnit.Texture0);
-            }
             if (!dontFetchGlobals)
                 mPushAllGlobalUniformsToShaderProgram();
 

@@ -22,6 +22,7 @@ namespace JLGraphics
         readonly static public string AmbientSkyColor = "SkyColor";
         readonly static public string AmbientHorizonColor = "HorizonColor";
         readonly static public string AmbientGroundColor = "GroundColor";
+        readonly static public string DepthTexture = "_CameraDepthTexture";
     }
     public struct Time
     {
@@ -206,11 +207,8 @@ namespace JLGraphics
             DepthPrepassShader.ColorMask[1] = false;
             DepthPrepassShader.ColorMask[2] = false;
             DepthPrepassShader.ColorMask[3] = false;
-            DefaultMaterial.SetVector3(Shader.GetShaderPropertyId("AlbedoColor"), new Vector3(1, 1, 1));
-            DefaultMaterial.SetFloat(Shader.GetShaderPropertyId("Smoothness"), 0.5f);
-            var img = ImageTexture.LoadTextureFromPath("./Textures/1x1_white.bmp");
-            img.ResolveTexture();
-            DefaultMaterial.SetTexture(Shader.GetShaderPropertyId("AlbedoTex"), img);
+            DefaultMaterial.SetVector3(Shader.GetShaderPropertyId(DefaultMaterialUniforms.AlbedoColor), new Vector3(1, 1, 1));
+            DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Smoothness), 0.5f);
             FullScreenQuad = Mesh.CreateQuadMesh();
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
