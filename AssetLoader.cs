@@ -9,6 +9,7 @@ namespace JLGraphics
     using System.Collections.Generic;
     using System.IO;
     using Assimp;
+    using F23.StringSimilarity;
     using global::ObjLoader.Loader.Loaders;
     using JLUtility;
     using OpenTK;
@@ -133,6 +134,175 @@ namespace JLGraphics
                 parent.Name = entityName;
             }
             return entites;
+        }
+        
+        public struct TextureMatchingSettings
+        {
+            public string path;
+            public string fileType;
+            public string[] diffuseTextureSuffix;
+            public string[] normalTextureSuffix;
+            public string[] MAOSTextureSuffix;
+        }
+        public static void TryApplyingTextures(TextureMatchingSettings settings, List<Entity> entities)
+        {
+            Dictionary<string, Shader> materialMap = new Dictionary<string, Shader>();
+            for (int i = 0; i < entities.Count; i++)
+            {
+                var render = entities[i].GetComponent<Renderer>();
+                if(render == null)
+                {
+                    continue;
+                }
+
+                var mat = entities[i].GetComponent<Renderer>().Material;
+                if (materialMap.ContainsKey(mat.Name))
+                {
+                    continue;
+                }
+
+                Debug.Log("Grabbed material from: " + entities[i].Name + ", mat: " + mat.Name);
+                materialMap.Add(mat.Name, mat);
+            }
+
+            var textureFiles = Directory.GetFiles(settings.path);
+            Dictionary<string, ImageTexture> textureMapping = new Dictionary<string, ImageTexture>();
+            for (int i = 0; i < textureFiles.Length; i++)
+            {
+                var name = Path.GetFileName(textureFiles[i]);
+                if(Path.GetExtension(name) != settings.fileType)
+                {
+                    continue;
+                }
+                var texture = ImageTexture.LoadTextureFromPath(textureFiles[i], true, StbImageSharp.ColorComponents.RedGreenBlue);
+                textureMapping.Add(name, texture);
+            }
+            HashSet<ImageTexture> usedTextures = new HashSet<ImageTexture>();
+            var l = new Jaccard();
+            foreach (var materials in materialMap)
+            {
+                var materialName = materials.Key;
+                ImageTexture diffuse = null;
+                ImageTexture normal = null;
+                ImageTexture maos = null;
+
+                bool tryDiffuse = settings.diffuseTextureSuffix != null;
+                bool tryNormal = settings.normalTextureSuffix != null;
+                bool tryMaos = settings.MAOSTextureSuffix != null;
+                double score0 = 0;
+                double score1 = 0;
+                double score2 = 0;
+
+                foreach (var textures in textureMapping)
+                {
+                    string texName = textures.Key;
+                    if (tryDiffuse)
+                    {
+                        for (int i = 0; i < settings.diffuseTextureSuffix.Length; i++)
+                        {
+                            var target = materialName + settings.diffuseTextureSuffix[i] + settings.fileType;
+                            var s0 = l.Similarity(target, texName);
+                            var suffix = texName.Split(settings.fileType)[0];
+                            var hasCorrectSuffix = suffix.EndsWith(settings.diffuseTextureSuffix[i]);
+                            if (s0 > score0 && hasCorrectSuffix)
+                            {
+                                diffuse = textures.Value;
+                                score0 = s0;
+                            }
+                        }
+                    }
+
+                    if (tryNormal)
+                    {
+                        for (int i = 0; i < settings.normalTextureSuffix.Length; i++)
+                        {
+                            var target = materialName + settings.normalTextureSuffix[i] + settings.fileType;
+                            var s1 = l.Similarity(target, texName);
+                            var suffix = texName.Split(settings.fileType)[0];
+                            var hasCorrectSuffix = settings.normalTextureSuffix[i].Trim().Length != 0 ? suffix.EndsWith(settings.normalTextureSuffix[i]) : true;
+                            if (s1 > score1 && hasCorrectSuffix)
+                            {
+                                normal = textures.Value;
+                                score1 = s1;
+                            }
+                        }
+                    }
+
+                    if (tryMaos)
+                    {
+                        for (int i = 0; i < settings.MAOSTextureSuffix.Length; i++)
+                        {
+                            var target = materialName + settings.MAOSTextureSuffix[i] + settings.fileType;
+                            var s2 = l.Similarity(target, texName);
+                            var suffix = texName.Split(settings.fileType)[0];
+                            var hasCorrectSuffix = settings.MAOSTextureSuffix[i].Trim().Length != 0 ? suffix.EndsWith(settings.MAOSTextureSuffix[i]) : true;
+                            if (s2 > score2 && hasCorrectSuffix)
+                            {
+                                maos = textures.Value;
+                                score2 = s2;
+                            }
+                        }
+                    }
+                }
+
+                if (diffuse != null)
+                {
+                    if(diffuse.GlTextureID == 0)
+                    {
+                        diffuse.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb;
+                        diffuse.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Srgb;
+                        diffuse.ResolveTexture();
+                    }
+                    Debug.Log("Found diffuse texture for material: " + materialName + ", texture name: " + Path.GetFileName(diffuse.Name), Debug.Flag.Normal);
+                    materials.Value.SetTexture(Shader.GetShaderPropertyId(DefaultMaterialUniforms.MainTexture), diffuse);
+                    usedTextures.Add(diffuse);
+                }
+                else
+                {
+                    Debug.Log("Couldn't find diffuse texture for material: " + materialName, Debug.Flag.Warning);
+                }
+                if (normal != null)
+                {
+                    if (normal.GlTextureID == 0)
+                    {
+                        normal.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb;
+                        normal.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb8;
+                        normal.ResolveTexture();
+                    }
+                    Debug.Log("Found normal texture for material: " + materialName + ", texture name: " + Path.GetFileName(normal.Name), Debug.Flag.Normal);
+                    materials.Value.SetTexture(Shader.GetShaderPropertyId(DefaultMaterialUniforms.NormalTexture), normal);
+                    usedTextures.Add(normal);
+                }
+                else
+                {
+                    Debug.Log("Couldn't find normal texture for material: " + materialName, Debug.Flag.Warning);
+                }
+                if (maos != null)
+                {
+                    if (maos.GlTextureID == 0)
+                    {
+                        maos.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb;
+                        maos.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb8;
+                        maos.ResolveTexture();
+                    }
+                    Debug.Log("Found maos texture for material: " + materialName + ", texture name: " + Path.GetFileName(maos.Name), Debug.Flag.Normal);
+                    materials.Value.SetTexture(Shader.GetShaderPropertyId(DefaultMaterialUniforms.MAOS), maos);
+                    usedTextures.Add(maos);
+                }
+                else
+                {
+                    Debug.Log("Couldn't find maos texture for material: " + materialName, Debug.Flag.Warning);
+                }
+            }
+
+            foreach (var textures in textureMapping)
+            {
+                if (!usedTextures.Contains(textures.Value)){
+                    textures.Value.Dispose();
+                }
+            }
+
+            return;
         }
 
         public static GlMeshData GenerateGLMeshData(Assimp.Mesh mesh)

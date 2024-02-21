@@ -155,7 +155,7 @@ namespace JLGraphics
                 GL.GenerateTextureMipmap(GlTextureID);
             }
 
-            GL.BindTexture(TextureTarget.Texture2D, 0);
+            GL.BindTexture(textureTarget, 0);
         }
 
         protected override void OnDispose()

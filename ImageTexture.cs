@@ -10,15 +10,26 @@ namespace JLGraphics
 {
     public class ImageTexture : Texture
     {
-        public static ImageTexture LoadTextureFromPath(string path)
+        string path;
+        public static ImageTexture LoadTextureFromPath(string path, bool bilinearFilter = true, ColorComponents colorComponents = ColorComponents.RedGreenBlueAlpha)
         {
-            var image = ImageResult.FromStream(File.OpenRead(path), ColorComponents.RedGreenBlueAlpha);
+            var image = ImageResult.FromStream(File.OpenRead(path), colorComponents);
             var m = new ImageTexture(image);
-            m.textureMinFilter = TextureMinFilter.LinearMipmapLinear;
-            m.textureMagFilter = TextureMagFilter.Linear;
+            m.path = path;
+            if (bilinearFilter)
+            {
+                m.textureMinFilter = TextureMinFilter.LinearMipmapNearest;
+                m.textureMagFilter = TextureMagFilter.Linear;
+            }
+            else
+            {
+                m.textureMinFilter = TextureMinFilter.NearestMipmapNearest;
+                m.textureMagFilter = TextureMagFilter.Nearest;
+            }
             m.textureWrapMode = TextureWrapMode.Repeat;
             return m;
         }
+        public override string Name => path;
         public ImageResult image { get; }
         public ImageTexture(ImageResult image)
         {
