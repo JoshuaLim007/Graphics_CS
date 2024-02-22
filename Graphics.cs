@@ -755,6 +755,7 @@ namespace JLGraphics
 
             List<(PointLight, int)> pointLights = new();
             var lights = InternalGlobalScope<Light>.Values;
+            int pointLightShadowCount = 0;
             for (int i = 0; i < lights.Count; i++)
             {
                 switch (lights[i])
@@ -765,12 +766,13 @@ namespace JLGraphics
                         Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Direction"), t0.Transform.Forward);
                         break;
                     case PointLight t0:
+                        pointLights.Add((t0, pointLightShadowCount));
                         if (t0.HasShadows)
                         {
                             t0.RenderShadowMap(camera);
-                            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("PointLightShadowMap[" + i + "]"), t0.GetShadowMapper().DepthCubemap);
+                            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("PointLightShadowMap[" + pointLightShadowCount + "]"), t0.GetShadowMapper().DepthCubemap);
+                            pointLightShadowCount++;
                         }
-                        pointLights.Add((t0, i));
                         break;
                 }
             }
