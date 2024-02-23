@@ -157,11 +157,11 @@ namespace JLGraphics
             }
             if (texture != null)
             {
-                SetTextureUnsafe(propertyId, texture, texture.textureTarget);
+                SetTextureUnsafe(propertyId, texture);
             }
             else
             {
-                SetTextureUnsafe(propertyId, null, null);
+                SetTextureUnsafe(propertyId, DefaultTexture);
             }
         }
 
