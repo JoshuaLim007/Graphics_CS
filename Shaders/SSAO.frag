@@ -99,13 +99,13 @@ void main()
     const float maxBias = 1;
 
     for(int i = 0; i < samples; i++){
-        vec3 randomDir = normalize(hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, i)));
+        vec3 randomDir = normalize(hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, i + _Frame)));
         randomDir = randomDir * 2 - 1;
         randomDir = randomDir * sign(dot(randomDir, normal));
         
         float scale = float(i) / float(samples);
         scale = mix(0.1f, Radius, scale * scale);
-        float len = rand(uv * vec2(i + 1) * 0.001) * scale;
+        float len = rand(uv * vec2(i + 1 + _Frame) * 0.001) * scale;
 
         vec3 randomPos = position + randomDir * len;
         vec4 cl = ProjectionViewMatrix * vec4(randomPos, 1);
