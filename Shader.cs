@@ -135,14 +135,19 @@ namespace JLGraphics
         static Texture DefaultTexture = null;
         private void SetDefaultTexture()
         {
-            if(DefaultTexture == null)
+            if (DefaultTexture == null)
             {
                 DefaultTexture = ImageTexture.LoadTextureFromPath("./Textures/1x1_white.bmp");
                 DefaultTexture.ResolveTexture();
             }
-            GL.UseProgram(Program);
-            GL.ActiveTexture(TextureUnit.Texture0);
-            GL.BindTexture(TextureTarget.Texture2D, DefaultTexture.GlTextureID);
+            var types = Program.GetUniformTypes();
+            for (int i = 0; i < types.Count; i++)
+            {
+                if (types[i].Value == ActiveUniformType.Sampler2D)
+                {
+                    SetTexture(GetShaderPropertyId(types[i].Key), DefaultTexture);
+                }
+            }
         }
         public void SetTexture(int propertyId, Texture texture)
         {
@@ -203,12 +208,11 @@ namespace JLGraphics
             Program = shaderProgram;
             myWeakRef = new WeakReference<Shader>(this);
             AllInstancedShaders.Add(myWeakRef);
-            init();
-            //omit 0 from available slot for default texture
-            for (int i = 1; i < TotalTextures; i++)
+            for (int i = 0; i < TotalTextures; i++)
             {
                 availableTextureSlots.Push(i);
             }
+            init();
         }
         void ShaderReload()
         {
@@ -411,9 +415,8 @@ namespace JLGraphics
             }
 
             //apply texture units, set local textures
-            //skip texture0, since it will always have a value
             //optimized such that the update uniform wont update the same uniforms with same values as the previously update uniform
-            for (int i = 1; i < TotalTextures; i++)
+            for (int i = 0; i < TotalTextures; i++)
             {
                 if (IntToBool(textureMask, i))
                 {
