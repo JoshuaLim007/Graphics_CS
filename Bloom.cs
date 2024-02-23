@@ -21,7 +21,7 @@ namespace JLGraphics
 
         int blurIterations = 7;
         float threshold = 10.0f;
-        float intensity = 1.0f;
+        float intensity = 0.5f;
         float clamp = (1 << 16);
 
         public float Threshold {
