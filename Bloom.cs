@@ -19,8 +19,7 @@ namespace JLGraphics
         Shader bloomCompositeShader;
         Shader bloomPrepassShader;
 
-        int blurIterations = 6;
-        bool initializeRts = false;
+        int blurIterations = 7;
         float threshold = 10.0f;
         float intensity = 1.0f;
         float clamp = (1 << 16);
@@ -56,7 +55,7 @@ namespace JLGraphics
             }
         }
 
-        public Bloom() : base(RenderQueue.AfterTransparents, -1)
+        public Bloom() : base(RenderQueue.AfterTransparents, 8)
         {
             var program = new ShaderProgram("Blur Program", "./Shaders/Bloom.glsl", "./Shaders/Passthrough.vert");
             program.CompileProgram();
@@ -84,17 +83,25 @@ namespace JLGraphics
                 temporaryRt[i]?.Dispose();
             }
         }
+
+        int previousWidth = 0;
+        int previousHeight = 0;
         public override void Execute(in FrameBuffer frameBuffer)
         {
             if (intensity == 0)
             {
                 return;
             }
-            if(!initializeRts)
+            if(previousWidth != frameBuffer.Width || previousHeight != frameBuffer.Height)
             {
-                initializeRts = true;
-                var res = GetResolution(frameBuffer, 0.25f);
-                var res2 = GetResolution(frameBuffer, 0.5f);
+                previousWidth = frameBuffer.Width;
+                previousHeight = frameBuffer.Height;
+                var res = GetResolution(frameBuffer, 0.5f);
+                var res2 = GetResolution(frameBuffer, 1.0f);
+                if(prepassFitlerRt != null)
+                {
+                    prepassFitlerRt.Dispose();
+                }
                 prepassFitlerRt = new FrameBuffer(res2.X, res2.Y, false, new TFP()
                 {
                     internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
@@ -108,6 +115,10 @@ namespace JLGraphics
                 {
                     int width = MathHelper.Clamp(res.X >> i, 1, int.MaxValue);
                     int height = MathHelper.Clamp(res.Y >> i, 1, int.MaxValue);
+                    if(blurTexture[i] != null)
+                    {
+                        blurTexture[i].Dispose();
+                    }
                     blurTexture[i] = new FrameBuffer(width, height, false, new TFP()
                     {
                         internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
@@ -117,7 +128,10 @@ namespace JLGraphics
                         maxMipmap = 0,
                         wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.MirroredRepeat,
                     });
-
+                    if (temporaryRt[i] != null)
+                    {
+                        temporaryRt[i].Dispose();
+                    }
                     temporaryRt[i] = new FrameBuffer(width, height, false, new TFP()
                     {
                         internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,

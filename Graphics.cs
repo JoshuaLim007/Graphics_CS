@@ -130,6 +130,13 @@ namespace JLGraphics
         public float RenderScale { get; set; } = 1.0f;
         ImGuiController guiController;
         void InitFramebuffers() {
+
+            if (MainFrameBuffer != null)
+            {
+                MainFrameBuffer.Dispose();
+                DepthTextureBuffer.Dispose();
+            }
+
             float scale = RenderScale;// MathF.Sqrt(RenderScale);
             var colorSettings = new TFP()
             {
@@ -143,14 +150,16 @@ namespace JLGraphics
             var depthSettings = new TFP() { 
                 wrapMode = TextureWrapMode.ClampToEdge,
                 maxMipmap = 0,
-                minFilter = TextureMinFilter.Nearest,
+                minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Nearest,
                 internalFormat = PixelInternalFormat.R32f,
                 pixelFormat = PixelFormat.Red
             };
             var windowSize = GetRenderWindowSize();
             MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings);
+            MainFrameBuffer.SetName("Main frame buffer");
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettings);
+            DepthTextureBuffer.SetName("Depth texture buffer");
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
         }
         public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency, bool renderDebugGui)
@@ -345,8 +354,6 @@ namespace JLGraphics
                 if(GuiRenderSceneSize.X != RenderBufferSize.X || GuiRenderSceneSize.Y != RenderBufferSize.Y)
                 {
                     GuiRenderSceneSize = RenderBufferSize;
-                    MainFrameBuffer.Dispose();
-                    DepthTextureBuffer.Dispose();
                     InitFramebuffers();
                 }
                 var cursorPos = ImGui.GetCursorScreenPos();
@@ -411,9 +418,6 @@ namespace JLGraphics
             {
                 Debug.Log("Window resized: " + WindowResizeResults);
                 Window.Size = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
-
-                MainFrameBuffer = null;
-                DepthTextureBuffer = null;
                 InitFramebuffers();
                 GL.Viewport(0, 0, WindowResizeResults.X, WindowResizeResults.Y);
                 
@@ -445,8 +449,6 @@ namespace JLGraphics
             void DoRenderScaleChange()
             {
                 Debug.Log("Render Scale Update: " + RenderScale);
-                MainFrameBuffer.Dispose();
-                DepthTextureBuffer.Dispose();
                 InitFramebuffers();
                 WindowScaleChanged = false;
             }
@@ -514,7 +516,7 @@ namespace JLGraphics
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ViewMatrix"), camera.ViewMatrix);
             var vp = camera.ViewMatrix * camera.ProjectionMatrix;
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("InvProjectionViewMatrix"), vp.Inverted());
-            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), camera.ViewMatrix * camera.ProjectionMatrix);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), vp);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraWorldSpacePos"), camera.Transform.Position);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraDirection"), camera.Transform.Forward);
             Shader.SetGlobalVector4(Shader.GetShaderPropertyId("CameraParams"), new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
@@ -683,6 +685,8 @@ namespace JLGraphics
                 GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
 
                 //render depth prepass
+                GL.ClearDepth(1);
+                GL.ClearColor(Color4.Magenta);
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
                 RenderScene(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
                 Blit(MainFrameBuffer, DepthTextureBuffer, true, null);

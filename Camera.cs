@@ -12,12 +12,12 @@ namespace JLGraphics
         public bool EnabledWireFrame { get; set; } = false;
 
         public float Fov { get; set; } = 90;
-        public float Width => Graphics.Instance.GetRenderWindowSize().X;
-        public float Height => Graphics.Instance.GetRenderWindowSize().Y;
+        public int Width => Graphics.Instance.GetRenderWindowSize().X;
+        public int Height => Graphics.Instance.GetRenderWindowSize().Y;
         public float Near { get; set; } = 0.03f;
         public float Far { get; set; } = 1000.0f;
         public float Size { get; set; } = 100;
-
+        public static Camera Main { get; set; } = null;
         public Matrix4 ViewMatrix =>
             (Transform.Parent != null ? Transform.Parent.WorldToLocalMatrix.Inverted() : Matrix4.Identity) *
             Matrix4.CreateTranslation(-Transform.Position) * 
@@ -45,7 +45,7 @@ namespace JLGraphics
         }
         private Matrix4 calculateProjectionMatrix()
         {
-            return cameraType == CameraType.Perspecitve ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), Width / Height, Near, Far) : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
+            return cameraType == CameraType.Perspecitve ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
         }
     }
 }

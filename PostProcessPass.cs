@@ -18,7 +18,7 @@ namespace JLGraphics
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
         FrameBuffer postProcessTexture = null;
-        public PostProcessPass() : base(RenderQueue.BeforePostProcessing, 100)
+        public PostProcessPass() : base(RenderQueue.AfterTransparents, 9)
         {
             PostProcessShader = new ShaderProgram("PostProcess", "./Shaders/PostProcess.frag", "./Shaders/Passthrough.vert");
             if (Graphics.Instance.GetFileTracker(out var ft))
@@ -35,16 +35,16 @@ namespace JLGraphics
         {
             if(postProcessTexture == null)
             {
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb16f, pixelFormat = PixelFormat.Rgb });
             }
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
             shader.SetBool(Shader.GetShaderPropertyId("Tonemapping"), Tonemapping);
             shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), GammaCorrection);
-            var windowSize = Graphics.Instance.GetRenderWindowSize();
-            if (windowSize != new Vector2i(postProcessTexture.Width, postProcessTexture.Height))
+            if (!FrameBuffer.AlikeResolution(frameBuffer, postProcessTexture))
             {
-                postProcessTexture = new FrameBuffer(windowSize.X, windowSize.Y, false, new TFP(PixelInternalFormat.Rgb16f, PixelFormat.Rgb));
+                postProcessTexture.Dispose();
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb16f, pixelFormat = PixelFormat.Rgb });
             }
             Blit(frameBuffer, postProcessTexture, shader);
             Blit(postProcessTexture, frameBuffer);

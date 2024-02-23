@@ -47,9 +47,9 @@ vec3 calcNormalFromPosition(vec2 texCoords) {
     vec3 dx;
     vec3 dy;
 
-    float v0 = abs(dot(pos1, pos0)) < abs(dot(pos3, pos0)) ? 1 : 0;
+    float v0 = abs(dot(pos1, pos0)) <= abs(dot(pos3, pos0)) ? 1 : 0;
     dy = mix(pos0 - pos3, pos1 - pos0, v0);
-    float v1 = abs(dot(pos2, pos0)) < abs(dot(pos4, pos0)) ? 1 : 0;
+    float v1 = abs(dot(pos2, pos0)) <= abs(dot(pos4, pos0)) ? 1 : 0;
     dx = mix(pos0 - pos4, pos2 - pos0, v0);
 
     dy *= 0.5f;
@@ -69,6 +69,16 @@ vec3 hash(uvec3 x)
 
 	return vec3(x) * (1.0 / float(0xffffffffU));
 }
+vec3 hash3( uvec3 p ) 
+{
+    uint n = p.x + 2048 * p.y + (2048 * 2048) * uint(p.z);
+
+    // integer hash copied from Hugo Elias
+	n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 789221U) + 1376312589U;
+    uvec3 k = n * uvec3(n,n*16807U,n*48271U);
+    return vec3( k & uvec3(0x7fffffffU))/float(0x7fffffff);
+}
 
 float rand(vec2 co){ return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453); }
 
@@ -77,7 +87,7 @@ void main()
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
     float depth = get_depth(uv);
     if(depth == 1){
-        FragColor = vec4(1,0,0,0);
+        FragColor = vec4(1,1,1,1);
         return;
     }
 
@@ -85,12 +95,18 @@ void main()
     vec3 position = calcPositionFromDepth(uv, depth);
 
     float occlusion = 0;
-    const float bias = 0.01f;
+    const float minBias = 0.01;
+    const float maxBias = 1;
+
     for(int i = 0; i < samples; i++){
-        vec3 randomDir = normalize(hash(uvec3(gl_FragCoord.x, gl_FragCoord.y, (i) * 1000)));
+        vec3 randomDir = normalize(hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, i)));
         randomDir = randomDir * 2 - 1;
         randomDir = randomDir * sign(dot(randomDir, normal));
-        float len = rand(uv * vec2(i + 1) * 0.001) * Radius;
+        
+        float scale = float(i) / float(samples);
+        scale = mix(0.1f, Radius, scale * scale);
+        float len = rand(uv * vec2(i + 1) * 0.001) * scale;
+
         vec3 randomPos = position + randomDir * len;
         vec4 cl = ProjectionViewMatrix * vec4(randomPos, 1);
         cl.xyz /= cl.w;
@@ -100,7 +116,10 @@ void main()
         if(sampledDepth == 1){
             continue;
         }
-        float dist = linearDepth(curDepth) - (linearDepth(sampledDepth) + bias);
+        sampledDepth = linearDepth(sampledDepth);
+        curDepth = linearDepth(curDepth);
+        float bias = mix(minBias, maxBias, sampledDepth / CameraParams.w);
+        float dist = curDepth - (sampledDepth + bias);
         if(dist > 0 && abs(dist) < DepthRange){
             occlusion++;
         }

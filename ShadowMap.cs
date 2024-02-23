@@ -41,7 +41,7 @@ namespace JLGraphics
         {
             DepthOnlyFramebuffer.Dispose();
         }
-        public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 10240) : base(resolution)
+        public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
         {
             this.size = size;
             ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader", "./Shaders/fragmentEmpty.glsl", "./Shaders/vertexSimple.glsl");

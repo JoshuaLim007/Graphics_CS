@@ -61,6 +61,7 @@
     <None Remove="Shaders\Bloom.glsl" />
     <None Remove="Shaders\BloomComposite.glsl" />
     <None Remove="Shaders\BloomPrepass.glsl" />
+    <None Remove="Shaders\BoxBlur.frag" />
     <None Remove="shaders\CopyToScreen.frag" />
     <None Remove="Shaders\DepthOnly.frag" />
     <None Remove="Shaders\fragmentEmpty.glsl" />
@@ -73,6 +74,7 @@
     <None Remove="Shaders\SkyBoxFrag.glsl" />
     <None Remove="Shaders\skyboxVert.glsl" />
     <None Remove="Shaders\SSAO.frag" />
+    <None Remove="Shaders\SSAOComp.frag" />
     <None Remove="Shaders\vertexSimple.glsl" />
   </ItemGroup>
 

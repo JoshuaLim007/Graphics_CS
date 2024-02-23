@@ -73,7 +73,13 @@ namespace JLGraphics
                 textureId = value;
             }
         }
-        public override string Name => "Texture: " + GlTextureID;
+        public override string Name => "Texture: " + GlTextureID + " " + NameAddon;
+        public string NameAddon { get; private set; }
+        public void SetName(string name)
+        {
+            NameAddon = name;
+        }
+
         [System.Obsolete("Use CreateTextureObjectFromID", true)]
         public static explicit operator Texture(int textureId) => new Texture() {GlTextureID = textureId};
 
@@ -157,7 +163,22 @@ namespace JLGraphics
 
             GL.BindTexture(textureTarget, 0);
         }
-
+        public static bool Alike(Texture f1, Texture f2, float f1_resolutionInvScale = 1.0f)
+        {
+            bool textureCheck1 =
+                f1.Width * f1_resolutionInvScale == f2.Width &&
+                f1.Height * f1_resolutionInvScale == f2.Height &&
+                f1.mipmapLevels == f2.mipmapLevels &&
+                f1.pixelFormat == f2.pixelFormat &&
+                f1.internalPixelFormat == f2.internalPixelFormat &&
+                f1.borderColor == f2.borderColor &&
+                f1.generateMipMaps == f2.generateMipMaps &&
+                f1.textureMagFilter == f2.textureMagFilter &&
+                f1.textureMinFilter == f2.textureMinFilter &&
+                f1.textureTarget == f2.textureTarget &&
+                f1.textureWrapMode == f2.textureWrapMode;
+            return textureCheck1;
+        }
         protected override void OnDispose()
         {
             if (GlTextureID != 0)

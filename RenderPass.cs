@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace JLGraphics
 {
@@ -46,6 +47,7 @@ namespace JLGraphics
         {
             Graphics.Instance.Blit(src, dst, false, shader);
         }
+
         public void StartBlitUnsafe(Shader _)
         {
             Graphics.Instance.StartBlitUnsafe(_);

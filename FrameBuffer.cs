@@ -20,6 +20,16 @@ namespace JLGraphics
         public Vector4 borderColor;
         public int maxMipmap;
         public bool isShadowMap;
+        public static TFP Default => new TFP()
+        {
+            internalFormat = PixelInternalFormat.Rgb8,
+            pixelFormat = PixelFormat.Rgb,
+            minFilter = TextureMinFilter.Nearest,
+            magFilter = TextureMagFilter.Nearest,
+            wrapMode = TextureWrapMode.Repeat,
+            borderColor = Vector4.Zero,
+            maxMipmap = 0,
+        };
 
         public TFP()
         {
@@ -31,17 +41,6 @@ namespace JLGraphics
             borderColor = Vector4.Zero;
             maxMipmap = 0;
         }
-        public TFP(PixelInternalFormat pixelInternalFormat, PixelFormat pixelFormat)
-        {
-            borderColor = Vector4.Zero;
-            minFilter = TextureMinFilter.Nearest;
-            magFilter = TextureMagFilter.Nearest;
-            wrapMode = TextureWrapMode.Repeat;
-            maxMipmap = 0;
-
-            internalFormat = pixelInternalFormat;
-            this.pixelFormat = pixelFormat;
-        }
     }
     public class FrameBuffer : SafeDispose, IGlobalScope
     {
@@ -50,8 +49,12 @@ namespace JLGraphics
         internal int RenderBufferObject { get; } = 0;
         public int Width { get; } = 0;
         public int Height { get; } = 0;
-        public override string Name => "FrameBuffer:" + FrameBufferObject;
-
+        public override string Name => "FrameBuffer:" + FrameBufferObject + " " + NameAddon;
+        public string NameAddon { get; private set; } = "";
+        public void SetName(string name)
+        {
+            NameAddon = name;
+        }
         public FrameBuffer(int width, int height, bool enableDepthRenderBuffer = false, params TFP[] textureFormat)
         {
             Width = width;
@@ -132,15 +135,82 @@ namespace JLGraphics
                 TextureAttachments[i].Dispose();
             }
         }
-        //public void Dispose()
-        //{
-        //    GL.DeleteFramebuffer(FrameBufferObject);
-        //    GL.DeleteRenderbuffer(RenderBufferObject);
-        //    for (int i = 0; i < ColorAttachments.Length; i++)
-        //    {
-        //        ColorAttachments[i].Dispose();
-        //    }
-        //    //GL.DeleteTexture(DepthBufferTextureId);
-        //}
+
+        public static FrameBuffer Copy(FrameBuffer src, float resolutionScale)
+        {
+            FrameBuffer frameBuffer1;
+            var tfp = TFP.Default;
+            tfp.internalFormat = src.TextureAttachments[0].internalPixelFormat;
+            tfp.pixelFormat = src.TextureAttachments[0].pixelFormat;
+            tfp.magFilter = src.TextureAttachments[0].textureMagFilter;
+            tfp.minFilter = src.TextureAttachments[0].textureMinFilter;
+            tfp.maxMipmap = src.TextureAttachments[0].mipmapLevels;
+            tfp.wrapMode = src.TextureAttachments[0].textureWrapMode;
+            tfp.isShadowMap = false;
+            tfp.borderColor = src.TextureAttachments[0].borderColor;
+            int width = (int)MathHelper.Ceiling(src.TextureAttachments[0].Width * resolutionScale);
+            int height = (int)MathHelper.Ceiling(src.TextureAttachments[0].Height * resolutionScale);
+            frameBuffer1 = new FrameBuffer(width, height, false, tfp);
+            return frameBuffer1;
+        }
+        public static bool AlikeResolution(FrameBuffer f1, FrameBuffer f2, float f1_resolutionInvScale = 1.0f)
+        {
+            if (f1 == null && f2 != null)
+            {
+                return false;
+            }
+            if (f2 == null && f1 != null)
+            {
+                return false;
+            }
+            if (f2 == null && f1 == null)
+            {
+                return true;
+            }
+            bool resolutionCheck = f1.Width * f1_resolutionInvScale == f2.Width && f1.Height * f1_resolutionInvScale == f2.Height;
+            if (!resolutionCheck)
+            {
+                return false;
+            }
+            return true;
+        }
+        public static bool Alike(FrameBuffer f1, FrameBuffer f2, float f1_resolutionScale = 1.0f)
+        {
+            if(f1 == null && f2 != null)
+            {
+                return false;
+            }
+            if(f2 == null && f1 != null)
+            {
+                return false;
+            }
+            if(f2 == null && f1 == null)
+            {
+                return true;
+            }
+            bool resolutionCheck = f1.Width * f1_resolutionScale == f2.Width && f1.Height * f1_resolutionScale == f2.Height;
+            if (!resolutionCheck)
+            {
+                return false;
+            }
+            bool textureAmountLenghtCheck = f1.TextureAttachments.Length == f2.TextureAttachments.Length;
+            if (textureAmountLenghtCheck)
+            {
+                for (int i = 0; i < f1.TextureAttachments.Length; i++)
+                {
+                    bool textureCheck1 = Texture.Alike(f1.TextureAttachments[i], f2.TextureAttachments[i], f1_resolutionScale);
+                    if(!textureCheck1)
+                    {
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 }
