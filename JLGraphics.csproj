@@ -7,7 +7,12 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
+  
+  <PropertyGroup>
+      <PublishAot>true</PublishAot>
+      <OptimizationPreference>Speed</OptimizationPreference>
+  </PropertyGroup>
+      
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <LangVersion>preview</LangVersion>
     <Deterministic>true</Deterministic>
@@ -67,6 +72,7 @@
     <None Remove="Shaders\Rect2CubeVert.glsl" />
     <None Remove="Shaders\SkyBoxFrag.glsl" />
     <None Remove="Shaders\skyboxVert.glsl" />
+    <None Remove="Shaders\SSAO.frag" />
     <None Remove="Shaders\vertexSimple.glsl" />
   </ItemGroup>
 
