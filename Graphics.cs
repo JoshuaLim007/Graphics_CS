@@ -692,7 +692,7 @@ namespace JLGraphics
                 Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
                 RenderSkyBox(true, AllCameras[cameraIndex]);
 
-                //copy depth texture
+                //copy color texture
                 GL.Clear(ClearBufferMask.ColorBufferBit);
 
                 //prepass (Prepass -> Opaque - 1)
@@ -967,10 +967,11 @@ namespace JLGraphics
             }
             return output;
         }
-        public void RenderScene(Camera camera, RenderSort renderingMode, Shader overrideShader = null)
+        public void RenderScene(Camera camera, RenderSort renderingMode, Shader overrideShader = null, Action<Renderer> OnRender = null)
         {
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
+            bool doOnRenderFunc = OnRender != null;
 
             if(camera == null)
             {
@@ -1070,7 +1071,10 @@ namespace JLGraphics
                 }
 
                 m_verticesCount += meshData.VertexCount;
-
+                if (doOnRenderFunc)
+                {
+                    OnRender.Invoke(current);
+                }
                 //render object
                 GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
 
