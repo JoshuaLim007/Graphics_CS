@@ -26,7 +26,7 @@ void main()
     vec2 velocity = texture(_MotionTexture, uv).rg;
     vec2 offset = uv - velocity;
     float prevDepth = texture(_CameraDepthTexture, offset).r;
-    const float bias = 0.25;
+    const float bias = 0.125;
 
     if(offset.x < 0 || offset.y < 0 || offset.x > 1 || offset.y > 1){
         mixVal = 1;
