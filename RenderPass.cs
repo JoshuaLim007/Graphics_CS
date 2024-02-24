@@ -47,7 +47,10 @@ namespace JLGraphics
         {
             Graphics.Instance.Blit(src, dst, false, shader);
         }
-
+        public void BlitThenRestore(FrameBuffer src, FrameBuffer dst, Shader shader = null)
+        {
+            Graphics.Instance.Blit(src, dst, true, shader);
+        }
         public void StartBlitUnsafe(Shader _)
         {
             Graphics.Instance.StartBlitUnsafe(_);
