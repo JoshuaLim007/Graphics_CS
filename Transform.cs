@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace JLGraphics
 {
-    public class Transform : Component
+    public class Transform : Component, IStart
     {
         private Transform m_parent = null;
         public Transform Parent {
@@ -166,6 +166,13 @@ namespace JLGraphics
             Scale = (Vector3)args[3];
         }
 
+        public void Start()
+        {
+            PreviousWorldToLocalMatrix = WorldToLocalMatrix;
+        }
+
         public Matrix4 LocalToWorldMatrix => Matrix4.Invert(WorldToLocalMatrix);
+
+        internal Matrix4 PreviousWorldToLocalMatrix { get; set; }
     }
 }
