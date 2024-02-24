@@ -76,6 +76,7 @@
     <None Remove="Shaders\SkyBoxFrag.glsl" />
     <None Remove="Shaders\skyboxVert.glsl" />
     <None Remove="Shaders\SSAO.frag" />
+    <None Remove="Shaders\SSAOAccum.frag" />
     <None Remove="Shaders\SSAOComp.frag" />
     <None Remove="Shaders\vertexSimple.glsl" />
   </ItemGroup>

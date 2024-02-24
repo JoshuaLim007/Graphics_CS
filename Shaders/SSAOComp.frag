@@ -13,7 +13,11 @@ void main()
     float AO = texture(AOTex, uv).r;
     const float scale = 0.25f;
     AO = max(AO - scale, 0) * (1.0f / (1 - scale));
-    AO = mix(1, AO, Intensity);
+    float str = Intensity;
+    if(any(greaterThan(color, vec4(1)))){
+        str = 0;
+    }
+    AO = mix(1, AO, str);
     color *= AO;
     FragColor = color;
 }
