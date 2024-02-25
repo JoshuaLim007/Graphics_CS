@@ -76,7 +76,7 @@ vec3 hash(uvec3 x)
 }
 
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
-	float bias = mix(0.0001f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
+	float bias = 0.0f;// mix(0.00025f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;

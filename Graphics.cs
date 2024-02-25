@@ -140,7 +140,7 @@ namespace JLGraphics
             float scale = RenderScale;// MathF.Sqrt(RenderScale);
             var colorSettings = new TFP()
             {
-                wrapMode = TextureWrapMode.ClampToEdge,
+                wrapMode = TextureWrapMode.MirroredRepeat,
                 maxMipmap = 0,
                 minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Linear,
