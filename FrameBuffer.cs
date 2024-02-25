@@ -22,7 +22,7 @@ namespace JLGraphics
         public bool isShadowMap;
         public static TFP Default => new TFP()
         {
-            internalFormat = PixelInternalFormat.Rgb8,
+            internalFormat = PixelInternalFormat.Rgb16f,
             pixelFormat = PixelFormat.Rgb,
             minFilter = TextureMinFilter.Nearest,
             magFilter = TextureMagFilter.Nearest,

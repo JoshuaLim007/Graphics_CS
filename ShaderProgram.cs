@@ -124,7 +124,7 @@ namespace JLGraphics
             UpdateProgram();
             //UpdateProgram called via callback
         }
-        List<KeyValuePair<string, ActiveUniformType>> uniformTypes = new List<KeyValuePair<string, ActiveUniformType>>();
+        List<KeyValuePair<int, ActiveUniformType>> uniformTypes = new List<KeyValuePair<int, ActiveUniformType>>();
         void UpdateProgram()
         {
             Debug.Log("\tLinking shader to program " + Id + ", " + Name);
@@ -147,9 +147,9 @@ namespace JLGraphics
             for (int i = 0; i < uniformCount; i++)
             {
                 string name = GL.GetActiveUniform(Id, i, out int size, out ActiveUniformType type);
-                int loc = GL.GetUniformLocation(Id, name);
-                uniformTypes.Add(new KeyValuePair<string, ActiveUniformType>(name, type));
-                GetUniformLocation(name);
+                int propId = Shader.GetShaderPropertyId(name);
+                uniformTypes.Add(new KeyValuePair<int, ActiveUniformType>(propId, type));
+                GetUniformLocation(propId);
             }
 
             var d = GL.GetProgramInfoLog(Id);
@@ -157,7 +157,7 @@ namespace JLGraphics
                 Debug.Log(d);
             uniformLocations.Clear();
         }
-        public List<KeyValuePair<string, ActiveUniformType>> GetUniformTypes()
+        public List<KeyValuePair<int, ActiveUniformType>> GetUniformTypes()
         {
             if (!isCompiled)
             {
@@ -185,12 +185,12 @@ namespace JLGraphics
         }
 
         public static int ProgramCounts => AllShaderPrograms.Count;
-        Dictionary<string, int> uniformLocations = new Dictionary<string, int>();
-        public bool UniformExistsInGLSL(string uniformName)
+        Dictionary<int, int> uniformLocations = new Dictionary<int, int>();
+        public bool UniformExistsInGLSL(int propertyId)
         {
             for (int i = 0; i < uniformTypes.Count; i++)
             {
-                if(uniformTypes[i].Key == uniformName)
+                if(uniformTypes[i].Key == propertyId)
                 {
                     return true;
                 }
@@ -198,7 +198,7 @@ namespace JLGraphics
             return false;
         }
         public bool isCompiled { get; private set; } = false;
-        public int GetUniformLocation(string id)
+        public int GetUniformLocation(int id)
         {
             if (!isCompiled)
             {
@@ -215,7 +215,8 @@ namespace JLGraphics
             }
             else
             {
-                int loc = GL.GetUniformLocation(Id, id);
+                string name = Shader.ShaderPropertyIdToName(id);
+                int loc = GL.GetUniformLocation(Id, name);
                 uniformLocations.Add(id, loc);
                 return loc;
             }

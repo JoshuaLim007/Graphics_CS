@@ -65,8 +65,10 @@
     <None Remove="shaders\CopyToScreen.frag" />
     <None Remove="Shaders\DepthOnly.frag" />
     <None Remove="Shaders\fragmentEmpty.glsl" />
+    <None Remove="Shaders\MotionBlur.frag" />
     <None Remove="Shaders\MotionVector.frag" />
     <None Remove="Shaders\MotionVector.vert" />
+    <None Remove="Shaders\MotionVectorCamera.frag" />
     <None Remove="shaders\Passthrough.vert" />
     <None Remove="Shaders\PointLightShadowsFrag.glsl" />
     <None Remove="Shaders\PointLightShadowsGeo.glsl" />

@@ -145,7 +145,7 @@ namespace JLGraphics
             {
                 if (types[i].Value == ActiveUniformType.Sampler2D)
                 {
-                    SetTexture(GetShaderPropertyId(types[i].Key), DefaultTexture);
+                    SetTexture(types[i].Key, DefaultTexture);
                 }
             }
         }
@@ -405,12 +405,11 @@ namespace JLGraphics
                     var type = types[i].Value;
 
                     //dont add a default value if there is a global uniform already existing
-                    int propId = GetShaderPropertyId(name);
-                    if (mFindLocalUniformIndex(propId, out int li) || mFindGlobalUniformIndex(propId, out int gi))
+                    if (mFindLocalUniformIndex(name, out int li) || mFindGlobalUniformIndex(name, out int gi))
                     {
                         continue;
                     }
-                    SetDefaultValue(type, propId);
+                    SetDefaultValue(type, name);
                 }
             }
 
@@ -466,7 +465,7 @@ namespace JLGraphics
                 if(current.uniformLocation == -1)
                 {
                     var temp = current;
-                    temp.uniformLocation = Program.GetUniformLocation(current.uniformName);
+                    temp.uniformLocation = Program.GetUniformLocation(current.propertyId);
 
                     //check if uniform exists, if it doesnt, skip
                     if(temp.uniformLocation < 0)
@@ -630,8 +629,7 @@ namespace JLGraphics
                     }
                 }
 
-                var propertyName = ShaderPropertyIdToName(cur.propertyId);
-                int uniformLocation = Program.GetUniformLocation(propertyName);
+                int uniformLocation = Program.GetUniformLocation(cur.propertyId);
                 SendUniformDataToGPU(uniformLocation, cur.uniformType, cur.value);
             }
         }
@@ -703,8 +701,8 @@ namespace JLGraphics
 
         public int GetUniformLocation(string id)
         {
-            GetShaderPropertyId(id);
-            return Program.GetUniformLocation(id);
+            int d = GetShaderPropertyId(id);
+            return Program.GetUniformLocation(d);
         }
         public int GetUniformLocation(int propertyId)
         {

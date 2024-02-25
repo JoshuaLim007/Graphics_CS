@@ -43,6 +43,10 @@ namespace JLGraphics
         int accumulatedFrames = 0;
         public override void Execute(in FrameBuffer frameBuffer)
         {
+            if(Intensity == 0)
+            {
+                return;
+            }
             if(previousHeight != frameBuffer.Height || previousWidth != frameBuffer.Width)
             {
                 previousWidth = frameBuffer.Width;

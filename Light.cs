@@ -58,8 +58,12 @@ namespace JLGraphics
         DirectionalShadowMap ShadowMapper;
         public DirectionalLight()
         {
+            HasShadows = false;
+        }
+        public void AddShadows(float ShadowRange, int ShadowResolution)
+        {
+            ShadowMapper = new DirectionalShadowMap(this, ShadowRange * 0.5f, 1, 1000, ShadowResolution);
             HasShadows = true;
-            ShadowMapper = new DirectionalShadowMap(this);
         }
         public override void RenderShadowMap(Camera camera)
         {

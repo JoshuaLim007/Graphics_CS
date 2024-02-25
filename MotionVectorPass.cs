@@ -63,7 +63,7 @@ namespace JLGraphics
             }
 
             //render scene
-            location = motionVectorShader.Program.GetUniformLocation("prevProjectionViewModelMatrix");
+            location = motionVectorShader.Program.GetUniformLocation(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"));
             viewProjMat = previousViewMatrix * previousProjectionMatrix;
             Graphics.Instance.RenderScene(Camera.Main, Graphics.RenderSort.None, motionVectorShader, OnRenderCallback);
 
