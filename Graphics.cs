@@ -219,6 +219,8 @@ namespace JLGraphics
             DepthPrepassShader.ColorMask[3] = false;
             DefaultMaterial.SetVector3(Shader.GetShaderPropertyId(DefaultMaterialUniforms.AlbedoColor), new Vector3(1, 1, 1));
             DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Smoothness), 0.5f);
+            DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Metalness), 0.0f);
+            DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.NormalsStrength), 1.0f);
             FullScreenQuad = Mesh.CreateQuadMesh();
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);

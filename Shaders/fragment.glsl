@@ -205,7 +205,6 @@ vec4 GetPointLight(vec3 cameraPosition, vec3 worldPosition, vec3 normal, vec3 re
 	}
 	return col;
 }
-
 vec4 GetAmbientColor(vec3 normal) {
 	float skyMix = dot(normal, vec3(0, 1, 0));
 	float horizonMix = 1 - abs(skyMix);
@@ -238,41 +237,134 @@ vec3 reinhard(vec3 v)
 	return v / (1.0f + v);
 }
 uniform samplerCube SkyBox;
+const float PI = 3.1415;
+float DistributionGGX(vec3 N, vec3 H, float a)
+{
+	float a1 = a * a;
+	float a2 = a1 * a1;
+	float NdotH = max(dot(N, H), 0.0);
+	float NdotH2 = NdotH * NdotH;
+
+	float nom = a2;
+	float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+	denom = PI * denom * denom;
+
+	return nom / denom;
+}
+float GeometrySchlickGGX(float NdotV, float k)
+{
+	float nom = NdotV;
+	float denom = NdotV * (1.0 - k) + k;
+
+	return nom / max(denom, 0.001);
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
+{
+	k = k * k;
+	k /= 2;
+	float NdotV = max(dot(N, V), 0.001);
+	float NdotL = max(dot(N, L), 0.001);
+	float ggx1 = GeometrySchlickGGX(NdotV, k);
+	float ggx2 = GeometrySchlickGGX(NdotL, k);
+
+	return ggx1 * ggx2;
+}
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+vec3 halfVector(vec3 viewVector, vec3 lightDir){
+	return normalize(vec3(viewVector + lightDir));
+}
 void main(){
 
-	vec3 viewVector = normalize(fs_in.Position.xyz - CameraWorldSpacePos.xyz);
-
+	vec3 viewVector = normalize(CameraWorldSpacePos.xyz - fs_in.Position.xyz);
 	vec4 color = vec4(1,1,1,1);
 	vec4 bump = vec4(0,0,1,0);
-
-	mat3 TBN = mat3(fs_in.Tangent, cross(fs_in.Normal, fs_in.Tangent), fs_in.Normal);
-
+	mat3 TBN = mat3(fs_in.Tangent, cross(fs_in.Normal, fs_in.Tangent), normalize(fs_in.Normal));
 	color = texture(AlbedoTex, fs_in.TexCoord);
 	bump = texture(NormalTex, fs_in.TexCoord);
 	if (bump.x == 1 && bump.y == 1 && bump.z == 1) {
 		bump.xyz = vec3(0, 0, 1);
 	}
 	else {
-		bump = bump * 2 - 1;
+		bump.xy = bump.xy * 2 - 1;
 	}
-	bump.xyz = normalize(mix(TBN * vec3(0,0,1), TBN * bump.xyz, .5));
-	vec3 normal = mix(bump.xyz, fs_in.Normal, 0.0f);
-	vec3 reflectedVector = reflect(viewVector, normal);
+	bump.xyz = TBN * bump.xyz;
+	vec3 normal = mix(normalize(fs_in.Normal), normalize(bump.xyz), NormalStrength);
+	normal = normalize(normal);
+	vec3 reflectedVector = reflect(-viewVector, normal);
+	vec3 diffuseAmbientColor = GetAmbientColor(normal).xyz;
 
-	vec4 sunColor = GetDirectionalLight(normal, fs_in.Normal, reflectedVector);
-	vec4 pointLightColor = GetPointLight(CameraWorldSpacePos, fs_in.Position.xyz, normal, reflectedVector);
+	//Lambertian BRDF
+	//directional light
+	float sunShadow = GetDirectionalShadow(fs_in.PositionLightSpace, normalize(fs_in.Normal));
+	vec3 sunColor = max(dot(normal, DirectionalLight.Direction), 0) * (1 - sunShadow) * DirectionalLight.Color;
 
-	vec4 envColor = vec4(0, 0, 0, 0);// vec4(texture(SkyBox, reflectedVector).rgb, 1.0);
-	vec4 diffuseAmbientColor = GetAmbientColor(normal);
-	vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
-	color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
-	vec4 c = color * (sunColor + pointLightColor + diffuseAmbientColor) + vec4(EmissiveColor, 0);
+	vec3 incomingLightDiffuse = max(sunColor, diffuseAmbientColor);
+	vec3 diffuse = color.xyz / PI;
+
+	float roughness = 1 - Smoothness;
+	vec3 baseRef = mix(vec3(0.01), color.xyz, Metalness);
+
+	//BRDF
+	vec3 h = halfVector(viewVector, DirectionalLight.Direction);
+	float D = DistributionGGX(normal, h, roughness);
+	float G = GeometrySmith(normal, viewVector, DirectionalLight.Direction, roughness);
+	float denom = 4 * max(dot(normal, DirectionalLight.Direction), 0.001) * max(dot(normal, viewVector), 0.001);
+	vec3 fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
+	float reflectanceBRDF = D * G / denom; 
+	vec3 kd = 1 - fresnal;
+	kd *= (1 - Metalness);
+
+	vec3 brdf = (kd * diffuse * incomingLightDiffuse + fresnal * vec3(reflectanceBRDF) * sunColor);
+
+	//point light
+	for (int i = 0; i < PointLightCount; i++)
+	{
+		float constant = PL.PointLightData[i].Constant;
+		vec3 dirFromLight = PL.PointLightData[i].Position.xyz - fs_in.Position;
+		float dist = length(dirFromLight);
+		dirFromLight = normalize(dirFromLight);
+		float atten = (constant 
+			+ PL.PointLightData[i].Exp * dist * dist
+			+ PL.PointLightData[i].Linear * dist
+		);
+		float shade = min(max(dot(normal, dirFromLight), 0), 1) / atten;
+		if (PL.PointLightData[i].HasShadows == 1) {
+			int sIndex = PL.PointLightData[i].ShadowIndex;
+			shade *= (1 - GetPointLightShadow(CameraWorldSpacePos, fs_in.Position, PL.PointLightData[i].Position.xyz, PointLightShadowMap[sIndex], PL.PointLightData[i].ShadowFarPlane, fs_in.Normal));
+		}
+		shade *= 1 - smoothstep(PL.PointLightData[i].Range * 0.75f, PL.PointLightData[i].Range, dist);
+		vec3 lCol = PL.PointLightData[i].Color.xyz * shade;
+		incomingLightDiffuse = lCol;
+
+		//BRDF
+		h = halfVector(viewVector, dirFromLight);
+		D = DistributionGGX(normal, h, roughness);
+		G = GeometrySmith(normal, viewVector, dirFromLight, roughness);
+		denom = 4 * max(dot(normal, dirFromLight), 0.001) * max(dot(normal, viewVector), 0.001);
+		fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
+		reflectanceBRDF = D * G / denom; 
+		kd = 1 - fresnal;
+		kd *= (1 - Metalness);
+
+		brdf += (kd * diffuse + fresnal * vec3(reflectanceBRDF)) * incomingLightDiffuse;
+	}
+
+	vec4 c = vec4(brdf + EmissiveColor, 0);
+	//vec4 envColor = vec4(0, 0, 0, 0);
+	//vec4 diffuseAmbientColor = GetAmbientColor(normal);
+	//vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
+	//color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
+	//vec4 sunColor = GetDirectionalLight(normal, fs_in.Normal, reflectedVector);
+	//vec4 pointLightColor = GetPointLight(CameraWorldSpacePos, fs_in.Position.xyz, normal, reflectedVector);
+	//vec4 c = color * (sunColor + pointLightColor + diffuseAmbientColor) + vec4(EmissiveColor, 0);
 
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));
 	c = mix(vec4(c), vec4(FogColor, 1), 1 - density);
-
-	//float shadow = 1 - GetPointLightShadow(CameraWorldSpacePos, fs_in.Position.xyz, PointLights[0].Position, PointLights[0].ShadowMap, PointLights[0].ShadowFarPlane, fs_in.Normal);
-
-	frag = c;// vec4(shadow);
+	
+	frag = c;
 }
