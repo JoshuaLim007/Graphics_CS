@@ -270,12 +270,12 @@ namespace JLGraphics
             Window.Run();
 
         }
-        float statsInterval = 0.0f;
         float fixedTimer = 0;
         int frameIncrement = 0;
         DateTime time = DateTime.Now;
         DateTime time1 = DateTime.Now;
         List<Action> temporaryUpdateFrameCommands = new List<Action>();
+        float smoothDeltaCount = 0;
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
             //do any one time update frame actions
@@ -320,26 +320,21 @@ namespace JLGraphics
             fileTracker.ResolveFileTrackQueue();
 #endif
             DeltaTime = (time.Ticks - time1.Ticks) / 10000000f;
-            SmoothDeltaTime += (DeltaTime - SmoothDeltaTime) * 0.1f;
+            smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
+            SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
+
             ElapsedTime += DeltaTime;
-            if (statsInterval > 0.5f)
-            {
-                string stats = "";
 
-                stats += " | fixed delta time: " + FixedDeltaTime;
-                stats += " | draw count: " + m_drawCount;
-                stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
-                stats += " | material update count: " + m_materialUpdateCount;
-                stats += " | vertices: " + m_verticesCount;
-                stats += " | total world objects: " + AllInstancedObjects.Count;
-                stats += " | fps: " + 1 / SmoothDeltaTime;
-                stats += " | delta time: " + DeltaTime;
-
-                Window.Title = stats;
-
-                statsInterval = 0;
-            }
-            statsInterval += DeltaTime;
+            string stats = "";
+            stats += " | fixed delta time: " + FixedDeltaTime;
+            stats += " | draw count: " + m_drawCount;
+            stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
+            stats += " | material update count: " + m_materialUpdateCount;
+            stats += " | vertices: " + m_verticesCount;
+            stats += " | total world objects: " + AllInstancedObjects.Count;
+            stats += " | fps: " + 1.0f / SmoothDeltaTime;
+            stats += " | delta time: " + SmoothDeltaTime;
+            Window.Title = stats;
 
             m_drawCount = 0;
             m_shaderBindCount = 0;

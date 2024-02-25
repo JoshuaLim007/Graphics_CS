@@ -40,6 +40,10 @@ namespace JLGraphics
         {
             if(!FrameBuffer.AlikeResolution(motionVectorTex, frameBuffer))
             {
+                if(motionVectorTex != null)
+                {
+                    motionVectorTex.Dispose();
+                }
                 var tfp = TFP.Default;
                 tfp.internalFormat = PixelInternalFormat.Rg16f;
                 tfp.pixelFormat = PixelFormat.Rg;
