@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using Assimp;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common.Input;
 using System;
@@ -65,6 +66,16 @@ namespace JLGraphics
             //render scene
             location = motionVectorShader.Program.GetUniformLocation(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"));
             viewProjMat = previousViewMatrix * previousProjectionMatrix;
+
+            var newCamPos = Camera.Main.Transform.Position;
+            var newViewMat = Matrix4.CreateTranslation(-newCamPos) * Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
+            var cameraViewProj = newViewMat * previousProjectionMatrix;
+
+            motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), Matrix4.CreateTranslation(Camera.Main.Transform.Position) * cameraViewProj);
+            motionVectorShader.DepthTest = false;
+            Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
+            
+            motionVectorShader.DepthTest = true;
             Graphics.Instance.RenderScene(Camera.Main, Graphics.RenderSort.None, motionVectorShader, OnRenderCallback);
 
             //copy motion vector data to motion vector texture

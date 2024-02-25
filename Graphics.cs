@@ -208,6 +208,7 @@ namespace JLGraphics
             DepthPrepassShaderProgram = depthOnlyShader;
             SkyboxShader = new Shader("Skybox material", skyBoxShaderProrgam);
             SkyboxDepthPrepassShader = new Shader("Skybox depth prepass material", skyboxDepthPrepassProgram);
+            SkyboxDepthPrepassShader.DepthTestFunction = DepthFunction.Less;
 
             DefaultMaterial = new Shader("Default Material", DefaultShaderProgram);
             DepthPrepassShader = new Shader("Default depth only", DepthPrepassShaderProgram);
@@ -642,21 +643,12 @@ namespace JLGraphics
             return renderPassIndex;
         }
 
-        void RenderSkyBox(bool doDepthPrepass, Camera camera)
+        public void RenderSkyBox(Camera camera, Shader overrideShader = null)
         {
             //render skybox
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, BasicCube.EBO);
             GL.BindVertexArray(BasicCube.VAO);
-            var mat = SkyboxShader;
-            if (doDepthPrepass)
-            {
-                mat = SkyboxDepthPrepassShader;
-                mat.DepthTestFunction = DepthFunction.Less;
-            }
-            else
-            {
-                mat.DepthTestFunction = DepthFunction.Lequal;
-            }
+            var mat = overrideShader == null ? SkyboxShader : overrideShader;
             mat.SetMat4(Shader.GetShaderPropertyId("ModelMatrix"), Matrix4.CreateTranslation(camera.Transform.Position));
             mat.AttachShaderForRendering();
             GL.CullFace(CullFaceMode.Front);
@@ -690,7 +682,7 @@ namespace JLGraphics
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
                 RenderScene(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
                 Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
-                RenderSkyBox(true, AllCameras[cameraIndex]);
+                RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
 
                 //copy color texture
                 GL.Clear(ClearBufferMask.ColorBufferBit);
@@ -701,7 +693,7 @@ namespace JLGraphics
                 //render Opaques
                 //TODO: move to render pass class
                 RenderScene(AllCameras[cameraIndex], RenderingSortMode);
-                RenderSkyBox(false, AllCameras[cameraIndex]);
+                RenderSkyBox(AllCameras[cameraIndex]);
 
                 //Post opaque pass (Opaque -> Transparent - 1)
                 renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
