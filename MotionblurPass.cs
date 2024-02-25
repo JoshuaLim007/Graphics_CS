@@ -15,7 +15,7 @@ namespace JLGraphics
         FrameBuffer FrameBuffer;
         Shader motionBlur;
 
-        public MotionblurPass(RenderQueue queue = RenderQueue.AfterPostProcessing, int queueOffset = 0) : base(queue, queueOffset)
+        public MotionblurPass(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
             var program = new ShaderProgram("motion blur program", "./Shaders/MotionBlur.frag", "./Shaders/Passthrough.vert");
             program.CompileProgram();
@@ -31,7 +31,7 @@ namespace JLGraphics
             }
             motionBlur.SetInt(Shader.GetShaderPropertyId("samples"), Samples);
             motionBlur.SetFloat(Shader.GetShaderPropertyId("strength"), Strength);
-            motionBlur.SetFloat(Shader.GetShaderPropertyId("scale"), 60.0f * Time.UnscaledDeltaTime);
+            motionBlur.SetFloat(Shader.GetShaderPropertyId("scale"), (1.0f / Time.UnscaledDeltaTime) / 60.0f );
             Blit(frameBuffer, FrameBuffer);
             Blit(FrameBuffer, frameBuffer, motionBlur);
         }

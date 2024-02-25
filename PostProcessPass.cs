@@ -18,7 +18,7 @@ namespace JLGraphics
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
         FrameBuffer postProcessTexture = null;
-        public PostProcessPass() : base(RenderQueue.AfterTransparents, 9)
+        public PostProcessPass(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
             PostProcessShader = new ShaderProgram("PostProcess", "./Shaders/PostProcess.frag", "./Shaders/Passthrough.vert");
             if (Graphics.Instance.GetFileTracker(out var ft))

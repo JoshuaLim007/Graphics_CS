@@ -24,12 +24,15 @@ float linearDepth(float depthSample)
 void main()
 { 
     vec2 pos = gl_FragCoord.xy * MainTex_TexelSize;
-    vec4 col = min(max(texture(MainTex, pos), vec4(0)), vec4(1));
+    vec4 col = max(texture(MainTex, pos), vec4(0));
 
     vec2 mv = texture(_MotionTexture, pos).rg;
-    vec2 stride = (mv / samples) * strength * scale;
+    vec2 mvScaled = (mv / samples);
+    vec2 stride = mvScaled * strength * scale;
+    pos -= stride * (samples * 0.5f);
     for(int i = 1; i <= samples; i++){
-        col += min(max(texture(MainTex, pos - stride * i), vec4(0)), vec4(1));
+        pos += stride;
+        col += max(texture(MainTex, pos), vec4(0));
     }
     col /= float(samples);
 

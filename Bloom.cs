@@ -55,7 +55,7 @@ namespace JLGraphics
             }
         }
 
-        public Bloom() : base(RenderQueue.AfterTransparents, 8)
+        public Bloom(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
             var program = new ShaderProgram("Blur Program", "./Shaders/Bloom.glsl", "./Shaders/Passthrough.vert");
             program.CompileProgram();

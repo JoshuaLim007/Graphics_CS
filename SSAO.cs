@@ -18,7 +18,7 @@ namespace JLGraphics
         public float DepthRange = 10.0f;
         public int Samples = 16;
 
-        public SSAO() : base(RenderQueue.AfterTransparents, 7)
+        public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
             var program = new ShaderProgram("SSAO program", "./Shaders/SSAO.frag", "./Shaders/Passthrough.vert");
             program.CompileProgram();
