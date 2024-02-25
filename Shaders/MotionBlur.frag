@@ -8,6 +8,7 @@ uniform vec2 MainTex_TexelSize;
 uniform vec4 CameraParams;
 uniform int samples;
 uniform float strength;
+uniform float scale;
 
 float get_depth(vec2 pos)
 {
@@ -26,7 +27,7 @@ void main()
     vec4 col = texture(MainTex, pos);
 
     vec2 mv = texture(_MotionTexture, pos).rg;
-    vec2 stride = (mv / samples) * strength;
+    vec2 stride = (mv / samples) * strength * scale;
     for(int i = 1; i <= samples; i++){
         col += texture(MainTex, pos - stride * i);
     }

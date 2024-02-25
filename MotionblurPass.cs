@@ -30,6 +30,7 @@ namespace JLGraphics
             }
             motionBlur.SetInt(Shader.GetShaderPropertyId("samples"), Samples);
             motionBlur.SetFloat(Shader.GetShaderPropertyId("strength"), Strength);
+            motionBlur.SetFloat(Shader.GetShaderPropertyId("scale"), 60.0f * Time.UnscaledDeltaTime);
             Blit(frameBuffer, FrameBuffer, motionBlur);
             Blit(FrameBuffer, frameBuffer);
         }
