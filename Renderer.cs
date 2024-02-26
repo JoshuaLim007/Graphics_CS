@@ -8,8 +8,9 @@ using static OpenTK.Graphics.OpenGL.GL;
 
 namespace JLGraphics
 {
-    public class Renderer : Component
+    public class Renderer : Component, IStart
     {
+        static internal bool NewRendererAdded { get; set; } = false;
         public Shader Material { get; set; } = null;
         public Mesh Mesh { get; set; } = null;
         public Renderer()
@@ -22,6 +23,11 @@ namespace JLGraphics
             Material = material;
 
             InternalGlobalScope<Renderer>.Values.Add(this);
+        }
+
+        public void Start()
+        {
+            NewRendererAdded = true;
         }
     }
 }

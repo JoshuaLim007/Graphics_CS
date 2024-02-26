@@ -80,7 +80,7 @@ namespace JLGraphics
             Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
             
             motionVectorShader.DepthTest = true;
-            Graphics.Instance.RenderScene(Camera.Main, Graphics.RenderSort.None, motionVectorShader, OnRenderCallback);
+            Graphics.Instance.RenderScene(Camera.Main, motionVectorShader, OnRenderCallback);
 
             //copy motion vector data to motion vector texture
             BlitThenRestore(frameBuffer, motionVectorTex);

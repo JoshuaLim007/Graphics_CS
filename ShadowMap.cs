@@ -109,7 +109,7 @@ namespace JLGraphics
 
             GL.Clear(ClearBufferMask.DepthBufferBit);
             shader.SetMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), ShadowMatrix);
-            Graphics.Instance.RenderScene(null, Graphics.RenderSort.None, shader);
+            Graphics.Instance.RenderScene(null, shader);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("DirectionalLightMatrix"), ShadowMatrix);
             GL.CullFace(CullFaceMode.Back);
@@ -209,7 +209,7 @@ namespace JLGraphics
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Clear(ClearBufferMask.DepthBufferBit);
-            Graphics.Instance.RenderScene(camera, Graphics.RenderSort.None, shadowShader);
+            Graphics.Instance.RenderScene(camera, shadowShader);
         }
 
     }

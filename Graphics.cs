@@ -399,6 +399,7 @@ namespace JLGraphics
                 guiController.Render();
             }
 
+            Renderer.NewRendererAdded = false;
             Window.SwapBuffers();
             DestructorCommands.Instance.ExecuteCommands();
             time1 = time;
@@ -677,7 +678,7 @@ namespace JLGraphics
                 GL.ClearDepth(1);
                 GL.ClearColor(Color4.Magenta);
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
-                RenderScene(AllCameras[cameraIndex], RenderSort.None, DepthPrepassShader);
+                RenderScene(AllCameras[cameraIndex], DepthPrepassShader);
                 Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
                 RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
 
@@ -689,7 +690,7 @@ namespace JLGraphics
 
                 //render Opaques
                 //TODO: move to render pass class
-                RenderScene(AllCameras[cameraIndex], RenderingSortMode);
+                RenderScene(AllCameras[cameraIndex]);
                 RenderSkyBox(AllCameras[cameraIndex]);
 
                 //Post opaque pass (Opaque -> Transparent - 1)
@@ -724,18 +725,6 @@ namespace JLGraphics
         /// Disable camera frustum culling
         /// </summary>
         public bool DisableFrustumCulling { get; set; } = false;
-
-        public enum RenderSort
-        {
-            ShaderProgram,
-            ShaderProgramMaterial,
-            FrontToBack,
-            None
-        }
-        /// <summary>
-        /// Sets rendering sorting
-        /// </summary>
-        public RenderSort RenderingSortMode { get; set; } = RenderSort.ShaderProgramMaterial;
 
         private PointLightSSBO[] pointLightSSBOs = new PointLightSSBO[MAXPOINTLIGHTS];
         private UBO<PointLightSSBO> PointLightBufferData;
@@ -850,6 +839,7 @@ namespace JLGraphics
             return final;
         }
 
+        Renderer[] sortedRenderers = null;
         Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
         Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
         Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
@@ -956,24 +946,18 @@ namespace JLGraphics
             }
             return output;
         }
-        public void RenderScene(Camera camera, RenderSort renderingMode, Shader overrideShader = null, Action<Renderer> OnRender = null)
+        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null)
         {
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
             bool doOnRenderFunc = OnRender != null;
 
-            if(camera == null)
-            {
-                if(renderingMode == RenderSort.FrontToBack)
-                {
-                    renderingMode = RenderSort.None;
-                }
-            }
-            else
+            if(camera != null)
             {
                 SetShaderCameraData(camera);
                 InvokeOnRenders(camera);
             }
+
             int modelMatrixPropertyId = Shader.GetShaderPropertyId("ModelMatrix");
 
             bool useOverride = false;
@@ -989,22 +973,13 @@ namespace JLGraphics
 
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
-            Renderer[] renderers = null;
-            switch (renderingMode)
+            //least amount of state changes
+            Renderer[] renderers;
+            if (Renderer.NewRendererAdded)
             {
-                case RenderSort.None:
-                    renderers = InternalGlobalScope<Renderer>.Values.ToArray();
-                    break;
-                case RenderSort.FrontToBack:
-                    renderers = SortByDistanceToCamera(InternalGlobalScope<Renderer>.Values, camera);
-                    break;
-                case RenderSort.ShaderProgramMaterial:
-                    renderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, true);
-                    break;
-                case RenderSort.ShaderProgram:
-                    renderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, false);
-                    break;
+                sortedRenderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, true);
             }
+            renderers = sortedRenderers;
 
             if (!DisableFrustumCulling)
             {
