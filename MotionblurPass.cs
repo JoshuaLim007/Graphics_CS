@@ -27,6 +27,10 @@ namespace JLGraphics
         {
             if(!FrameBuffer.AlikeResolution(frameBuffer, FrameBuffer))
             {
+                if(FrameBuffer != null)
+                {
+                    FrameBuffer.Dispose();
+                }
                 FrameBuffer = FrameBuffer.Copy(frameBuffer, 1.0f);// new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, TFP.Default);
             }
             motionBlur.SetInt(Shader.GetShaderPropertyId("samples"), Samples);
