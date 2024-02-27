@@ -295,14 +295,14 @@ void main(){
 	vec3 normal = mix(normalize(fs_in.Normal), normalize(bump.xyz), NormalStrength);
 	normal = normalize(normal);
 	vec3 reflectedVector = reflect(-viewVector, normal);
-	vec3 diffuseAmbientColor = GetAmbientColor(normal).xyz;
 
 	//Lambertian BRDF
 	//directional light
 	float sunShadow = GetDirectionalShadow(fs_in.PositionLightSpace, normalize(fs_in.Normal));
 	vec3 sunColor = max(dot(normal, DirectionalLight.Direction), 0) * (1 - sunShadow) * DirectionalLight.Color;
+	color.xyz *= AlbedoColor;
 
-	vec3 incomingLightDiffuse = max(sunColor, diffuseAmbientColor);
+	vec3 incomingLightDiffuse = sunColor;
 	vec3 diffuse = color.xyz / PI;
 
 	float roughness = 1 - Smoothness;
@@ -318,7 +318,10 @@ void main(){
 	vec3 kd = 1 - fresnal;
 	kd *= (1 - Metalness);
 
-	vec3 brdf = (kd * diffuse * incomingLightDiffuse + fresnal * vec3(reflectanceBRDF) * sunColor);
+	vec3 brdf = (kd * diffuse + fresnal * vec3(reflectanceBRDF)) * incomingLightDiffuse;
+
+	vec3 diffuseAmbientColor = GetAmbientColor(normal).xyz;
+	brdf += (1 - Metalness) * diffuse * diffuseAmbientColor;
 
 	//point light
 	for (int i = 0; i < PointLightCount; i++)
