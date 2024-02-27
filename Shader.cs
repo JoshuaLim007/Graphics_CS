@@ -151,10 +151,10 @@ namespace JLGraphics
         }
         public void SetTexture(int propertyId, Texture texture)
         {
-            if (!mIsWithinShader)
-            {
-                GL.UseProgram(Program);
-            }
+            //if (!mIsWithinShader)
+            //{
+            //    GL.UseProgram(Program);
+            //}
             if (texture != null)
             {
                 SetTextureUnsafe(propertyId, texture);
@@ -515,7 +515,7 @@ namespace JLGraphics
         }
         //##################################################################################
 
-        static ShaderProgram PreviousProgram { get; set; } = null;
+        internal static ShaderProgram PreviousProgram { get; set; } = null;
 
         //##################### CACHED GLOBAL UNIFORM VALUES #################################
         readonly static List<UniformValue> GlobalUniformValues = new();

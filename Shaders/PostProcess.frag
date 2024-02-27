@@ -9,6 +9,8 @@ uniform vec2 MainTex_TexelSize;
 uniform vec4 CameraParams;
 uniform int Tonemapping;
 uniform int GammaCorrection;
+uniform int Vignette;
+uniform float VignetteStrength;
 uniform sampler2D DirectionalShadowDepthMap;
 uniform mat4 InvProjectionViewMatrix;
 uniform int AmbientOcclusion;
@@ -93,6 +95,20 @@ vec3 calcNormalFromPosition_fast(vec2 texCoords) {
 void main()
 { 
     vec2 pos = gl_FragCoord.xy * MainTex_TexelSize;
+    vec2 normCoord = pos * 2.0 - 1.0;
+    
+    // Apply Panini projection
+//    float PaniniStrength = 1.0f;
+//    float d = length(normCoord);
+//    float PaniniFactor = tan(PaniniStrength * d) / tan(PaniniStrength);
+//    vec2 distortedCoord = normalize(normCoord) * PaniniFactor;
+//    pos = (distortedCoord + 1.0) / 2.0;
+
+    if(any(greaterThan(pos, vec2(1,1))) || any(lessThan(pos, vec2(0,0)))){
+        FragColor = vec4(0);
+        return;
+    }
+
     vec4 col = texture(MainTex, pos);
     float depth = get_depth(pos);
     vec3 position = calcPositionFromDepth(pos, depth);
@@ -107,6 +123,14 @@ void main()
     if(GammaCorrection == 1){
         float gamma = 2.2;
         col.rgb = pow(col.rgb, vec3(1.0/gamma));
+    }
+
+    if(Vignette == 1){
+        float dist = length(pos * 2 - 1) * 0.7071;
+        dist = min(max(dist, 0), 1);
+        dist = smoothstep(0.5f, 1.25f, dist);
+        dist *= VignetteStrength;
+        col.xyz *= vec3(1 - dist);
     }
 
     FragColor = vec4(col.xyz, 1.0);

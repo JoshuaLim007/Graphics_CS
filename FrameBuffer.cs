@@ -33,7 +33,7 @@ namespace JLGraphics
 
         public TFP()
         {
-            internalFormat = PixelInternalFormat.Rgb8;
+            internalFormat = PixelInternalFormat.Rgb16f;
             pixelFormat = PixelFormat.Rgb;
             minFilter = TextureMinFilter.Nearest;
             magFilter = TextureMagFilter.Nearest;
@@ -136,7 +136,7 @@ namespace JLGraphics
             }
         }
 
-        public static FrameBuffer Copy(FrameBuffer src, float resolutionScale)
+        public static FrameBuffer Copy(FrameBuffer src, float resolutionScale, bool enableDepthRenderBuffer = false)
         {
             FrameBuffer frameBuffer1;
             var tfp = TFP.Default;
@@ -150,7 +150,7 @@ namespace JLGraphics
             tfp.borderColor = src.TextureAttachments[0].borderColor;
             int width = (int)MathHelper.Ceiling(src.TextureAttachments[0].Width * resolutionScale);
             int height = (int)MathHelper.Ceiling(src.TextureAttachments[0].Height * resolutionScale);
-            frameBuffer1 = new FrameBuffer(width, height, false, tfp);
+            frameBuffer1 = new FrameBuffer(width, height, enableDepthRenderBuffer, tfp);
             return frameBuffer1;
         }
         public static bool AlikeResolution(FrameBuffer f1, FrameBuffer f2, float f1_resolutionInvScale = 1.0f)

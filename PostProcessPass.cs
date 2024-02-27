@@ -14,6 +14,8 @@ namespace JLGraphics
         public Vector3 FogColor = new Vector3(1, 1, 1);
         public bool Tonemapping = true;
         public bool GammaCorrection = true;
+        public bool Vignette = true;
+        public float VignetteStrength = 0.5f;
 
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
@@ -35,16 +37,19 @@ namespace JLGraphics
         {
             if(postProcessTexture == null)
             {
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb16f, pixelFormat = PixelFormat.Rgb });
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb8, pixelFormat = PixelFormat.Rgb });
             }
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
             shader.SetBool(Shader.GetShaderPropertyId("Tonemapping"), Tonemapping);
             shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), GammaCorrection);
+            shader.SetBool(Shader.GetShaderPropertyId("Vignette"), Vignette);
+            shader.SetFloat(Shader.GetShaderPropertyId("VignetteStrength"), VignetteStrength);
+            
             if (!FrameBuffer.AlikeResolution(frameBuffer, postProcessTexture))
             {
                 postProcessTexture.Dispose();
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb16f, pixelFormat = PixelFormat.Rgb });
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb8, pixelFormat = PixelFormat.Rgb });
             }
             Blit(frameBuffer, postProcessTexture, shader);
             Blit(postProcessTexture, frameBuffer);

@@ -151,9 +151,9 @@ namespace JLGraphics
                 wrapMode = TextureWrapMode.ClampToEdge,
                 maxMipmap = 0,
                 minFilter = TextureMinFilter.Linear,
-                magFilter = TextureMagFilter.Nearest,
+                magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.R32f,
-                pixelFormat = PixelFormat.Red
+                pixelFormat = PixelFormat.Red,
             };
             var windowSize = GetRenderWindowSize();
             MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings);
@@ -554,7 +554,6 @@ namespace JLGraphics
             blitUnsafeFlag = true;
             Shader blitShader = shader ?? PassthroughShader;
             blitShader.DepthTest = false;
-            blitShader.UseProgram();
             this.unsafeBlitShader = blitShader;
         }
         internal void BlitUnsafe(FrameBuffer src, FrameBuffer dst)
@@ -576,7 +575,7 @@ namespace JLGraphics
             int fbo = dst != null ? dst.FrameBufferObject : 0;
             
             unsafeBlitShader.SetVector2(Shader.GetShaderPropertyId("MainTex_TexelSize"), new Vector2(1.0f / width, 1.0f / height));
-            unsafeBlitShader.SetTextureUnsafe(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
+            unsafeBlitShader.SetTexture(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
             unsafeBlitShader.AttachShaderForRendering();
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);

@@ -41,6 +41,16 @@ namespace JLGraphics
         int previousWidth = 0;
         int previousHeight = 0;
         int accumulatedFrames = 0;
+        FrameBuffer CreateBuffer(int width, int height)
+        {
+            return new FrameBuffer(width, height, false, new TFP()
+            {
+                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.R8,
+                pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Red,
+                magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
+                minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear
+            });
+        }
         public override void Execute(in FrameBuffer frameBuffer)
         {
             if(Intensity == 0)
@@ -57,9 +67,10 @@ namespace JLGraphics
                     blurRT.Dispose();
                     accumRT.Dispose();
                 }
-                SSAORt = FrameBuffer.Copy(frameBuffer, 0.5f);
-                blurRT = FrameBuffer.Copy(frameBuffer, 0.5f);
-                accumRT = FrameBuffer.Copy(frameBuffer, 0.5f);
+                var res = GetResolution(frameBuffer, 0.5f);
+                SSAORt = CreateBuffer(res.X, res.Y);
+                blurRT = CreateBuffer(res.X, res.Y);
+                accumRT = CreateBuffer(res.X, res.Y);
             }
             shader.SetInt(Shader.GetShaderPropertyId("samples"), Samples);
             shader.SetFloat(Shader.GetShaderPropertyId("Radius"), Radius);
