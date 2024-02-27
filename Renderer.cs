@@ -24,7 +24,10 @@ namespace JLGraphics
 
             InternalGlobalScope<Renderer>.Values.Add(this);
         }
-
+        protected override void OnClone()
+        {
+            InternalGlobalScope<Renderer>.Values.Add(this);
+        }
         public void Start()
         {
             NewRendererAdded = true;

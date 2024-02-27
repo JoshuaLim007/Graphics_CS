@@ -25,7 +25,14 @@ namespace JLGraphics
         {
             set
             {
-                Transform.Parent = value.Transform;
+                if(value == null)
+                {
+                    Transform.Parent = null;
+                }
+                else
+                {
+                    Transform.Parent = value.Transform;
+                }
             }
             get
             {
@@ -153,6 +160,38 @@ namespace JLGraphics
             return false;
         }
         
+        public static Entity Clone(Entity entity, Entity parent = null)
+        {
+            var newEntity = Entity.Create(entity.Name + "_clone");
+            newEntity.StaticFlag = entity.StaticFlag;
+            newEntity.Enabled = entity.Enabled;
+            newEntity.Parent = parent;
+            newEntity.Transform.Position = entity.Transform.Position;
+            newEntity.Transform.Rotation = entity.Transform.Rotation;
+            newEntity.Transform.Scale = entity.Transform.Scale;
+
+            for (int i = 0; i < entity.m_components.Count; i++)
+            {
+                if (entity.m_components[i].GetType() == typeof(Transform))
+                {
+                    continue;
+                }
+
+                Component component = Component.Clone(entity.m_components[i]);
+                component.OnAddComponentEvent(newEntity, null);
+                newEntity.m_components.Add(component);
+            }
+
+            if(entity.Children != null)
+            {
+                for (int i = 0; i < entity.Children.Length; i++)
+                {
+                    Clone(entity.Children[i], newEntity);
+                }
+            }
+
+            return newEntity;
+        }
 
         public static void Destroy<T>(ref T toDestroy) where T : Object
         {

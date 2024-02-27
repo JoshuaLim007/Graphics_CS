@@ -76,7 +76,7 @@ vec3 hash(uvec3 x)
 }
 
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
-	float bias = 0.0f;// mix(0.00025f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
+	float bias = mix(0.0001f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
@@ -101,7 +101,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 		vec2 Offsets = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
 		Offsets.x *= DirectionalShadowDepthMapTexelSize.x * spread;
 		Offsets.y *= DirectionalShadowDepthMapTexelSize.y * spread;
-		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
+		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth - bias);
 		percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
 	}
 

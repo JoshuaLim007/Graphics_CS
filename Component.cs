@@ -10,13 +10,20 @@ namespace JLGraphics
 {
     public class Component : NamedObject, IComponentEvent
     {
+        internal static Component Clone(Component other)
+        {
+            var clone = (Component)other.MemberwiseClone();
+            clone.OnClone();
+            return clone;
+        }
+        protected virtual void OnClone() { }
         public Component() : base("null")
         {
         }
         internal void OnAddComponentEvent(Entity entity, params object[] args)
         {
             entityReference = new WeakReference<Entity>(entity);
-            base.Name += entity.Name + "_Component_" + GetType().Name;
+            Name = entity.Name + "_Component_" + GetType().Name;
             CallCreate(this, args);
         }
 
