@@ -27,14 +27,15 @@ void main()
     vec4 col = max(texture(MainTex, pos), vec4(0));
 
     vec2 mv = texture(_MotionTexture, pos).rg;
-    vec2 mvScaled = (mv / samples);
+    float invSamples = 1.0f / samples;
+    vec2 mvScaled = mv * invSamples;
     vec2 stride = mvScaled * strength * scale;
     pos -= stride * (samples * 0.5f);
     for(int i = 1; i <= samples; i++){
         pos += stride;
         col += max(texture(MainTex, pos), vec4(0));
     }
-    col /= float(samples);
+    col *= invSamples;
 
     FragColor = vec4(col.xyz, 1.0);
 }
