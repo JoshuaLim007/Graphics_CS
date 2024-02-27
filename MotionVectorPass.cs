@@ -47,6 +47,8 @@ namespace JLGraphics
                 var tfp = TFP.Default;
                 tfp.internalFormat = PixelInternalFormat.Rg16f;
                 tfp.pixelFormat = PixelFormat.Rg;
+                tfp.minFilter = TextureMinFilter.Linear;
+                tfp.magFilter = TextureMagFilter.Linear;
 
                 if (motionVectorTex != null)
                 {
