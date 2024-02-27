@@ -47,7 +47,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Mesh\*">
+    <Content Include="Meshes\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Shaders\*">
