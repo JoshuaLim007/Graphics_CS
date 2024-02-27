@@ -272,8 +272,6 @@ namespace JLGraphics
         }
         float fixedTimer = 0;
         int frameIncrement = 0;
-        DateTime time = DateTime.Now;
-        DateTime time1 = DateTime.Now;
         List<Action> temporaryUpdateFrameCommands = new List<Action>();
         float smoothDeltaCount = 0;
         private void UpdateFrame(FrameEventArgs eventArgs)
@@ -315,11 +313,10 @@ namespace JLGraphics
             float updateFreq = 1.0f / FixedDeltaTime;
 
 
-            time = DateTime.Now;
 #if DEBUG
             fileTracker.ResolveFileTrackQueue();
 #endif
-            DeltaTime = (time.Ticks - time1.Ticks) / 10000000f;
+            DeltaTime = (float)Window.UpdateTime;// (time.Ticks - time1.Ticks) / 10000000f;
             smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
             SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
 
@@ -402,7 +399,6 @@ namespace JLGraphics
             Renderer.NewRendererAdded = false;
             Window.SwapBuffers();
             DestructorCommands.Instance.ExecuteCommands();
-            time1 = time;
         }
         private bool WindowResized = false;
         private Vector2i WindowResizeResults;
