@@ -975,6 +975,10 @@ namespace JLGraphics
                 sortedRenderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, true);
             }
             renderers = sortedRenderers;
+            if(renderers == null)
+            {
+                return;
+            }
 
             if (!DisableFrustumCulling)
             {

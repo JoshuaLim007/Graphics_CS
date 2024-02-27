@@ -163,7 +163,7 @@ namespace JLGraphics
         }
         public Mesh(string path)
         {
-            var Data = AssetLoader.Load(path);
+            var Data = AssetLoader.LoadMeshFromFile(path);
             FilePath = path;
             ApplyMesh(Data);
         }

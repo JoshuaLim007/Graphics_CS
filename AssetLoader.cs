@@ -35,7 +35,7 @@ namespace JLGraphics
     }
 
     public static class AssetLoader { 
-        public static Assimp.Scene LoadScene(string path)
+        private static Assimp.Scene LoadScene(string path)
         {
             Assimp.AssimpContext context = new Assimp.AssimpContext();
             var scene = context.ImportFile(path,
@@ -45,7 +45,7 @@ namespace JLGraphics
                 Assimp.PostProcessSteps.JoinIdenticalVertices);
             return scene;
         }
-        public static GlMeshData Load(string path)
+        public static GlMeshData LoadMeshFromFile(string path)
         {
             var scene = LoadScene(path);
             return GenerateGLMeshData(scene.Meshes[0]);
@@ -107,7 +107,7 @@ namespace JLGraphics
 
             return entity;
         }
-        public static List<Entity> CreateEntitiesFromAsset(string path, string entityName = "")
+        public static List<Entity> CreateEntitiesFromFile(string path, string entityName = "")
         {
             var scene = LoadScene(path);
             if (!scene.HasMeshes)
