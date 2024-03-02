@@ -76,7 +76,8 @@ vec3 hash(uvec3 x)
 }
 
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
-	float bias = mix(0.0001f, 0.0, abs(dot(normal, DirectionalLight.Direction)));
+	float nDotL = abs(dot(normal, DirectionalLight.Direction));
+	float bias = mix(0.0001f, 0.0, nDotL);
 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
@@ -86,36 +87,39 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 	}
 
 	float percentCovered = 0.0f;
-	const int kernalHalfSize = 1;
-	const float stepSize = 0.5f;
-	int size = kernalHalfSize * 2 + 1;
 	float currentDepth = projCoords.z;
-	const int samples = 16;
-	const int scale = 1000;
-	const float spread = 1;
+	const int maxSamples = 12;
+
+	int scale = 1000;
 	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+	int samples = 0;
+	float sqrtSamples = sqrt(float(maxSamples));
+	float kernalHalfSize = 3.5f;
+	float stepSize = 1.0f / sqrtSamples;
 
-	for (int i = 0; i < samples; i++)
+	for (float i = -1; i <= 1; i += stepSize)
 	{
-		int iscale = i * scale + _Frame;
-		vec2 Offsets = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-		Offsets.x *= DirectionalShadowDepthMapTexelSize.x * spread;
-		Offsets.y *= DirectionalShadowDepthMapTexelSize.y * spread;
-		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth - bias);
-		percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
-	}
+		for (float j = -1; j <= 1; j += stepSize)
+		{
+			samples++;
 
-	//int samples = 0;
-	//for (float i = -kernalHalfSize; i <= kernalHalfSize; i += stepSize)
-	//{
-	//	for (float j = -kernalHalfSize; j <= kernalHalfSize; j += stepSize)
-	//	{
-	//		samples++;
-	//		vec2 Offsets = vec2(i * DirectionalShadowDepthMapTexelSize.x, j * DirectionalShadowDepthMapTexelSize.y);
-	//		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth + bias);
-	//		percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
-	//	}
-	//}
+			int iscale = samples * scale + _Frame;
+			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
+			randOffset = randOffset * 2 - 1;
+
+			vec2 Offsets = vec2(i, j) + randOffset * 0.5;
+
+			float len = min(length(Offsets), 1);
+			Offsets = normalize(Offsets);
+			Offsets *= len * kernalHalfSize;
+
+			Offsets.x *= DirectionalShadowDepthMapTexelSize.x;
+			Offsets.y *= DirectionalShadowDepthMapTexelSize.y;
+
+			vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth - bias);
+			percentCovered += 1 - texture(DirectionalShadowDepthMap, UVC);
+		}
+	}
 
 	return percentCovered / samples;
 }
@@ -150,61 +154,6 @@ float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube
 	return shadow;
 }
 
-vec4 GetDirectionalLight(vec3 normal, vec3 geoNormal, vec3 reflectedVector) {
-
-	//diffuse color
-	float shadow = GetDirectionalShadow(fs_in.PositionLightSpace, geoNormal);
-	float shade = min(max(dot(normal, DirectionalLight.Direction), 0), 1);
-	shade = min(shade, 1 - shadow);
-	vec3 sunColor = DirectionalLight.Color * shade;
-
-	//specular color
-	float specular = max(dot(reflectedVector, DirectionalLight.Direction), 0);
-	specular = pow(specular, pow(Smoothness, 3) * 32);
-	specular = smoothstep(0.3, 1., specular) * pow(Smoothness, 3) * 24;
-	vec4 specColor = vec4(DirectionalLight.Color, 0) * specular * shade;
-
-	//combined color
-	vec4 c = vec4(sunColor, 0) + specColor;
-	return c;
-}
-vec4 GetPointLight(vec3 cameraPosition, vec3 worldPosition, vec3 normal, vec3 reflectedVector) {
-	float lightFactor = 1.0f;
-	vec4 col = vec4(0, 0, 0, 0);
-	for (int i = 0; i < PointLightCount; i++)
-	{
-		float constant = PL.PointLightData[i].Constant;
-
-		vec3 dirFromLight = PL.PointLightData[i].Position.xyz - worldPosition;
-		float dist = length(dirFromLight);
-		dirFromLight = normalize(dirFromLight);
-
-		//diffuse color
-		float atten = (constant 
-			+ PL.PointLightData[i].Exp * dist * dist
-			+ PL.PointLightData[i].Linear * dist
-		);
-		float shade = min(max(dot(normal, dirFromLight), 0), 1) / atten;
-
-		if (PL.PointLightData[i].HasShadows == 1) {
-			int sIndex = PL.PointLightData[i].ShadowIndex;
-			shade *= (1 - GetPointLightShadow(cameraPosition, worldPosition, PL.PointLightData[i].Position.xyz, PointLightShadowMap[sIndex], PL.PointLightData[i].ShadowFarPlane, fs_in.Normal));
-		}
-
-		shade *= 1 - smoothstep(PL.PointLightData[i].Range * 0.75f, PL.PointLightData[i].Range, dist);
-
-		vec3 lCol = PL.PointLightData[i].Color.xyz * lightFactor * shade;
-		//specular color
-		float specular = min(max(dot(reflectedVector, dirFromLight), 0), 1);
-		specular = pow(specular, pow(Smoothness, 3) * 32);
-		specular = smoothstep(0.3, 1., specular) * pow(Smoothness, 3) * 24;
-		vec4 specColor = vec4(PL.PointLightData[i].Color.xyz * lightFactor, 0) * specular * shade;
-
-		//combined color
-		col += vec4(lCol, 0) + specColor;
-	}
-	return col;
-}
 vec4 GetAmbientColor(vec3 normal) {
 	float skyMix = dot(normal, vec3(0, 1, 0));
 	float horizonMix = 1 - abs(skyMix);
