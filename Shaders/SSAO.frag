@@ -92,7 +92,7 @@ void main()
     const float maxBias = 1;
 
     for(int i = 1; i <= samples; i++){
-        vec3 randomDir = (hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, (i + _Frame) * 10)));
+        vec3 randomDir = (hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, i * 1000 + _Frame)));
         randomDir = randomDir * 2 - 1;
         randomDir = randomDir * sign(dot(normalize(randomDir), normal));
 
