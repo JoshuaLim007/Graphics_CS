@@ -1,4 +1,4 @@
-﻿#version 410
+﻿#version 420
 
 layout(location = 0) out vec4 FragColor;
 uniform sampler2D MainTex;
@@ -61,14 +61,7 @@ uniform int samples;
 uniform int _Frame;
 uniform float DepthRange;
 const uint k = 1103515245U;
-vec3 hash(uvec3 x)
-{
-	x = ((x >> 8U) ^ x.yzx) * k;
-	x = ((x >> 8U) ^ x.yzx) * k;
-	x = ((x >> 8U) ^ x.yzx) * k;
 
-	return vec3(x) * (1.0 / float(0xffffffffU));
-}
 vec3 hash3( uvec3 p ) 
 {
     uint n = p.x + 2048 * p.y + (2048 * 2048) * uint(p.z);
@@ -98,16 +91,16 @@ void main()
     const float minBias = 0.01;
     const float maxBias = 1;
 
-    for(int i = 0; i < samples; i++){
-        vec3 randomDir = normalize(hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, i + _Frame * 1000)));
+    for(int i = 1; i <= samples; i++){
+        vec3 randomDir = (hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, (i + _Frame) * 10)));
         randomDir = randomDir * 2 - 1;
-        randomDir = randomDir * sign(dot(randomDir, normal));
-        
-        float scale = float(i) / float(samples);
-        scale = mix(0.1f, Radius, scale * scale);
-        float len = rand(uv * vec2(i + 1 + _Frame) * 0.001) * scale;
+        randomDir = randomDir * sign(dot(normalize(randomDir), normal));
 
-        vec3 randomPos = position + randomDir * len;
+        float scale = float(i) / float(samples);
+        scale *= scale;
+        scale *= Radius;
+
+        vec3 randomPos = position + randomDir * scale;
         vec4 cl = ProjectionViewMatrix * vec4(randomPos, 1);
         cl.xyz /= cl.w;
         cl.xy = cl.xy * 0.5 + 0.5;
@@ -125,6 +118,5 @@ void main()
         }
     }
     occlusion /= samples;
-
     FragColor = vec4(1 - occlusion);
 }

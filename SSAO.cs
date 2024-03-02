@@ -13,10 +13,11 @@ namespace JLGraphics
         FrameBuffer SSAORt, blurRT, accumRT;
         Shader shader;
         Shader blur, comp, accum;
-        public float Radius = 15.0f;
+        public float Radius = 5.0f;
         public float Intensity = 1.0f;
-        public float DepthRange = 10.0f;
+        public float DepthRange = 5.0f;
         public int Samples = 16;
+        const int maxAccum = 32;
 
         public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
@@ -45,7 +46,7 @@ namespace JLGraphics
         {
             return new FrameBuffer(width, height, false, new TFP()
             {
-                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.R8,
+                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.R32f,
                 pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Red,
                 magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear
@@ -85,7 +86,7 @@ namespace JLGraphics
             }
 
             Blit(frameBuffer, SSAORt, shader);
-            accumulatedFrames = (int)MathF.Min(++accumulatedFrames, 32);
+            accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
             accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
             accum.SetTexture(Shader.GetShaderPropertyId("AccumAO"), accumRT.TextureAttachments[0]);
             Blit(SSAORt, accumRT, accum);
