@@ -41,6 +41,10 @@ namespace JLGraphics
         {
             DepthOnlyFramebuffer.Dispose();
         }
+        public static void SetShadowMapToWhite()
+        {
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), null);
+        }
         public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
         {
             this.size = size;
@@ -113,6 +117,8 @@ namespace JLGraphics
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("DirectionalLightMatrix"), ShadowMatrix);
             GL.CullFace(CullFaceMode.Back);
+
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
         }
     }
 
@@ -209,7 +215,7 @@ namespace JLGraphics
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Clear(ClearBufferMask.DepthBufferBit);
-            Graphics.Instance.RenderScene(camera, shadowShader);
+            Graphics.Instance.RenderScene(null, shadowShader);
         }
 
     }

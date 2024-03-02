@@ -251,20 +251,21 @@ float DistributionGGX(vec3 N, vec3 H, float a)
 
 	return nom / denom;
 }
+const float denomMin = 0.001;
 float GeometrySchlickGGX(float NdotV, float k)
 {
 	float nom = NdotV;
 	float denom = NdotV * (1.0 - k) + k;
 
-	return nom / max(denom, 0.001);
+	return nom / max(denom, denomMin);
 }
 
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
 {
 	k = k * k;
 	k /= 2;
-	float NdotV = max(dot(N, V), 0.001);
-	float NdotL = max(dot(N, L), 0.001);
+	float NdotV = max(dot(N, V), denomMin);
+	float NdotL = max(dot(N, L), denomMin);
 	float ggx1 = GeometrySchlickGGX(NdotV, k);
 	float ggx2 = GeometrySchlickGGX(NdotL, k);
 
@@ -312,7 +313,7 @@ void main(){
 	vec3 h = halfVector(viewVector, DirectionalLight.Direction);
 	float D = DistributionGGX(normal, h, roughness);
 	float G = GeometrySmith(normal, viewVector, DirectionalLight.Direction, roughness);
-	float denom = 4 * max(dot(normal, DirectionalLight.Direction), 0.001) * max(dot(normal, viewVector), 0.001);
+	float denom = 4 * max(dot(normal, DirectionalLight.Direction), denomMin) * max(dot(normal, viewVector), denomMin);
 	vec3 fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
 	float reflectanceBRDF = D * G / denom; 
 	vec3 kd = 1 - fresnal;
@@ -347,7 +348,7 @@ void main(){
 		h = halfVector(viewVector, dirFromLight);
 		D = DistributionGGX(normal, h, roughness);
 		G = GeometrySmith(normal, viewVector, dirFromLight, roughness);
-		denom = 4 * max(dot(normal, dirFromLight), 0.001) * max(dot(normal, viewVector), 0.001);
+		denom = 4 * max(dot(normal, dirFromLight), denomMin) * max(dot(normal, viewVector), denomMin);
 		fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
 		reflectanceBRDF = D * G / denom; 
 		kd = 1 - fresnal;

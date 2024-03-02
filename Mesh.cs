@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using OpenTK.Graphics.OpenGL4;
 using JLUtility;
+using OpenTK.Mathematics;
 
 namespace JLGraphics
 {
@@ -114,6 +115,7 @@ namespace JLGraphics
         public int ElementArrayBuffer { get; private set; }
         public int VertexArrayObject { get; private set; }
         public int VertexCount { get; private set; }
+        public AABB BoundingBox { get; private set; }
 
         public List<Action> FileChangeCallback => new List<Action>();
         public string FilePath { get; }
@@ -122,6 +124,49 @@ namespace JLGraphics
 
         public void ApplyMesh(GlMeshData Data)
         {
+            Vector3 minPoint = Vector3.PositiveInfinity;
+            Vector3 maxPoint = Vector3.NegativeInfinity;
+
+            //calculate minmax for AABB
+            for (int i = 0; i < Data.vertexData.Length; i++)
+            {
+                int positionIndex = i + Data.positionOffset;
+                float x = Data.vertexData[positionIndex];
+                float y = Data.vertexData[positionIndex + 1];
+                float z = Data.vertexData[positionIndex + 2];
+
+                if(x < minPoint.X)
+                {
+                    minPoint.X = x;
+                }
+                if (y < minPoint.Y)
+                {
+                    minPoint.Y = y;
+                }
+                if (z < minPoint.Z)
+                {
+                    minPoint.Z = z;
+                }
+
+
+                if (x > maxPoint.X)
+                {
+                    maxPoint.X = x;
+                }
+                if (y > maxPoint.Y)
+                {
+                    maxPoint.Y = y;
+                }
+                if (z > maxPoint.Z)
+                {
+                    maxPoint.Z = z;
+                }
+
+                int vertexSize = Data.elementsPerVertex;
+                i += (vertexSize - 1);
+            }
+            BoundingBox = new AABB() { Max = maxPoint, Min = minPoint };
+
             float[] vertices = Data.vertexData;
             int[] indices = Data.indices;
             ElementCount = indices.Length;

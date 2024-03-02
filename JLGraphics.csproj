@@ -59,6 +59,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Shaders\aabbDebug.frag" />
+    <None Remove="Shaders\aabbDebug.vert" />
     <None Remove="Shaders\Bloom.glsl" />
     <None Remove="Shaders\BloomComposite.glsl" />
     <None Remove="Shaders\BloomPrepass.glsl" />

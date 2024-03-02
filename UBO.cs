@@ -12,7 +12,6 @@ namespace JLGraphics
         int ubo;
         string name;
         public override string Name => "UBO_" + name;
-
         public UBO(T[] data, int elements, int bindingPointIndex)
         {
             if(data == null)
@@ -31,7 +30,7 @@ namespace JLGraphics
 
             GL.BindBufferBase(BufferRangeTarget.UniformBuffer, bindingPointIndex, ubo);
         }
-        public UBO(T data, int dataSizeBytes)
+        public UBO(T data, int elements)
         {
             if (data == null)
             {
@@ -43,11 +42,11 @@ namespace JLGraphics
             GL.BindBuffer(BufferTarget.UniformBuffer, ubo);
             GCHandle pinnedArray = GCHandle.Alloc(data, GCHandleType.Pinned);
             IntPtr pointer = pinnedArray.AddrOfPinnedObject();
-            GL.BufferData(BufferTarget.UniformBuffer, dataSizeBytes, pointer, BufferUsageHint.DynamicDraw);
+            GL.BufferData(BufferTarget.UniformBuffer, Unsafe.SizeOf<T>() * elements, pointer, BufferUsageHint.DynamicDraw);
             GL.BindBuffer(BufferTarget.UniformBuffer, 0);
             pinnedArray.Free();
         }
-        public void UpdateData(T[] data, int dataSizeBytes)
+        public void UpdateData(T[] data, int elements)
         {
             if (data == null)
             {
@@ -57,7 +56,7 @@ namespace JLGraphics
             GL.BindBuffer(BufferTarget.UniformBuffer, ubo);
             GCHandle pinnedArray = GCHandle.Alloc(data, GCHandleType.Pinned);
             IntPtr pointer = pinnedArray.AddrOfPinnedObject();
-            GL.BufferSubData(BufferTarget.UniformBuffer, IntPtr.Zero, dataSizeBytes, pointer);
+            GL.BufferSubData(BufferTarget.UniformBuffer, IntPtr.Zero, Unsafe.SizeOf<T>() * elements, pointer);
             GL.BindBuffer(BufferTarget.UniformBuffer, 0);
             pinnedArray.Free();
         }

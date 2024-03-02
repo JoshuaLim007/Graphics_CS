@@ -38,6 +38,18 @@ namespace JLGraphics
         private static float m_timeScale = 1.0f;
         public static float TimeScale { get => m_timeScale; set => m_timeScale = Math.Clamp(value, 0, float.MaxValue); }
     }
+    public struct GraphicsDebug
+    {
+        public int MaterialUpdateCount;
+        public int TotalWorldEntities;
+        public int MeshBindCount;
+        public int UseProgramCount;
+        public int TotalVertices;
+        public int DrawCount;
+        public int FrustumCulledEntitiesCount;
+        public bool DrawAABB;
+        public bool PauseFrustumCulling;
+    }
     public sealed class Graphics : IDisposable
     {
         static Lazy<Graphics> m_lazyGraphics = new Lazy<Graphics>(() => new Graphics());
@@ -63,11 +75,6 @@ namespace JLGraphics
         internal float ElapsedTime { get; private set; } = 0;
         public bool DisableRendering { get; set; } = false;
 
-        private int m_drawCount = 0;
-        private int m_meshBindCount = 0;
-        private int m_shaderBindCount = 0;
-        private int m_materialUpdateCount = 0;
-        private int m_verticesCount = 0;
         private bool m_isInit = false;
         private List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
         private List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
@@ -127,6 +134,7 @@ namespace JLGraphics
         ShaderProgram PassthroughShaderProgram;
         ShaderProgram DepthPrepassShaderProgram;
         float previousRenderScale = 1.0f;
+        public GraphicsDebug GraphicsDebug;
         public float RenderScale { get; set; } = 1.0f;
         ImGuiController guiController;
         void InitFramebuffers() {
@@ -237,6 +245,7 @@ namespace JLGraphics
             temporaryUpdateFrameCommands.Clear();
             SkyboxDepthPrepassShader.Program.Dispose();
             SkyboxShader.Program.Dispose();
+            AABBDebugShader?.Program.Dispose();
             Window.Close();
             Window.Dispose();
             MainFrameBuffer = null;
@@ -324,20 +333,22 @@ namespace JLGraphics
 
             string stats = "";
             stats += " | fixed delta time: " + FixedDeltaTime;
-            stats += " | draw count: " + m_drawCount;
-            stats += " | shader mesh bind count: " + m_shaderBindCount + ", " + m_meshBindCount;
-            stats += " | material update count: " + m_materialUpdateCount;
-            stats += " | vertices: " + m_verticesCount;
+            stats += " | draw count: " + GraphicsDebug.DrawCount;
+            stats += " | shader mesh bind count: " + GraphicsDebug.UseProgramCount + ", " + GraphicsDebug.MeshBindCount;
+            stats += " | material update count: " + GraphicsDebug.MaterialUpdateCount;
+            stats += " | vertices: " + GraphicsDebug.TotalVertices;
             stats += " | total world objects: " + AllInstancedObjects.Count;
             stats += " | fps: " + 1.0f / SmoothDeltaTime;
             stats += " | delta time: " + SmoothDeltaTime;
             Window.Title = stats;
 
-            m_drawCount = 0;
-            m_shaderBindCount = 0;
-            m_materialUpdateCount = 0;
-            m_meshBindCount = 0;
-            m_verticesCount = 0;
+            GraphicsDebug.DrawCount = 0;
+            GraphicsDebug.UseProgramCount = 0;
+            GraphicsDebug.MaterialUpdateCount = 0;
+            GraphicsDebug.MeshBindCount = 0;
+            GraphicsDebug.TotalVertices = 0;
+            GraphicsDebug.FrustumCulledEntitiesCount = 0;
+
             RenderScaleChange(RenderScale);
 
             if (RenderGUI)
@@ -572,16 +583,21 @@ namespace JLGraphics
             
             unsafeBlitShader.SetVector2(Shader.GetShaderPropertyId("MainTex_TexelSize"), new Vector2(1.0f / width, 1.0f / height));
             unsafeBlitShader.SetTexture(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
-            unsafeBlitShader.AttachShaderForRendering();
-
+            int results = unsafeBlitShader.AttachShaderForRendering();
+            if((results & 0b10) == 0b10)
+            {
+                GraphicsDebug.MaterialUpdateCount++;
+            }
+            if ((results & 0b1) == 0b1)
+            {
+                GraphicsDebug.UseProgramCount++;
+            }
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Viewport(0, 0, width, height);
             GL.BindVertexArray(FullScreenQuad.VAO);
 
-            m_drawCount++;
-            m_verticesCount += FullScreenQuad.VertexCount;
-            m_shaderBindCount++;
-            m_meshBindCount++;
+            GraphicsDebug.DrawCount++;
+            GraphicsDebug.TotalVertices += FullScreenQuad.VertexCount;
 
             GL.DrawArrays(PrimitiveType.Triangles, 0, FullScreenQuad.VertexCount);
         }
@@ -647,10 +663,11 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Front);
             GL.DrawElements(PrimitiveType.Triangles, BasicCube.IndiciesCount, DrawElementsType.UnsignedInt, 0);
             GL.CullFace(CullFaceMode.Back);
-            m_drawCount++;
-            m_verticesCount += BasicCube.VertexCount;
-            m_shaderBindCount++;
-            m_meshBindCount++;
+
+            GraphicsDebug.DrawCount++;
+            GraphicsDebug.TotalVertices += BasicCube.VertexCount;
+            GraphicsDebug.UseProgramCount++;
+            GraphicsDebug.MeshBindCount++;
         }
 
         private void DoRenderUpdate()
@@ -698,8 +715,13 @@ namespace JLGraphics
                 //Post post processing (Transparent -> End)
                 ExecuteRenderPasses(renderPassIndex, int.MaxValue);
 
+                if (GraphicsDebug.DrawAABB)
+                {
+                    RenderBoundingVolumes(AllCameras[cameraIndex], MainFrameBuffer);
+                }
+
                 //blit render buffer to screen
-                if(!RenderGUI)
+                if (!RenderGUI)
                     Blit(MainFrameBuffer, null, false, null);
 
                 //frame cleanup
@@ -716,11 +738,6 @@ namespace JLGraphics
             }
         }
 
-        /// <summary>
-        /// Disable camera frustum culling
-        /// </summary>
-        public bool DisableFrustumCulling { get; set; } = false;
-
         private PointLightSSBO[] pointLightSSBOs = new PointLightSSBO[MAXPOINTLIGHTS];
         private UBO<PointLightSSBO> PointLightBufferData;
         void SetupLights(Camera camera)
@@ -733,12 +750,17 @@ namespace JLGraphics
             List<(PointLight, int)> pointLights = new();
             var lights = InternalGlobalScope<Light>.Values;
             int pointLightShadowCount = 0;
+            bool didRenderDirectionalShadow = false;
             for (int i = 0; i < lights.Count; i++)
             {
                 switch (lights[i])
                 {
                     case DirectionalLight t0:
-                        t0.RenderShadowMap(camera);
+                        if (t0.HasShadows)
+                        {
+                            t0.RenderShadowMap(camera);
+                            didRenderDirectionalShadow = true;
+                        }
                         Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Color"), t0.Color);
                         Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Direction"), t0.Transform.Forward);
                         break;
@@ -754,6 +776,10 @@ namespace JLGraphics
                 }
             }
 
+            if (!didRenderDirectionalShadow)
+            {
+                DirectionalShadowMap.SetShadowMapToWhite();
+            }
             //point light frustum culling?
 
             //render closer point lights first
@@ -790,7 +816,7 @@ namespace JLGraphics
                 }
             }
 
-            PointLightBufferData.UpdateData(pointLightSSBOs, Unsafe.SizeOf<PointLightSSBO>() * pointLightSSBOs.Length);
+            PointLightBufferData.UpdateData(pointLightSSBOs, pointLightSSBOs.Length);
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("PointLightCount"), (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
         }
 
@@ -833,13 +859,13 @@ namespace JLGraphics
             materialIndex.Clear();
             return final;
         }
-
         Renderer[] sortedRenderers = null;
-        Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
-        Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
-        Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
         Renderer[] SortRenderersByProgramByMaterials(List<Renderer> renderers, bool AlsoSortMaterials)
         {
+            Dictionary<ShaderProgram, int> programIndex = new Dictionary<ShaderProgram, int>();
+            Dictionary<int, HashSet<Shader>> uniqueMaterialsAtIndex = new Dictionary<int, HashSet<Shader>>();
+            Dictionary<Shader, int> materialIndex = new Dictionary<Shader, int>();
+
             List<Renderer>[] programs = new List<Renderer>[ShaderProgram.ProgramCounts];
             int index;
             int programCount;
@@ -900,59 +926,78 @@ namespace JLGraphics
                 }
             }
 
-            programIndex.Clear();
-            uniqueMaterialsAtIndex.Clear();
             return final;
         }
-        Renderer[] FrustumCullCPU(Renderer[] renderers)
-        {
-            return renderers;
-        }
         
-        struct RendererDistancePair
+        Shader AABBDebugShader = null;
+        public void RenderBoundingVolumes(Camera camera, FrameBuffer frameBuffer, FrameBuffer restore = null)
         {
-            public Renderer renderer;
-            public float distanceSqrd;
-        }
-        Renderer[] SortByDistanceToCamera(List<Renderer> renderers, Camera camera)
-        {
-            RendererDistancePair[] rendererDistancePairs = new RendererDistancePair[renderers.Count];
-            Parallel.For(0, rendererDistancePairs.Length, (i) =>
+            if(AABBDebugShader == null)
             {
-                rendererDistancePairs[i] = new RendererDistancePair() {
-                    distanceSqrd = (renderers[i].Transform.Position - camera.Transform.Position).LengthSquared,
-                    renderer = renderers[i]
-                };
-            });
-            Array.Sort(rendererDistancePairs, (a, b) => { 
-                if(a.distanceSqrd < b.distanceSqrd)
-                {
-                    return -1;
-                }
-                else
-                {
-                    return 1;
-                }
-            });
-            Renderer[] output = new Renderer[renderers.Count];
-            for (int i = 0; i < rendererDistancePairs.Length; i++)
-            {
-                output[i] = rendererDistancePairs[i].renderer;
+                var program = new ShaderProgram("Gizmo", "./Shaders/aabbDebug.frag", "./Shaders/aabbDebug.vert");
+                program.CompileProgram();
+                AABBDebugShader = new Shader("Gizmo", program);
+                AABBDebugShader.DepthTest = false;
             }
-            return output;
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBuffer.FrameBufferObject);
+            SetShaderCameraData(camera);
+            AABBDebugShader.SetVector4(Shader.GetShaderPropertyId("color"), new Vector4(1,0,1,1));
+            AABBDebugShader.AttachShaderForRendering();
+            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
+            GL.Disable(EnableCap.CullFace);
+            GL.LineWidth(1);
+            var renderers = InternalGlobalScope<Renderer>.Values;
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                var aabb = renderers[i].Mesh.BoundingBox;
+                var newPoints = AABB.ApplyTransformation(aabb, renderers[i].Transform.WorldToLocalMatrix);
+                var corners = AABB.GetCorners(newPoints);
+                float[] vertices = new float[corners.Length * 3];
+                int vertIdx = 0;
+                for (int j = 0; j < vertices.Length; j += 3)
+                {
+                    vertices[j] = corners[vertIdx].X;
+                    vertices[j+1] = corners[vertIdx].Y;
+                    vertices[j+2] = corners[vertIdx].Z;
+                    vertIdx++;
+                }
+
+                var indices = AABB.GetIndices();
+                int vbo = GL.GenBuffer();
+                int eab = GL.GenBuffer();
+                int vao = GL.GenVertexArray();
+                GL.BindVertexArray(vao);
+
+                GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
+                GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
+                GL.EnableVertexAttribArray(0);
+                GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
+
+                GL.BindBuffer(BufferTarget.ElementArrayBuffer, eab);
+                GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(int), indices, BufferUsageHint.StaticDraw);
+
+                GL.DrawElements(BeginMode.TriangleStrip, indices.Length, DrawElementsType.UnsignedInt, 0);
+
+                GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+                GL.BindVertexArray(0);
+                GL.DeleteBuffer(vbo);
+                GL.DeleteBuffer(eab);
+                GL.DeleteVertexArray(vao);
+            }
+            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+            GL.Enable(EnableCap.CullFace);
+            if (restore != null)
+            {
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, restore.FrameBufferObject);
+            }
         }
+
+        CameraFrustum cameraFrustum = new();
         public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null)
         {
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
             bool doOnRenderFunc = OnRender != null;
-
-            if(camera != null)
-            {
-                SetShaderCameraData(camera);
-                InvokeOnRenders(camera);
-            }
-
             int modelMatrixPropertyId = Shader.GetShaderPropertyId("ModelMatrix");
 
             bool useOverride = false;
@@ -962,9 +1007,6 @@ namespace JLGraphics
                 overrideModelLoc = overrideShader.GetUniformLocation(modelMatrixPropertyId);
                 useOverride = true;
             }
-
-            //TODO:
-            //apply batching
 
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
@@ -979,15 +1021,33 @@ namespace JLGraphics
             {
                 return;
             }
-
-            if (!DisableFrustumCulling)
+            bool isCameraNull = camera == null;
+            bool doFrustumCulling = false;
+            if (!isCameraNull)
             {
-                renderers = FrustumCullCPU(renderers);
+                SetShaderCameraData(camera);
+                InvokeOnRenders(camera);
+                if (camera.FrustumCull)
+                {
+                    doFrustumCulling = true;
+                    cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : cameraFrustum;
+                }
             }
 
             for (int i = 0; i < renderers.Length; i++)
             {
                 var current = renderers[i];
+                if (doFrustumCulling)
+                {
+                    var correctedAABB = AABB.ApplyTransformation(current.Mesh.BoundingBox, current.Transform.WorldToLocalMatrix);
+                    var skip = AABB.IsOutsideOfFrustum(cameraFrustum, correctedAABB);
+                    if (skip)
+                    {
+                        GraphicsDebug.FrustumCulledEntitiesCount++;
+                        continue;
+                    }
+                }
+
                 if (current == null || !current.Enabled)
                 {
                     continue;
@@ -1002,7 +1062,7 @@ namespace JLGraphics
                 //don't bind if the previous mesh and previous material are the same
                 if (meshData != previousMesh)
                 {
-                    m_meshBindCount++;
+                    GraphicsDebug.MeshBindCount++;
                     GL.BindVertexArray(meshData.VertexArrayObject);
                     GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
                     previousMesh = meshData;
@@ -1013,11 +1073,11 @@ namespace JLGraphics
                     int updateFlags = material.AttachShaderForRendering();
                     if((updateFlags & 0b10) == 0b10)
                     {
-                        m_materialUpdateCount++;
+                        GraphicsDebug.MaterialUpdateCount++;
                     }
                     if ((updateFlags & 0b01) == 0b01)
                     {
-                        m_shaderBindCount++;
+                        GraphicsDebug.UseProgramCount++;
                     }
                     previousMaterial = material;
                 }
@@ -1033,7 +1093,7 @@ namespace JLGraphics
                     GL.UniformMatrix4(current.Material.GetUniformLocation(modelMatrixPropertyId), false, ref worlToLocalMatrix);
                 }
 
-                m_verticesCount += meshData.VertexCount;
+                GraphicsDebug.TotalVertices += meshData.VertexCount;
                 if (doOnRenderFunc)
                 {
                     OnRender.Invoke(current);
@@ -1041,7 +1101,7 @@ namespace JLGraphics
                 //render object
                 GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
 
-                m_drawCount++;
+                GraphicsDebug.DrawCount++;
             }
 
             //unbind
