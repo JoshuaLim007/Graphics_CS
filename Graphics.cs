@@ -334,6 +334,7 @@ namespace JLGraphics
             string stats = "";
             stats += " | fixed delta time: " + FixedDeltaTime;
             stats += " | draw count: " + GraphicsDebug.DrawCount;
+            stats += " | cull count: " + GraphicsDebug.FrustumCulledEntitiesCount;
             stats += " | shader mesh bind count: " + GraphicsDebug.UseProgramCount + ", " + GraphicsDebug.MeshBindCount;
             stats += " | material update count: " + GraphicsDebug.MaterialUpdateCount;
             stats += " | vertices: " + GraphicsDebug.TotalVertices;

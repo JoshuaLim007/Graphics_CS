@@ -104,7 +104,7 @@ namespace JLGraphics
             var lightProjectionMatrix = Matrix4.CreateOrthographic(size, size, nearPlane, farPlane);
             var view = Matrix4.LookAt(offset, Vector3.Zero, isUp ? Vector3.UnitX : Vector3.UnitY);
 
-            float perSize = size * 0.05f;
+            float perSize = size * 0.015625f;
             cameraPosition.X = MathF.Floor(cameraPosition.X / perSize) * perSize;
             cameraPosition.Y = MathF.Floor(cameraPosition.Y / perSize) * perSize;
             cameraPosition.Z = MathF.Floor(cameraPosition.Z / perSize) * perSize;
@@ -119,6 +119,7 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Back);
 
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
+            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), size);
         }
     }
 

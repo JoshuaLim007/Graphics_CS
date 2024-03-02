@@ -65,6 +65,7 @@ uniform vec3 EmissiveColor;
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
 uniform int _Frame;
+uniform float DirectionalShadowRange;
 const uint k = 1103515245U;
 vec3 hash(uvec3 x)
 {
@@ -75,7 +76,8 @@ vec3 hash(uvec3 x)
 	return vec3(x) * (1.0 / float(0xffffffffU));
 }
 
-float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
+float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) {
+
 	float nDotL = abs(dot(normal, DirectionalLight.Direction));
 	float bias = mix(0.0001f, 0.0, nDotL);
 
@@ -121,7 +123,11 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal) {
 		}
 	}
 
-	return percentCovered / samples;
+	float distToCam = length(worldPosition - CameraWorldSpacePos);
+	float halfShadowRange = DirectionalShadowRange * 0.5;
+	float fade = smoothstep(halfShadowRange, max(halfShadowRange - 5, 0), distToCam);
+
+	return (percentCovered / samples) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube depthMap, float far_plane, vec3 normal) {
 	// get vector between fragment position and light position
@@ -248,7 +254,7 @@ void main(){
 
 	//Lambertian BRDF
 	//directional light
-	float sunShadow = GetDirectionalShadow(fs_in.PositionLightSpace, normalize(fs_in.Normal));
+	float sunShadow = GetDirectionalShadow(fs_in.PositionLightSpace, normalize(fs_in.Normal), fs_in.Position);
 	vec3 sunColor = max(dot(normal, DirectionalLight.Direction), 0) * (1 - sunShadow) * DirectionalLight.Color;
 	color.xyz *= AlbedoColor;
 
