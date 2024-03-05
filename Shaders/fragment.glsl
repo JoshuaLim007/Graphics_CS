@@ -113,15 +113,15 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	int scale = 1000;
 	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
 	int samples = 0;
-	float stepSizeX = 3.0f / xSamples;
-	float stepSizeY = 3.0f / ySamples;
+	//float stepSizeX = 3.0f / xSamples;
+	//float stepSizeY = 3.0f / ySamples;
 
 	const float MaxBlurRadius = 6.0f;
 
 	float occluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, int(ceil(MaxBlurRadius)));
 	float depthDiff = abs(currentDepth - occluderDepth) * 100;
 
-	float blurRadius = mix(1.0, MaxBlurRadius, depthDiff);
+	float blurRadius = mix(1.5f, MaxBlurRadius, depthDiff);
 
 	for (int i = 0; i < maxSamples; i++) {
 		samples++;
