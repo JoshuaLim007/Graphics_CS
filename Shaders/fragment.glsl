@@ -33,6 +33,7 @@ uniform struct DIRECT_LIGHT {
 	vec3 Color;
 } DirectionalLight;
 uniform sampler2D DirectionalShadowDepthMap;
+uniform sampler2DShadow DirectionalShadowDepthMap_Smooth;
 uniform vec2 DirectionalShadowDepthMapTexelSize;
 
 //out to render texture
@@ -75,25 +76,32 @@ vec3 hash(uvec3 x)
 
 	return vec3(x) * (1.0 / float(0xffffffffU));
 }
-float DirectionalShadowOccluderSearch(vec2 startingProjectedLightSpacePos, int halfExtent) {
+float DirectionalShadowOccluderSearch(vec2 startingProjectedLightSpacePos, float radius, float maxSamples) {
 
 	float depthCounter = 0;
-	float sampleCounter = 0;
-	for (int i = -halfExtent; i < halfExtent; i++)
-	{
-		for (int j = -halfExtent; j < halfExtent; j++)
-		{
-			vec2 uv = startingProjectedLightSpacePos + vec2(i, j) * DirectionalShadowDepthMapTexelSize;
-			depthCounter += texture(DirectionalShadowDepthMap, uv).r;
-			sampleCounter++;
+	int samples = 0;
+	int scale = 1000;
+	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+	float stride = 3.0f / maxSamples;
+	for (float i = -1; i <= 1; i += stride) {
+		for (float j = -1; j <= 1; j += stride) {
+			samples++;
+			int iscale = samples * scale + _Frame;
+			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
+			randOffset = (randOffset * 2 - 1) * 0.5f;
+			vec2 offset = vec2(i, j) + randOffset;
+			offset *= radius;
+			offset *= DirectionalShadowDepthMapTexelSize;
+			depthCounter += texture(DirectionalShadowDepthMap, startingProjectedLightSpacePos + offset).r;
 		}
 	}
-	depthCounter /= sampleCounter;
+
+	depthCounter /= samples;
 	return depthCounter;
 }
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) {
 
-	float nDotL = abs(dot(normal, DirectionalLight.Direction));
+	float nDotL = max(dot(normal, DirectionalLight.Direction), 0);
 	float bias = mix(0.0001f, 0.0, nDotL);
 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
@@ -106,73 +114,42 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	float percentCovered = 0.0f;
 	float currentDepth = projCoords.z;
 
-	const int xSamples = 12;
-	const int ySamples = 12;
-	int maxSamples = xSamples * ySamples;
-
 	int scale = 1000;
 	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
 	int samples = 0;
-	//float stepSizeX = 3.0f / xSamples;
-	//float stepSizeY = 3.0f / ySamples;
 
-	const float MaxBlurRadius = 6.0f;
+	const float MaxBlurRadius = 16.0f;
+	//find occluder 64 samples
+	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 8.0f);
+	float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
+	float blurRadius = mix(2.0f, MaxBlurRadius, depthDiff);
+	bias = mix(bias, bias * MaxBlurRadius, depthDiff);
+	currentDepth -= bias;
 
-	float occluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, int(ceil(MaxBlurRadius)));
-	float depthDiff = abs(currentDepth - occluderDepth) * 100;
-
-	float blurRadius = mix(1.5f, MaxBlurRadius, depthDiff);
-
-	for (int i = 0; i < maxSamples; i++) {
-		samples++;
-		int iscale = samples * scale + _Frame;
-		vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-		randOffset = randOffset * 2 - 1;
-		float len = min(length(randOffset), 1);
-		randOffset = normalize(randOffset);
-		randOffset *= len;
-		randOffset *= blurRadius;
-		randOffset *= DirectionalShadowDepthMapTexelSize;
-		vec3 UVC = vec3(projCoords.xy + randOffset, currentDepth - bias);
-		float newDepth = texture(DirectionalShadowDepthMap, UVC.xy).r;
-		if (UVC.z > newDepth) {
-			percentCovered += 1;
+	//64 samples
+	//in a MaxBlurRadius x MaxBlurRadius grid of cells. Choose a random point within that cell
+	//sample the depth at that random point within the cell and use it to calculate shadow coverage
+	float stride = 3.0f / 8.0f;
+	for (float i = -1; i <= 1; i += stride) {
+		for (float j = -1; j <= 1; j += stride) {
+			
+			samples++;
+			int iscale = samples * scale + _Frame;
+			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
+			randOffset = randOffset * 2 - 1;
+			vec2 offset = vec2(i, j) + randOffset * 0.5f;
+			offset *= blurRadius;
+			offset *= DirectionalShadowDepthMapTexelSize;
+			percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
 		}
 	}
-
-	//for (float i = -1; i <= 1; i += stepSizeX)
-	//{
-	//	for (float j = -1; j <= 1; j += stepSizeY)
-	//	{
-	//		samples++;
-	//		int iscale = samples * scale + _Frame;
-	//		//get random noise
-	//		vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-	//		randOffset = randOffset * 2 - 1;
-	//		//apply random noise to offset vector
-	//		vec2 Offsets = vec2(i, j) + randOffset;
-	//		//normalize offset vector to make it circular
-	//		float len = min(length(Offsets), 1);
-	//		Offsets = normalize(Offsets);
-	//		//apply blur radius
-	//		Offsets *= len * blurRadius;
-	//		//apply texture scaling
-	//		Offsets.x *= DirectionalShadowDepthMapTexelSize.x;
-	//		Offsets.y *= DirectionalShadowDepthMapTexelSize.y;
-	//		vec3 UVC = vec3(projCoords.xy + Offsets, currentDepth - bias);
-	//		float newDepth = texture(DirectionalShadowDepthMap, UVC.xy).r;
-	//		if (UVC.z > newDepth) {
-	//			percentCovered += 1;
-	//		}
-	//	}
-	//}
 
 	//apply shadow fading
 	float distToCam = length(worldPosition - CameraWorldSpacePos);
 	float halfShadowRange = DirectionalShadowRange * 0.5;
 	float fade = smoothstep(halfShadowRange, max(halfShadowRange - 5, 0), distToCam);
 
-	return (percentCovered / samples) * fade;
+	return pow(percentCovered / samples, 0.25) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube depthMap, float far_plane, vec3 normal) {
 	// get vector between fragment position and light position
