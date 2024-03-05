@@ -62,7 +62,7 @@ namespace JLGraphics
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.ClampToBorder,
                 borderColor = Vector4.One,
-                isShadowMap = true,
+                isShadowMap = false,
             });
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
