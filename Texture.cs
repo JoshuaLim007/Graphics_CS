@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using JLUtility;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using StbImageSharp;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -6,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace JLGraphics
 {
-    public struct TextureObject 
+    public struct GLTextureObject 
     {
         public PixelFormat pixelFormat { get; private set; }
         public PixelInternalFormat internalPixelFormat { get; private set; }
@@ -18,7 +19,7 @@ namespace JLGraphics
         public int height { get; private set; }
 
         public int ID { get; private set; }
-        public static TextureObject CreateTexture(
+        public static GLTextureObject CreateTexture(
             int height, 
             int width, 
             PixelFormat pixelFormat, 
@@ -28,7 +29,7 @@ namespace JLGraphics
             TextureMagFilter textureMagFilter,
             bool generateMipMaps)
         {
-            var textureObject = new TextureObject()
+            var textureObject = new GLTextureObject()
             {
                 pixelFormat = pixelFormat,
                 internalPixelFormat = pixelInternalFormat,
@@ -42,7 +43,7 @@ namespace JLGraphics
             textureObject.ID = GL.GenTexture();
             return textureObject;
         }
-        public static void DestroyTexture(TextureObject textureObject)
+        public static void DestroyTexture(GLTextureObject textureObject)
         {
             GL.DeleteTexture(textureObject.ID);
         }
@@ -50,7 +51,6 @@ namespace JLGraphics
     public class Texture : SafeDispose
     {
         public TextureTarget textureTarget { get; set; } = TextureTarget.Texture2D;
-        public PixelFormat pixelFormat { get; set; } = PixelFormat.Rgba;
         public PixelInternalFormat internalPixelFormat { get; set; } = PixelInternalFormat.Rgba;
         public bool generateMipMaps { get; set; } = true;
         public TextureWrapMode textureWrapMode { get; set; } = TextureWrapMode.ClampToEdge;
@@ -73,18 +73,32 @@ namespace JLGraphics
                 textureId = value;
             }
         }
-        public override string Name => "Texture: " + GlTextureID + " " + NameAddon;
-        public string NameAddon { get; private set; }
+        public override string Name => "Texture: " + GlTextureID + " " + TextureName;
+        public string TextureName { get; private set; }
         public void SetName(string name)
         {
-            NameAddon = name;
+            TextureName = name;
         }
 
         [System.Obsolete("Use CreateTextureObjectFromID", true)]
         public static explicit operator Texture(int textureId) => new Texture() {GlTextureID = textureId};
 
         public static explicit operator int(Texture texture) => texture.GlTextureID;
-
+        static bool IsDepthComponent(PixelInternalFormat internalPixelFormat)
+        {
+            return
+                internalPixelFormat == PixelInternalFormat.DepthComponent
+                || internalPixelFormat == PixelInternalFormat.Depth24Stencil8
+                || internalPixelFormat == PixelInternalFormat.Depth32fStencil8
+                || internalPixelFormat == PixelInternalFormat.DepthComponent16
+                || internalPixelFormat == PixelInternalFormat.DepthComponent16Sgix
+                || internalPixelFormat == PixelInternalFormat.DepthComponent24
+                || internalPixelFormat == PixelInternalFormat.DepthComponent24Sgix
+                || internalPixelFormat == PixelInternalFormat.DepthComponent32
+                || internalPixelFormat == PixelInternalFormat.DepthComponent32f
+                || internalPixelFormat == PixelInternalFormat.DepthComponent32Sgix
+                || internalPixelFormat == PixelInternalFormat.DepthStencil;
+        }
         public static Texture CreateTextureObjectFromID(int glId, TextureTarget textureTarget, PixelFormat pixelFormat, PixelInternalFormat pixelInternalFormat, int width, int height)
         {
             var texture = new Texture() { GlTextureID = glId };
@@ -105,7 +119,6 @@ namespace JLGraphics
             texture.generateMipMaps = generateMipMaps == 1 ? true : false;
             texture.mipmapLevels = MipmapLevels;
             texture.internalPixelFormat = pixelInternalFormat;
-            texture.pixelFormat = pixelFormat;
             texture.Width = width;
             texture.textureTarget = textureTarget;
             texture.Height = height;
@@ -114,10 +127,27 @@ namespace JLGraphics
             return texture;
         }
 
-        protected virtual IntPtr LoadPixelData()
+        protected virtual (IntPtr, PixelType, PixelFormat) LoadPixelData()
         {
-            return IntPtr.Zero;
+            if (IsDepthComponent(internalPixelFormat))
+            {
+                return (IntPtr.Zero, PixelType.Float, PixelFormat.DepthComponent);
+            }
+            else
+            {
+                return (IntPtr.Zero, PixelType.UnsignedByte, PixelFormat.Rgba);
+            }
         }
+        public virtual void SetPixels<T>(T[] data, PixelType pixelType, PixelFormat pixelFormat) where T : struct
+        {
+            if (!textureIsResolved)
+            {
+                Debug.Log("Texture has not been resolved before setting pixel data!", Debug.Flag.Error);
+            }
+            GL.BindTexture(textureTarget, GlTextureID);
+            GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, pixelType, data);
+        }
+        bool textureIsResolved = false;
         public virtual void ResolveTexture(bool isShadowMap = false)
         {
             if (GlTextureID == 0)
@@ -128,7 +158,7 @@ namespace JLGraphics
             {
                 GL.DeleteTexture(GlTextureID);
             }
-
+            textureIsResolved = true;
             GL.BindTexture(textureTarget, GlTextureID);
             GL.TexParameter(textureTarget, TextureParameterName.TextureWrapS, (int)textureWrapMode);
             GL.TexParameter(textureTarget, TextureParameterName.TextureWrapT, (int)textureWrapMode);
@@ -147,14 +177,9 @@ namespace JLGraphics
             float[] borderColor = { this.borderColor.X, this.borderColor.Y, this.borderColor.Z, this.borderColor.W };
             GL.TexParameter(textureTarget, TextureParameterName.TextureBorderColor, borderColor);
 
-            if(pixelFormat == PixelFormat.DepthComponent || pixelFormat == PixelFormat.DepthStencil)
-            {
-                GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.Float, LoadPixelData());
-            }
-            else
-            {
-                GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, PixelType.UnsignedByte, LoadPixelData());
-            }
+            var pixelData = LoadPixelData();
+
+            GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelData.Item3, pixelData.Item2, pixelData.Item1);
 
             if (generateMipMaps)
             {
@@ -169,7 +194,6 @@ namespace JLGraphics
                 f1.Width * f1_resolutionInvScale == f2.Width &&
                 f1.Height * f1_resolutionInvScale == f2.Height &&
                 f1.mipmapLevels == f2.mipmapLevels &&
-                f1.pixelFormat == f2.pixelFormat &&
                 f1.internalPixelFormat == f2.internalPixelFormat &&
                 f1.borderColor == f2.borderColor &&
                 f1.generateMipMaps == f2.generateMipMaps &&

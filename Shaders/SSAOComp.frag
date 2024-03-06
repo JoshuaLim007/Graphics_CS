@@ -11,7 +11,7 @@ void main()
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
     vec4 color = texture(MainTex, uv);
     float AO = texture(AOTex, uv).r;
-    const float scale = 0.25f;
+    const float scale = 0.00f;
     AO = max(AO - scale, 0) * (1.0f / (1 - scale));
     float str = Intensity;
 

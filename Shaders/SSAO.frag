@@ -75,6 +75,10 @@ vec3 hash3( uvec3 p )
 
 float rand(vec2 co){ return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453); }
 
+uniform vec2 noiseScale;
+uniform sampler2D texRandom;
+uniform vec3 sampleKernal[64];
+
 void main()
 {
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
@@ -87,21 +91,24 @@ void main()
     vec3 normal = calcNormalFromPosition(uv);
     vec3 position = calcPositionFromDepth(uv, depth);
 
+    vec3 noiseTex = texture(texRandom, uv * noiseScale).xyz;
+    noiseTex.xyz = noiseTex.xyz * 2 - 1;
+    noiseTex = normalize(noiseTex);
+
+    vec3 rvec = noiseTex;
+    vec3 tangent = normalize(rvec - normal * dot(rvec, normal));
+    vec3 bitangent = cross(normal, tangent);
+    mat3 tbn = mat3(tangent, bitangent, normal);
+
     float occlusion = 0;
     const float minBias = 0.01;
     const float maxBias = 1;
 
     for(int i = 1; i <= samples; i++){
-        vec3 randomDir = (hash3(uvec3(gl_FragCoord.x, gl_FragCoord.y, i * 1000 + _Frame)));
-        randomDir = randomDir * 2 - 1;
-        randomDir = randomDir * sign(dot(normalize(randomDir), normal));
+        vec3 samplKernal = sampleKernal[i];
+        samplKernal = ((tbn * samplKernal) * Radius) + position;
 
-        float scale = float(i) / float(samples);
-        scale *= scale;
-        scale *= Radius;
-
-        vec3 randomPos = position + randomDir * scale;
-        vec4 cl = ProjectionViewMatrix * vec4(randomPos, 1);
+        vec4 cl = ProjectionViewMatrix * vec4(samplKernal, 1);
         cl.xyz /= cl.w;
         cl.xy = cl.xy * 0.5 + 0.5;
         float curDepth = cl.z;
@@ -109,8 +116,10 @@ void main()
         if(sampledDepth == 1){
             continue;
         }
+        
         sampledDepth = linearDepth(sampledDepth);
         curDepth = linearDepth(curDepth);
+
         float bias = mix(minBias, maxBias, sampledDepth / CameraParams.w);
         float dist = curDepth - (sampledDepth + bias);
         if(dist > 0 && abs(dist) < DepthRange){

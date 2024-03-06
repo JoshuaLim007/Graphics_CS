@@ -153,7 +153,6 @@ namespace JLGraphics
                 minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.Rgb32f,
-                pixelFormat = PixelFormat.Rgb
             };
             var depthSettings = new TFP() { 
                 wrapMode = TextureWrapMode.ClampToEdge,
@@ -161,7 +160,6 @@ namespace JLGraphics
                 minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.R32f,
-                pixelFormat = PixelFormat.Red,
             };
             var windowSize = GetRenderWindowSize();
             MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings);

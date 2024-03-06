@@ -37,7 +37,7 @@ namespace JLGraphics
         {
             if(postProcessTexture == null)
             {
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb8, pixelFormat = PixelFormat.Rgb });
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb8});
             }
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
@@ -49,7 +49,7 @@ namespace JLGraphics
             if (!FrameBuffer.AlikeResolution(frameBuffer, postProcessTexture))
             {
                 postProcessTexture.Dispose();
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb8, pixelFormat = PixelFormat.Rgb });
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb8});
             }
             Blit(frameBuffer, postProcessTexture, shader);
             Blit(postProcessTexture, frameBuffer);

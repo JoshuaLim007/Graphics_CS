@@ -56,7 +56,6 @@ namespace JLGraphics
             DepthOnlyFramebuffer = new FrameBuffer(resolution, resolution, false, new TFP()
             {
                 internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent,
-                pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.DepthComponent,
                 magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 maxMipmap = 0,
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
@@ -83,7 +82,6 @@ namespace JLGraphics
             DepthOnlyFramebuffer = new FrameBuffer(resolution, resolution, false, new TFP()
             {
                 internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent,
-                pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.DepthComponent,
                 magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 maxMipmap = 0,
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,

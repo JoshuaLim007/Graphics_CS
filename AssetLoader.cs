@@ -251,7 +251,6 @@ namespace JLGraphics
                 {
                     if(diffuse.GlTextureID == 0)
                     {
-                        diffuse.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgba;
                         diffuse.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.SrgbAlpha;
                         diffuse.ResolveTexture();
                     }
@@ -267,7 +266,6 @@ namespace JLGraphics
                 {
                     if (normal.GlTextureID == 0)
                     {
-                        normal.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgba;
                         normal.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgba8;
                         normal.ResolveTexture();
                     }
@@ -283,7 +281,6 @@ namespace JLGraphics
                 {
                     if (maos.GlTextureID == 0)
                     {
-                        maos.pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgba;
                         maos.internalPixelFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgba8;
                         maos.ResolveTexture();
                     }

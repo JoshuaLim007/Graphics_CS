@@ -13,7 +13,6 @@ namespace JLGraphics
     public struct TFP
     {
         public PixelInternalFormat internalFormat;
-        public PixelFormat pixelFormat;
         public TextureMinFilter minFilter;
         public TextureMagFilter magFilter;
         public TextureWrapMode wrapMode;
@@ -23,7 +22,6 @@ namespace JLGraphics
         public static TFP Default => new TFP()
         {
             internalFormat = PixelInternalFormat.Rgb16f,
-            pixelFormat = PixelFormat.Rgb,
             minFilter = TextureMinFilter.Nearest,
             magFilter = TextureMagFilter.Nearest,
             wrapMode = TextureWrapMode.Repeat,
@@ -34,7 +32,6 @@ namespace JLGraphics
         public TFP()
         {
             internalFormat = PixelInternalFormat.Rgb16f;
-            pixelFormat = PixelFormat.Rgb;
             minFilter = TextureMinFilter.Nearest;
             magFilter = TextureMagFilter.Nearest;
             wrapMode = TextureWrapMode.Repeat;
@@ -55,6 +52,21 @@ namespace JLGraphics
         {
             NameAddon = name;
         }
+        static bool IsDepthComponent(PixelInternalFormat internalPixelFormat)
+        {
+            return
+                internalPixelFormat == PixelInternalFormat.DepthComponent
+                || internalPixelFormat == PixelInternalFormat.Depth24Stencil8
+                || internalPixelFormat == PixelInternalFormat.Depth32fStencil8
+                || internalPixelFormat == PixelInternalFormat.DepthComponent16
+                || internalPixelFormat == PixelInternalFormat.DepthComponent16Sgix
+                || internalPixelFormat == PixelInternalFormat.DepthComponent24
+                || internalPixelFormat == PixelInternalFormat.DepthComponent24Sgix
+                || internalPixelFormat == PixelInternalFormat.DepthComponent32
+                || internalPixelFormat == PixelInternalFormat.DepthComponent32f
+                || internalPixelFormat == PixelInternalFormat.DepthComponent32Sgix
+                || internalPixelFormat == PixelInternalFormat.DepthStencil;
+        }
         public FrameBuffer(int width, int height, bool enableDepthRenderBuffer = false, params TFP[] textureFormat)
         {
             Width = width;
@@ -70,7 +82,6 @@ namespace JLGraphics
                 TextureAttachments[i].Width = width;
                 TextureAttachments[i].Height = height;
                 TextureAttachments[i].internalPixelFormat = textureFormat[i].internalFormat;
-                TextureAttachments[i].pixelFormat = textureFormat[i].pixelFormat;
                 TextureAttachments[i].textureMagFilter = textureFormat[i].magFilter;
                 TextureAttachments[i].textureMinFilter = textureFormat[i].minFilter;
                 TextureAttachments[i].textureWrapMode = textureFormat[i].wrapMode;
@@ -78,7 +89,7 @@ namespace JLGraphics
                 TextureAttachments[i].generateMipMaps = textureFormat[i].maxMipmap != 0;
                 TextureAttachments[i].borderColor = textureFormat[i].borderColor;
                 TextureAttachments[i].ResolveTexture(textureFormat[i].isShadowMap);
-                if (textureFormat[i].pixelFormat == PixelFormat.DepthComponent || textureFormat[i].pixelFormat == PixelFormat.DepthStencil)
+                if (IsDepthComponent(TextureAttachments[i].internalPixelFormat))
                 {
                     GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, TextureAttachments[i].GlTextureID, 0);
                 }
@@ -104,10 +115,10 @@ namespace JLGraphics
 
             if(colorAttachmentCount != 0)
             {
-                List<DrawBuffersEnum> attachments = new List<DrawBuffersEnum>(colorAttachmentCount);// { DrawBuffersEnum.ColorAttachment0 };
+                List<DrawBuffersEnum> attachments = new List<DrawBuffersEnum>(colorAttachmentCount);
                 for (int i = 0; i < colorAttachmentCount; i++)
                 {
-                    if (TextureAttachments[i].pixelFormat == PixelFormat.DepthComponent || TextureAttachments[i].pixelFormat == PixelFormat.DepthStencil)
+                    if (IsDepthComponent(TextureAttachments[i].internalPixelFormat))
                     {
                         continue;
                     }
@@ -141,7 +152,6 @@ namespace JLGraphics
             FrameBuffer frameBuffer1;
             var tfp = TFP.Default;
             tfp.internalFormat = src.TextureAttachments[0].internalPixelFormat;
-            tfp.pixelFormat = src.TextureAttachments[0].pixelFormat;
             tfp.magFilter = src.TextureAttachments[0].textureMagFilter;
             tfp.minFilter = src.TextureAttachments[0].textureMinFilter;
             tfp.maxMipmap = src.TextureAttachments[0].mipmapLevels;

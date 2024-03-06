@@ -60,17 +60,17 @@ namespace JLGraphics
                 base.Height = value;
             }
         }
-        protected override IntPtr LoadPixelData()
+        protected override (IntPtr, PixelType, PixelFormat) LoadPixelData()
         {
             if (image == null)
             {
-                return IntPtr.Zero;
+                return (IntPtr.Zero, PixelType.UnsignedByte, PixelFormat.Red);
             }
             unsafe
             {
                 fixed (byte* p = image.Data)
                 {
-                    return (IntPtr)p;
+                    return ((IntPtr)p, PixelType.UnsignedByte, PixelFormat.Rgba);
                 }
             }
         }

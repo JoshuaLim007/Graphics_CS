@@ -105,7 +105,6 @@ namespace JLGraphics
                 prepassFitlerRt = new FrameBuffer(res2.X, res2.Y, false, new TFP()
                 {
                     internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
-                    pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb,
                     magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                     maxMipmap = 0,
@@ -122,7 +121,6 @@ namespace JLGraphics
                     blurTexture[i] = new FrameBuffer(width, height, false, new TFP()
                     {
                         internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
-                        pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb,
                         magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                         minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                         maxMipmap = 0,
@@ -135,7 +133,6 @@ namespace JLGraphics
                     temporaryRt[i] = new FrameBuffer(width, height, false, new TFP()
                     {
                         internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
-                        pixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat.Rgb,
                         magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                         minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                         maxMipmap = 0,
