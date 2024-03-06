@@ -118,18 +118,18 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
 	int samples = 0;
 
-	const float MaxBlurRadius = 16.0f;
+	const float MaxBlurRadius = 8.0f;
 	//find occluder 64 samples
-	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 8.0f);
+	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 12.0f);
 	float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
-	float blurRadius = mix(2.0f, MaxBlurRadius, depthDiff);
+	float blurRadius = mix(1.0f, MaxBlurRadius, depthDiff);
 	bias = mix(bias, bias * MaxBlurRadius, depthDiff);
 	currentDepth -= bias;
 
 	//64 samples
 	//in a MaxBlurRadius x MaxBlurRadius grid of cells. Choose a random point within that cell
 	//sample the depth at that random point within the cell and use it to calculate shadow coverage
-	float stride = 3.0f / 8.0f;
+	float stride = 3.0f / 12.0f;
 	for (float i = -1; i <= 1; i += stride) {
 		for (float j = -1; j <= 1; j += stride) {
 			
@@ -149,7 +149,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	float halfShadowRange = DirectionalShadowRange * 0.5;
 	float fade = smoothstep(halfShadowRange, max(halfShadowRange - 5, 0), distToCam);
 
-	return (percentCovered / samples) * fade;
+	return pow(percentCovered / samples, 0.25) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube depthMap, float far_plane, vec3 normal) {
 	// get vector between fragment position and light position
