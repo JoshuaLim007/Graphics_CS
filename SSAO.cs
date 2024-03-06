@@ -15,7 +15,7 @@ namespace JLGraphics
         FrameBuffer blurRT;
         Shader shader;
         Shader blur, comp;
-        public float Radius = 5.0f;
+        public float Radius = 12.0f;
         public float Intensity = 1.0f;
         public float DepthRange = 5.0f;
         public int Samples = 32;
@@ -38,12 +38,6 @@ namespace JLGraphics
 
             noiseTexture = GenerateNoiseTexture(4 * 4);
             shader.SetTexture(Shader.GetShaderPropertyId("texRandom"), noiseTexture);
-
-            kernalSample = GenerateSampleKernal(Samples);
-            for (int i = 0; i < kernalSample.Length; i++)
-            {
-                shader.SetVector3(Shader.GetShaderPropertyId("sampleKernal[" + i + "]"), kernalSample[i]);
-            }
         }
 
         public override string Name => "SSAO";
@@ -110,9 +104,10 @@ namespace JLGraphics
             texture.SetPixels(Noise, PixelType.Float, PixelFormat.Rgb);
             return texture;
         }
+        int previousKernalSize = 0;
         public override void Execute(in FrameBuffer frameBuffer)
         {
-            if(Intensity == 0)
+            if (Intensity == 0)
             {
                 return;
             }
@@ -138,13 +133,16 @@ namespace JLGraphics
             shader.SetInt(Shader.GetShaderPropertyId("samples"), Samples);
             shader.SetFloat(Shader.GetShaderPropertyId("Radius"), Radius);
             shader.SetFloat(Shader.GetShaderPropertyId("DepthRange"), DepthRange);
-            if (Graphics.Instance.Window.KeyboardState.IsKeyDown(OpenTK.Windowing.GraphicsLibraryFramework.Keys.T))
+            comp.SetFloat(Shader.GetShaderPropertyId("Intensity"), Intensity);
+
+            if (Samples != previousKernalSize)
             {
-                comp.SetFloat(Shader.GetShaderPropertyId("Intensity"), 0);
-            }
-            else
-            {
-                comp.SetFloat(Shader.GetShaderPropertyId("Intensity"), Intensity);
+                kernalSample = GenerateSampleKernal(Samples);
+                for (int i = 0; i < kernalSample.Length; i++)
+                {
+                    shader.SetVector3(Shader.GetShaderPropertyId("sampleKernal[" + i + "]"), kernalSample[i]);
+                }
+                previousKernalSize = Samples;
             }
 
             Blit(frameBuffer, SSAORt, shader);
