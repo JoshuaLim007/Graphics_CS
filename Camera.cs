@@ -119,7 +119,7 @@ namespace JLGraphics
 
         public Matrix4 ProjectionMatrix => calculateProjectionMatrix();
 
-        public CameraType cameraType = CameraType.Perspecitve;
+        public CameraType CameraMode { get; set; } = CameraType.Perspecitve;
 
         public enum CameraType
         {
@@ -139,7 +139,7 @@ namespace JLGraphics
         }
         private Matrix4 calculateProjectionMatrix()
         {
-            return cameraType == CameraType.Perspecitve ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
+            return CameraMode == CameraType.Perspecitve ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
         }
     }
 }
