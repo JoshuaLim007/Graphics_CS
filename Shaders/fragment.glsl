@@ -136,7 +136,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	//in a MaxBlurRadius x MaxBlurRadius grid of cells. Choose a random point within that cell
 	//sample the depth at that random point within the cell and use it to calculate shadow coverage
 
-	//16 samples
+	//64 samples
 	float stride = 3.0f / 8.0f;
 	for (float i = -1; i <= 1; i += stride) {
 		for (float j = -1; j <= 1; j += stride) {
