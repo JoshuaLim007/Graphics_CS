@@ -118,11 +118,11 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	float percentCovered = 0.0f;
 	float currentDepth = projCoords.z;
 
-	int scale = 1000;
-	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+//	int scale = 1000;
+//	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
 	int samples = 0;
 
-	const float MaxBlurRadius = 8.0f;
+//	const float MaxBlurRadius = 8.0f;
 	
 	//find occluder 16 samples
 //	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 4.0f);
@@ -142,7 +142,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 		for (float j = -1; j <= 1; j += stride) {
 			
 			samples++;
-			int iscale = samples * scale + _Frame;
+//			int iscale = samples * scale + _Frame;
 //			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
 //			randOffset = randOffset * 2 - 1;
 			vec2 offset = vec2(i, j);// + randOffset * 0.5f;
