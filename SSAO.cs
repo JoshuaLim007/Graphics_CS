@@ -17,9 +17,9 @@ namespace JLGraphics
         FrameBuffer accumRT;
         Shader shader, accum;
         Shader blur, comp;
-        public float Radius = 10.0f;
+        public float Radius = 5.0f;
         public float Intensity = 1.0f;
-        public float DepthRange = 10.0f;
+        public float DepthRange = 5.0f;
         public int Samples = 16;
         const int maxAccum = 32;
         public bool TemporalAccumulation = false;
