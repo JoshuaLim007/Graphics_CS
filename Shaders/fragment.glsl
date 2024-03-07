@@ -1,5 +1,6 @@
 ﻿#version 430
 #define MAX_POINT_LIGHTS 128
+#define MAX_SHADOW_SAMPLES 256
 #define MAX_POINT_SHADOWS 8
 
 struct PointLight {
@@ -33,9 +34,12 @@ uniform struct DIRECT_LIGHT {
 	vec3 Direction;
 	vec3 Color;
 } DirectionalLight;
-uniform sampler2D DirectionalShadowDepthMap;
-uniform sampler2DShadow DirectionalShadowDepthMap_Smooth;
-uniform vec2 DirectionalShadowDepthMapTexelSize;
+uniform sampler2D DirectionalShadowDepthMap;				//used to sample occluder depth
+uniform sampler2DShadow DirectionalShadowDepthMap_Smooth;	//used to sample actual shadow
+uniform vec2 DirectionalShadowDepthMapTexelSize;			//shadow map inv resolution
+uniform int DirectionalShadowFilterMode;					//0 = hard, 1 = pcf, 2 = pcss
+uniform vec2 DirectionalShadowSampleKernals[MAX_SHADOW_SAMPLES];
+uniform int DirectionalShadowSamples;
 
 //out to render texture
 layout(location = 0) out vec4 frag;
@@ -106,7 +110,6 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 		return 0;
 	}
 	float nDotL = max(dot(normal, DirectionalLight.Direction), 0);
-	float bias = mix(0.0001f, 0.0, nDotL);
 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
@@ -117,45 +120,69 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 
 	float percentCovered = 0.0f;
 	float currentDepth = projCoords.z;
-
-//	int scale = 1000;
-//	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
 	int samples = 0;
-
-//	const float MaxBlurRadius = 8.0f;
-	
-	//find occluder 16 samples
-//	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 4.0f);
-//	float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
-//	float blurRadius = mix(1.0f, MaxBlurRadius, depthDiff);
-//	bias = mix(bias, bias * MaxBlurRadius, depthDiff);
-//	currentDepth -= bias;
-	float blurRadius = 2.5f;
-
-	//64 samples
-	//in a MaxBlurRadius x MaxBlurRadius grid of cells. Choose a random point within that cell
-	//sample the depth at that random point within the cell and use it to calculate shadow coverage
-
-	//64 samples
-	float stride = 3.0f / 8.0f;
-	for (float i = -1; i <= 1; i += stride) {
-		for (float j = -1; j <= 1; j += stride) {
-			
-			samples++;
-//			int iscale = samples * scale + _Frame;
-//			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-//			randOffset = randOffset * 2 - 1;
-			vec2 offset = vec2(i, j);// + randOffset * 0.5f;
-			offset *= blurRadius;
-			offset *= DirectionalShadowDepthMapTexelSize;
-			percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
-		}
-	}
 
 	//apply shadow fading
 	float distToCam = length(worldPosition - CameraWorldSpacePos);
 	float halfShadowRange = DirectionalShadowRange * 0.5;
 	float fade = smoothstep(halfShadowRange, max(halfShadowRange - 5, 0), distToCam);
+
+	//pcss
+	if (DirectionalShadowFilterMode == 2) {
+		int scale = 1000;
+		uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+
+		const float MaxBlurRadius = 8.0f;
+		const float MinBlurRadius = 0.5f;
+		float blurRadius = 1.0f;
+		float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, float(DirectionalShadowSamples));
+		float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
+		blurRadius = mix(MinBlurRadius, MaxBlurRadius, depthDiff);
+
+		float stride = 3.0f / float(DirectionalShadowSamples);
+		for (float i = -1; i <= 1; i += stride) {
+			for (float j = -1; j <= 1; j += stride) {
+				samples++;
+				int iscale = samples * scale + _Frame;
+				vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
+				randOffset = randOffset * 2 - 1;
+				vec2 offset = vec2(i, j) + randOffset * 0.5f;
+				offset *= DirectionalShadowDepthMapTexelSize;
+				offset *= blurRadius;
+				percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
+			}
+		}
+	}
+	//pcf
+	else if(DirectionalShadowFilterMode == 1) {
+		int borderCount = int(DirectionalShadowSamples - pow(sqrt(float(DirectionalShadowSamples)) - 2, 2));
+		//check borders
+		int i = 0;
+		//todo fix optimization bug
+		//for (; i < borderCount; i++) {
+		//	vec2 offset = DirectionalShadowSampleKernals[i];
+		//	offset *= DirectionalShadowDepthMapTexelSize;
+		//	percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
+		//	samples++;
+		//}
+		////checking along border, if we all in shadow or all in light, return early
+		//float tempPercentCovered = percentCovered / samples;
+		//if (tempPercentCovered == 1 || tempPercentCovered == 0) {
+		//	return tempPercentCovered * fade;
+		//}
+		//continue sampling
+		for (; i < DirectionalShadowSamples; i++) {
+			vec2 offset = DirectionalShadowSampleKernals[i];
+			offset *= DirectionalShadowDepthMapTexelSize;
+			percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
+			samples++;
+		}
+	}
+	//hard
+	else {
+		samples = 1;
+		percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy, currentDepth)).r;
+	}
 
 	return (percentCovered / samples) * fade;
 }

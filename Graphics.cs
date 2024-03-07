@@ -749,7 +749,7 @@ namespace JLGraphics
             if(counter1 > 100)
             {
                 counter1 = 0;
-                Console.WriteLine("render update: " + watch.Elapsed.TotalMilliseconds);
+                Debug.Log("render update: " + watch.Elapsed.TotalMilliseconds);
             }
 
             if (RenderGUI)
