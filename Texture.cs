@@ -145,7 +145,8 @@ namespace JLGraphics
                 Debug.Log("Texture has not been resolved before setting pixel data!", Debug.Flag.Error);
             }
             GL.BindTexture(textureTarget, GlTextureID);
-            GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelFormat, pixelType, data);
+            GL.TexSubImage2D(textureTarget, 0, 0, 0, Width, Height, pixelFormat, pixelType, data);
+            GL.BindTexture(textureTarget, 0);
         }
         bool textureIsResolved = false;
         public virtual void ResolveTexture(bool isShadowMap = false)

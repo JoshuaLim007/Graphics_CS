@@ -8,7 +8,7 @@ namespace JLGraphics
 {
     public class FileImageCubemapTexture : SafeDispose
     {
-        MeshPrimative cubeMesh;
+        GlMeshObject cubeMesh;
         protected override void OnDispose()
         {
             cubeMapTextureInstances--;

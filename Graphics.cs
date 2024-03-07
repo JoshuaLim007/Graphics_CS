@@ -529,8 +529,8 @@ namespace JLGraphics
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("RenderScale"), RenderScale);
         }
 
-        MeshPrimative FullScreenQuad;
-        MeshPrimative BasicCube;
+        GlMeshObject FullScreenQuad;
+        GlMeshObject BasicCube;
         public Shader PassthroughShader { get; private set; } = null;
         public Shader DepthPrepassShader { get; private set; } = null;
         public Shader SkyboxShader { get; private set; } = null;
@@ -594,11 +594,12 @@ namespace JLGraphics
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Viewport(0, 0, width, height);
             GL.BindVertexArray(FullScreenQuad.VAO);
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, FullScreenQuad.EBO);
 
             GraphicsDebug.DrawCount++;
             GraphicsDebug.TotalVertices += FullScreenQuad.VertexCount;
 
-            GL.DrawArrays(PrimitiveType.Triangles, 0, FullScreenQuad.VertexCount);
+            GL.DrawElements(BeginMode.Triangles, FullScreenQuad.IndiciesCount, DrawElementsType.UnsignedInt, 0);
         }
         internal void EndBlitUnsafe(Shader shader)
         {
@@ -633,6 +634,8 @@ namespace JLGraphics
             }
             return null;
         }
+
+        int counter = 0;
         int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
         {
             int renderPassIndex;
@@ -646,8 +649,16 @@ namespace JLGraphics
                 renderPasses[renderPassIndex].Execute(MainFrameBuffer);
                 stopw.Stop();
                 var ms = stopw.Elapsed.TotalMilliseconds;
-                //Debug.Log(renderPasses[renderPassIndex].Name + ": " + ms + " ms");
+                if(counter > 100)
+                {
+                    Debug.Log(renderPasses[renderPassIndex].Name + ": " + ms + " ms");
+                }
             }
+            if (counter > 100)
+            {
+                counter = 0;
+            }
+            counter++;
             return renderPassIndex;
         }
 
@@ -669,9 +680,13 @@ namespace JLGraphics
             GraphicsDebug.MeshBindCount++;
         }
 
+        int counter1 = 0;
         private void DoRenderUpdate()
         {
             renderPasses.Sort();
+
+            var watch = Stopwatch.StartNew();
+
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
             {
                 SetupLights(AllCameras[cameraIndex]);
@@ -728,6 +743,13 @@ namespace JLGraphics
                 {
                     renderPasses[i].FrameCleanup();
                 }
+            }
+
+            counter1++;
+            if(counter1 > 100)
+            {
+                counter1 = 0;
+                Console.WriteLine("render update: " + watch.Elapsed.TotalMilliseconds);
             }
 
             if (RenderGUI)

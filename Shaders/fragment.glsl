@@ -68,6 +68,7 @@ uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
 uniform int _Frame;
 uniform float DirectionalShadowRange;
+uniform bool HasDirectionalShadow;
 const uint k = 1103515245U;
 vec3 hash(uvec3 x)
 {
@@ -101,7 +102,9 @@ float DirectionalShadowOccluderSearch(vec2 startingProjectedLightSpacePos, float
 	return depthCounter;
 }
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) {
-
+	if(!HasDirectionalShadow){
+		return 0;
+	}
 	float nDotL = max(dot(normal, DirectionalLight.Direction), 0);
 	float bias = mix(0.0001f, 0.0, nDotL);
 
@@ -120,25 +123,29 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	int samples = 0;
 
 	const float MaxBlurRadius = 8.0f;
-	//find occluder 64 samples
-	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 12.0f);
-	float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
-	float blurRadius = mix(1.0f, MaxBlurRadius, depthDiff);
-	bias = mix(bias, bias * MaxBlurRadius, depthDiff);
-	currentDepth -= bias;
+	
+	//find occluder 16 samples
+//	float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, 4.0f);
+//	float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
+//	float blurRadius = mix(1.0f, MaxBlurRadius, depthDiff);
+//	bias = mix(bias, bias * MaxBlurRadius, depthDiff);
+//	currentDepth -= bias;
+	float blurRadius = 2.5f;
 
 	//64 samples
 	//in a MaxBlurRadius x MaxBlurRadius grid of cells. Choose a random point within that cell
 	//sample the depth at that random point within the cell and use it to calculate shadow coverage
-	float stride = 3.0f / 12.0f;
+
+	//16 samples
+	float stride = 3.0f / 8.0f;
 	for (float i = -1; i <= 1; i += stride) {
 		for (float j = -1; j <= 1; j += stride) {
 			
 			samples++;
 			int iscale = samples * scale + _Frame;
-			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-			randOffset = randOffset * 2 - 1;
-			vec2 offset = vec2(i, j) + randOffset * 0.5f;
+//			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
+//			randOffset = randOffset * 2 - 1;
+			vec2 offset = vec2(i, j);// + randOffset * 0.5f;
 			offset *= blurRadius;
 			offset *= DirectionalShadowDepthMapTexelSize;
 			percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
@@ -150,7 +157,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	float halfShadowRange = DirectionalShadowRange * 0.5;
 	float fade = smoothstep(halfShadowRange, max(halfShadowRange - 5, 0), distToCam);
 
-	return pow(percentCovered / samples, 0.25) * fade;
+	return (percentCovered / samples) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube depthMap, float far_plane, vec3 normal) {
 	// get vector between fragment position and light position

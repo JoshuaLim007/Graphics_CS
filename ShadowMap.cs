@@ -44,6 +44,7 @@ namespace JLGraphics
         public static void SetShadowMapToWhite()
         {
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), null);
+            Shader.SetGlobalBool(Shader.GetShaderPropertyId("HasDirectionalShadow"), false);
         }
         public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
         {
@@ -120,6 +121,7 @@ namespace JLGraphics
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("DirectionalLightMatrix"), ShadowMatrix);
             GL.CullFace(CullFaceMode.Back);
 
+            Shader.SetGlobalBool(Shader.GetShaderPropertyId("HasDirectionalShadow"), true);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), size);
         }

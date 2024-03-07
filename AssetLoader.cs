@@ -15,25 +15,6 @@ namespace JLGraphics
     using OpenTK;
     using OpenTK.Mathematics;
 
-    public struct GlMeshData
-    {
-        public int colorSize;
-        public int positionSize;
-        public int normalSize;
-        public int texCoordSize;
-        public int tangentSize;
-
-        public float[] vertexData;
-        public int[] indices;
-
-        public int positionOffset;
-        public int normalOffset;
-        public int colorOffset;
-        public int texCoordOffset;
-        public int tangentOffset;
-        public int elementsPerVertex;
-    }
-
     public static class AssetLoader { 
         private static Assimp.Scene LoadScene(string path)
         {
@@ -45,7 +26,7 @@ namespace JLGraphics
                 Assimp.PostProcessSteps.JoinIdenticalVertices);
             return scene;
         }
-        public static GlMeshData LoadMeshFromFile(string path)
+        public static MeshVerticesData LoadMeshFromFile(string path)
         {
             var scene = LoadScene(path);
             return GenerateGLMeshData(scene.Meshes[0]);
@@ -304,12 +285,12 @@ namespace JLGraphics
             return;
         }
 
-        public static GlMeshData GenerateGLMeshData(Assimp.Mesh mesh)
+        public static MeshVerticesData GenerateGLMeshData(Assimp.Mesh mesh)
         {
-            GlMeshData data = new();
+            MeshVerticesData data = new();
 
-            List<float> vertexData = new List<float>();
-            List<int> indices = new List<int>();
+            List<float> vertexData = new List<float>(1000);
+            List<int> indices = new List<int>(1000);
 
             for (int j = 0; j < mesh.VertexCount; j++)
             {
@@ -364,7 +345,7 @@ namespace JLGraphics
                 else
                 {
                     vertexData.Add(0);
-                    vertexData.Add(0);
+                    vertexData.Add(1);
                     vertexData.Add(0);
                 }
             }

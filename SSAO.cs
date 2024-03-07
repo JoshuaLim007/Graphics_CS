@@ -13,14 +13,14 @@ namespace JLGraphics
     {
         FrameBuffer SSAORt;
         FrameBuffer blurRT;
-        Shader shader;
+        FrameBuffer accumRT;
+        Shader shader, accum;
         Shader blur, comp;
-        public float Radius = 12.0f;
+        public float Radius = 30.0f;
         public float Intensity = 1.0f;
-        public float DepthRange = 5.0f;
-        public int Samples = 32;
-        Texture noiseTexture;
-        Vector3[] kernalSample;
+        public float DepthRange = 10.0f;
+        public int Samples = 16;
+        const int maxAccum = 8;
 
         public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
@@ -36,75 +36,64 @@ namespace JLGraphics
             program.CompileProgram();
             comp = new Shader("SSAO Comp", program);
 
-            noiseTexture = GenerateNoiseTexture(4 * 4);
-            shader.SetTexture(Shader.GetShaderPropertyId("texRandom"), noiseTexture);
-        }
+            program = new ShaderProgram("SSAO accum", "./Shaders/SSAOAccum.frag", "./Shaders/Passthrough.vert");
+            program.CompileProgram();
+            accum = new Shader("SSAO Accum", program);
 
+            GenerateNoiseTexture(noiseX, noiseY, noiseZ);
+        }
+        //64 slices of 4x4 noise texture
+        const int noiseX = 4;
+        const int noiseY = 4;
+        const int noiseZ = 64;
         public override string Name => "SSAO";
         int previousWidth = 0;
         int previousHeight = 0;
+        int accumulatedFrames = 0;
 
         FrameBuffer CreateBuffer(int width, int height)
         {
             return new FrameBuffer(width, height, false, new TFP()
             {
-                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb32f,
+                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.R32f,
                 magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear
             });
         }
-        Vector3[] GenerateSampleKernal(int size)
-        {
-            Vector3[] SampleKernal = new Vector3[size];
-            for (int i = 0; i < size; i++)
-            {
-                SampleKernal[i] = new Vector3()
-                {
-                    X = Random.Shared.NextSingle() * 2 - 1,
-                    Y = Random.Shared.NextSingle() * 2 - 1,
-                    Z = Random.Shared.NextSingle(),
-                };
-                SampleKernal[i].Normalize();
 
-                float scale = i / size;
-                scale = MathHelper.Lerp(0.1f, 1.0f, scale * scale);
-                SampleKernal[i] *= scale;
-            }
-
-            return SampleKernal;
-        }
-        Texture GenerateNoiseTexture(int size)
+        Texture noiseTexture = null;
+        void GenerateNoiseTexture(int xSize, int ySize, int slices)
         {
             Random random = new Random();
 
-            size = MathHelper.NextPowerOfTwo(size);
-            int sqrtSize = (int)MathHelper.Sqrt(size);
-            Vector3[] Noise = new Vector3[size];
+            Vector3[] Noise = new Vector3[slices * xSize * ySize];
 
-            for (int i = 0; i < size; ++i)
+            for (int i = 0; i < slices * xSize * ySize; ++i)
             {
                 Noise[i] = new Vector3(
-                   random.NextSingle() * 2 - 1,
-                   random.NextSingle() * 2 - 1,
-                   0.0f
+                   random.NextSingle(),
+                   random.NextSingle(),
+                   random.NextSingle()
                 );
             }
 
-            Texture texture = new Texture()
+            if (noiseTexture == null)
             {
-                generateMipMaps = false,
-                internalPixelFormat = PixelInternalFormat.Rgb,
-                Width = sqrtSize,
-                Height = sqrtSize,
-                textureMinFilter = TextureMinFilter.Nearest,
-                textureMagFilter = TextureMagFilter.Nearest,
-                textureWrapMode = TextureWrapMode.Repeat
-            };
-            texture.ResolveTexture();
-            texture.SetPixels(Noise, PixelType.Float, PixelFormat.Rgb);
-            return texture;
+                noiseTexture = new Texture()
+                {
+                    generateMipMaps = false,
+                    internalPixelFormat = PixelInternalFormat.Rgb,
+                    Width = slices * xSize,
+                    Height = ySize,
+                    textureMinFilter = TextureMinFilter.Nearest,
+                    textureMagFilter = TextureMagFilter.Nearest,
+                    textureWrapMode = TextureWrapMode.Repeat
+                };
+                noiseTexture.ResolveTexture();
+            }
+
+            noiseTexture.SetPixels(Noise, PixelType.Float, PixelFormat.Rgb);
         }
-        int previousKernalSize = 0;
         public override void Execute(in FrameBuffer frameBuffer)
         {
             if (Intensity == 0)
@@ -123,36 +112,48 @@ namespace JLGraphics
                 var res = GetResolution(frameBuffer, 0.5f);
                 SSAORt = CreateBuffer(res.X, res.Y);
                 blurRT = CreateBuffer(res.X, res.Y);
+                accumRT = CreateBuffer(res.X, res.Y);
             }
-            Samples = MathHelper.Clamp(Samples, 1, 64);
-            shader.SetVector2(Shader.GetShaderPropertyId("noiseScale"), new Vector2()
+
+            shader.SetTexture(Shader.GetShaderPropertyId("noiseTexture"), noiseTexture);
+            shader.SetVector3(Shader.GetShaderPropertyId("noiseSize"), new Vector3()
             {
-                X = SSAORt.Width / noiseTexture.Width,
-                Y = SSAORt.Height / noiseTexture.Height,
+                X = noiseX,
+                Y = noiseY,
+                Z = noiseZ
             });
+            Samples = Math.Min(Samples, noiseZ);
             shader.SetInt(Shader.GetShaderPropertyId("samples"), Samples);
             shader.SetFloat(Shader.GetShaderPropertyId("Radius"), Radius);
             shader.SetFloat(Shader.GetShaderPropertyId("DepthRange"), DepthRange);
             comp.SetFloat(Shader.GetShaderPropertyId("Intensity"), Intensity);
 
-            if (Samples != previousKernalSize)
-            {
-                kernalSample = GenerateSampleKernal(Samples);
-                for (int i = 0; i < kernalSample.Length; i++)
-                {
-                    shader.SetVector3(Shader.GetShaderPropertyId("sampleKernal[" + i + "]"), kernalSample[i]);
-                }
-                previousKernalSize = Samples;
-            }
-
+            //calculate SSAO
             Blit(frameBuffer, SSAORt, shader);
-            Blit(SSAORt, blurRT, blur);
+
+            accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
+            accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
+            accum.SetTexture(Shader.GetShaderPropertyId("AccumAO"), accumRT.TextureAttachments[0]);
+            
+            //accumulate results
+            Blit(SSAORt, accumRT, accum);
+
+            //blur results
+            blur.SetInt(Shader.GetShaderPropertyId("DoDepthCheck"), 1);
+            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 1);
+            Blit(accumRT, blurRT, blur);
+
+            //compose it to original screen color
             comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
             Blit(frameBuffer, frameBuffer, comp);
+
+            //generate new noise
+            GenerateNoiseTexture(noiseX, noiseY, noiseZ);
         }
 
         protected override void OnDispose()
         {
+            accumRT.Dispose();
             noiseTexture.Dispose();
             SSAORt.Dispose();
             blurRT.Dispose();

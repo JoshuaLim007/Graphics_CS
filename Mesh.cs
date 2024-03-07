@@ -11,21 +11,36 @@ using OpenTK.Mathematics;
 
 namespace JLGraphics
 {
-    /// <summary>
-    /// Basic mesh, no indices, just vertex positions
-    /// </summary>
-    public struct MeshPrimative
+    public struct GlMeshObject
     {
         public int VAO;
         public int VBO;
         public int EBO;
         public int VertexCount;
         public int IndiciesCount;
-        public bool HasEBO;
+        public AABB Bounds;
+    }
+    public struct MeshVerticesData
+    {
+        public int colorSize;
+        public int positionSize;
+        public int normalSize;
+        public int texCoordSize;
+        public int tangentSize;
+
+        public float[] vertexData;
+        public int[] indices;
+
+        public int positionOffset;
+        public int normalOffset;
+        public int colorOffset;
+        public int texCoordOffset;
+        public int tangentOffset;
+        public int elementsPerVertex;
     }
     public class Mesh : SafeDispose, IFileObject
     {
-        public static MeshPrimative CreateCubeMesh()
+        public static GlMeshObject CreateCubeMesh()
         {
             float[] vertices = {
                 // front
@@ -75,9 +90,16 @@ namespace JLGraphics
             // Set up vertex attributes
             GL.EnableVertexAttribArray(0);
             GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
-            return new MeshPrimative() { VAO = vertexArrayObject, VBO = vertexBufferObject, VertexCount = vertices.Length, EBO = elementBufferObject, HasEBO = true, IndiciesCount = indices.Length};
+            return new GlMeshObject() {
+                VAO = vertexArrayObject,
+                VBO = vertexBufferObject,
+                VertexCount = vertices.Length,
+                EBO = elementBufferObject,
+                IndiciesCount = indices.Length,
+                Bounds = new AABB() { Max = new Vector3(0.5f, 0.5f, 0.5f), Min = new Vector3(-0.5f, -0.5f, -0.5f) }
+            };
         }
-        public static MeshPrimative CreateQuadMesh()
+        public static GlMeshObject CreateQuadMesh()
         {
             int[] quad_VertexArrayID = new int[1];
             GL.GenVertexArrays(1, quad_VertexArrayID);
@@ -85,29 +107,41 @@ namespace JLGraphics
 
             float[] g_quad_vertex_buffer_data = {
                     -1.0f, -1.0f,
-                    1.0f, -1.0f,
-                    -1.0f,  1.0f,
-                    -1.0f,  1.0f,
-                    1.0f, -1.0f,
+                    -1.0f, 1.0f,
                     1.0f,  1.0f,
+                    1.0f,  -1.0f,
                 };
+            int[] indices = {
+                2, 1, 0, 
+                3, 2, 0
+            };
+
 
             int[] quad_vertexbuffer = new int[1];
+            int ebo;
             GL.GenBuffers(1, quad_vertexbuffer);
+            GL.GenBuffers(1, out ebo);
+            
             GL.BindBuffer(BufferTarget.ArrayBuffer, quad_vertexbuffer[0]);
             GL.BufferData(BufferTarget.ArrayBuffer, sizeof(float) * g_quad_vertex_buffer_data.Length, g_quad_vertex_buffer_data, BufferUsageHint.StaticDraw);
+
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, ebo);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, sizeof(int) * indices.Length, indices, BufferUsageHint.StaticDraw);
+
             GL.EnableVertexAttribArray(0);
             GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
-            return new MeshPrimative() { VAO = quad_VertexArrayID[0], VBO = quad_vertexbuffer[0], VertexCount = g_quad_vertex_buffer_data.Length, HasEBO = false };
+            return new GlMeshObject() { VAO = quad_VertexArrayID[0], VBO = quad_vertexbuffer[0], EBO = ebo, IndiciesCount = indices.Length, Bounds = new AABB()
+                {
+                    Min = new Vector3(-1.0f, -1.0f, 0.0f),
+                    Max = new Vector3(1.0f, 1.0f, 0.0f)
+                },
+                VertexCount = g_quad_vertex_buffer_data.Length };
         }
-        public static void FreeMeshObject(MeshPrimative meshObject)
+        public static void FreeMeshObject(GlMeshObject meshObject)
         {
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             GL.DeleteBuffer(meshObject.VBO);
-            if (meshObject.HasEBO)
-            {
-                GL.DeleteBuffer(meshObject.EBO);
-            }
+            GL.DeleteBuffer(meshObject.EBO);
             GL.BindVertexArray(0);
             GL.DeleteVertexArray(meshObject.VAO);
         }
@@ -122,7 +156,7 @@ namespace JLGraphics
 
         public override string Name => "Mesh: " + ElementArrayBuffer;
 
-        public void ApplyMesh(GlMeshData Data)
+        public void ApplyMesh(MeshVerticesData Data)
         {
             Vector3 minPoint = Vector3.PositiveInfinity;
             Vector3 maxPoint = Vector3.NegativeInfinity;
@@ -212,10 +246,23 @@ namespace JLGraphics
             FilePath = path;
             ApplyMesh(Data);
         }
-        public Mesh(GlMeshData data, string path)
+        public Mesh(MeshVerticesData data, string fileToTrack)
         {
-            FilePath = path;
+            FilePath = fileToTrack;
             ApplyMesh(data);
+        }
+        public Mesh(MeshVerticesData data)
+        {
+            FilePath = "";
+            ApplyMesh(data);
+        }
+        public Mesh(GlMeshObject meshPrimative)
+        {
+            VertexArrayObject = meshPrimative.VAO;
+            ElementArrayBuffer = meshPrimative.EBO;
+            ElementCount = meshPrimative.IndiciesCount;
+            VertexCount = meshPrimative.VertexCount;
+            BoundingBox = meshPrimative.Bounds;
         }
     }
 }

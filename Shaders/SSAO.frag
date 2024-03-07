@@ -75,9 +75,15 @@ vec3 hash3( uvec3 p )
 
 float rand(vec2 co){ return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453); }
 
-uniform vec2 noiseScale;
-uniform sampler2D texRandom;
-uniform vec3 sampleKernal[64];
+uniform vec3 noiseSize;
+uniform sampler2D noiseTexture;
+vec3 GetNoise(float x, float y, float index){
+    int xPos = int(x + mod(index, noiseSize.z) * noiseSize.x);
+    int yPos = int(y);
+    vec2 uv = vec2(xPos, yPos) / vec2(noiseSize.x * noiseSize.z, noiseSize.y);
+    vec3 noiseTex = texture(noiseTexture, uv).xyz;
+    return noiseTex;
+}
 
 void main()
 {
@@ -91,22 +97,34 @@ void main()
     vec3 normal = calcNormalFromPosition(uv);
     vec3 position = calcPositionFromDepth(uv, depth);
 
-    vec3 noiseTex = texture(texRandom, uv * noiseScale).xyz;
-    noiseTex.xyz = noiseTex.xyz * 2 - 1;
-    noiseTex = normalize(noiseTex);
-
-    vec3 rvec = noiseTex;
-    vec3 tangent = normalize(rvec - normal * dot(rvec, normal));
-    vec3 bitangent = cross(normal, tangent);
-    mat3 tbn = mat3(tangent, bitangent, normal);
-
     float occlusion = 0;
     const float minBias = 0.01;
     const float maxBias = 1;
 
+    //    vec3 noiseTex = GetNoise(
+    //                        mod(gl_FragCoord.x, noiseSize.x), 
+    //                        mod(gl_FragCoord.y, noiseSize.y), 
+    //                        _Frame);
+    //    
+    //    FragColor = vec4(noiseTex, 0);
+    //    return;
+
     for(int i = 1; i <= samples; i++){
-        vec3 samplKernal = sampleKernal[i];
-        samplKernal = ((tbn * samplKernal) * Radius) + position;
+        vec3 noiseTex = GetNoise(
+                        mod(gl_FragCoord.x, noiseSize.x), 
+                        mod(gl_FragCoord.y, noiseSize.y), 
+                        i - 1);
+
+        noiseTex = noiseTex * 2 - 1;
+        float len = min(length(noiseTex), 1);
+        noiseTex = normalize(noiseTex) * len;
+
+        vec3 randomDir = noiseTex;
+        randomDir = randomDir * sign(dot(normalize(randomDir), normal));
+        float scale = (i - 1) / samples;
+        scale = mix(0.1f, 1.0f, scale * scale);
+
+        vec3 samplKernal = position + randomDir * Radius * scale;
 
         vec4 cl = ProjectionViewMatrix * vec4(samplKernal, 1);
         cl.xyz /= cl.w;
@@ -127,5 +145,5 @@ void main()
         }
     }
     occlusion /= samples;
-    FragColor = vec4(1 - occlusion);
+    FragColor = vec4(vec3(1 - occlusion), 1);
 }
