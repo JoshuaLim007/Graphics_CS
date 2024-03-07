@@ -28,10 +28,10 @@ namespace JLGraphics
         public override string Name => "Motion Vector pass";
 
         int location;
-        Matrix4 viewProjMat;
+        Matrix4 previousViewProj;
         void OnRenderCallback(Renderer e)
         {
-            var mat = e.Transform.PreviousWorldToLocalMatrix * viewProjMat;
+            var mat = e.Transform.PreviousWorldToLocalMatrix * previousViewProj;
             GL.UniformMatrix4(location, false, ref mat);
             e.Transform.PreviousWorldToLocalMatrix = e.Transform.WorldToLocalMatrix;
         }
@@ -70,13 +70,12 @@ namespace JLGraphics
 
             //render scene
             location = motionVectorShader.Program.GetUniformLocation(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"));
-            viewProjMat = previousViewMatrix * previousProjectionMatrix;
+            previousViewProj = previousViewMatrix * previousProjectionMatrix;
 
-            var newCamPos = Camera.Main.Transform.Position;
-            var newViewMat = Matrix4.CreateTranslation(-newCamPos) * Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
+            var newViewMat = Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
             var cameraViewProj = newViewMat * previousProjectionMatrix;
 
-            motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), Matrix4.CreateTranslation(Camera.Main.Transform.Position) * cameraViewProj);
+            motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), cameraViewProj);
             motionVectorShader.DepthTest = false;
             Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
             

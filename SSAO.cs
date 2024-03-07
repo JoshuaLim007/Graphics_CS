@@ -19,7 +19,7 @@ namespace JLGraphics
         public float Radius = 10.0f;
         public float Intensity = 1.0f;
         public float DepthRange = 10.0f;
-        public int Samples = 8;
+        public int Samples = 16;
         const int maxAccum = 16;
 
         public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
@@ -45,7 +45,7 @@ namespace JLGraphics
         //64 slices of 4x4 noise texture
         const int noiseX = 4;
         const int noiseY = 4;
-        const int noiseZ = 64;
+        const int noiseZ = 16;
         public override string Name => "SSAO";
         int previousWidth = 0;
         int previousHeight = 0;
