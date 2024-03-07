@@ -1,5 +1,6 @@
 ﻿#version 430
 #define MAX_POINT_LIGHTS 128
+#define MAX_POINT_SHADOWS 8
 
 struct PointLight {
 	vec4 Position;
@@ -16,7 +17,7 @@ layout(std140, binding = 3) uniform PointLightBuffer
 {
 	PointLight[MAX_POINT_LIGHTS] PointLightData;
 } PL;
-uniform samplerCube PointLightShadowMap[MAX_POINT_LIGHTS];
+uniform samplerCube PointLightShadowMap[MAX_POINT_SHADOWS];
 uniform int PointLightCount;
 
 in VS_OUT{
