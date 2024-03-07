@@ -196,7 +196,7 @@ float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube
 	float bias = mix(.75, 0.025f, dot);
 
 	float shadow = 0.0;
-	int samples = 16;
+	int samples = 12;
 	float viewDistance = length(lightPos - fragPos);
 	float diskRadius = 0.1f;
 	const int scale = 1000;
