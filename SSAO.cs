@@ -16,7 +16,7 @@ namespace JLGraphics
         FrameBuffer accumRT;
         Shader shader, accum;
         Shader blur, comp;
-        public float Radius = 30.0f;
+        public float Radius = 10.0f;
         public float Intensity = 1.0f;
         public float DepthRange = 10.0f;
         public int Samples = 8;
@@ -110,9 +110,10 @@ namespace JLGraphics
                     blurRT.Dispose();
                 }
                 var res = GetResolution(frameBuffer, 0.5f);
+                var res1 = GetResolution(frameBuffer, 1.0f);
                 SSAORt = CreateBuffer(res.X, res.Y);
                 blurRT = CreateBuffer(res.X, res.Y);
-                accumRT = CreateBuffer(res.X, res.Y);
+                accumRT = CreateBuffer(res1.X, res1.Y);
             }
 
             shader.SetTexture(Shader.GetShaderPropertyId("noiseTexture"), noiseTexture);
