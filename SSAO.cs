@@ -19,8 +19,8 @@ namespace JLGraphics
         public float Radius = 30.0f;
         public float Intensity = 1.0f;
         public float DepthRange = 10.0f;
-        public int Samples = 16;
-        const int maxAccum = 8;
+        public int Samples = 8;
+        const int maxAccum = 16;
 
         public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
