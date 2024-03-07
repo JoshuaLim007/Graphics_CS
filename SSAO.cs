@@ -1,4 +1,5 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using Microsoft.VisualBasic;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,8 @@ namespace JLGraphics
         public float Intensity = 1.0f;
         public float DepthRange = 10.0f;
         public int Samples = 16;
-        const int maxAccum = 16;
+        const int maxAccum = 32;
+        public bool TemporalAccumulation = false;
 
         public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
@@ -43,9 +45,9 @@ namespace JLGraphics
             GenerateNoiseTexture(noiseX, noiseY, noiseZ);
         }
         //64 slices of 4x4 noise texture
-        const int noiseX = 4;
-        const int noiseY = 4;
-        const int noiseZ = 16;
+        const int noiseX = 8;
+        const int noiseY = 8;
+        const int noiseZ = 64;
         public override string Name => "SSAO";
         int previousWidth = 0;
         int previousHeight = 0;
@@ -132,24 +134,38 @@ namespace JLGraphics
             //calculate SSAO
             Blit(frameBuffer, SSAORt, shader);
 
-            accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
-            accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
-            accum.SetTexture(Shader.GetShaderPropertyId("AccumAO"), accumRT.TextureAttachments[0]);
-            
+
+
             //accumulate results
-            Blit(SSAORt, accumRT, accum);
+            if (TemporalAccumulation)
+            {
+                accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
+                accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
+                accum.SetTexture(Shader.GetShaderPropertyId("AccumAO"), accumRT.TextureAttachments[0]);
+                Blit(SSAORt, accumRT, accum);
+            }
 
             //blur results
             blur.SetInt(Shader.GetShaderPropertyId("DoDepthCheck"), 1);
-            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 1);
-            Blit(accumRT, blurRT, blur);
+            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 1.0f);
+            if (TemporalAccumulation)
+            {
+                Blit(accumRT, blurRT, blur);
+            }
+            else
+            {
+                Blit(SSAORt, blurRT, blur);
+            }
 
             //compose it to original screen color
             comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
             Blit(frameBuffer, frameBuffer, comp);
 
             //generate new noise
-            GenerateNoiseTexture(noiseX, noiseY, noiseZ);
+            if (TemporalAccumulation)
+            {
+                GenerateNoiseTexture(noiseX, noiseY, noiseZ);
+            }
         }
 
         protected override void OnDispose()

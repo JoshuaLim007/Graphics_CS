@@ -19,9 +19,9 @@ void main()
     vec4 color = texture(MainTex, uv);
     float cR = texture(_CameraDepthTexture, uv).r;
     float bias = MaxDepthDiff;
-    for(int i = 0; i <4; i++){
-        for(int j = 0; j < 4; j++){
-            vec2 offset0 = uv + vec2(i - 1.5f, j - 1.5f) * MainTex_TexelSize;
+    for(int i = 0; i <8; i++){
+        for(int j = 0; j < 8; j++){
+            vec2 offset0 = uv + vec2(i - 3.5f, j - 3.5f) * MainTex_TexelSize;
             if(DoDepthCheck){
                 float d = texture(_CameraDepthTexture, offset0).r;
                 if(abs(linearDepth(cR) - linearDepth(d)) > bias){
