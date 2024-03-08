@@ -283,8 +283,13 @@ namespace JLGraphics
         float smoothDeltaCount = 0;
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
+            DeltaTime = (float)Window.UpdateTime;
+            smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
+            SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
+            ElapsedTime += DeltaTime;
+
             //do any one time update frame actions
-            if(temporaryUpdateFrameCommands.Count > 0)
+            if (temporaryUpdateFrameCommands.Count > 0)
             {
                 for (int i = 0; i < temporaryUpdateFrameCommands.Count; i++)
                 {
@@ -323,11 +328,6 @@ namespace JLGraphics
 #if DEBUG
             fileTracker.ResolveFileTrackQueue();
 #endif
-            DeltaTime = (float)Window.UpdateTime;// (time.Ticks - time1.Ticks) / 10000000f;
-            smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
-            SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
-
-            ElapsedTime += DeltaTime;
 
             string stats = "";
             stats += " | fixed delta time: " + FixedDeltaTime;
