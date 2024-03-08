@@ -1089,7 +1089,7 @@ namespace JLGraphics
                 {
                     GraphicsDebug.MeshBindCount++;
                     GL.BindVertexArray(meshData.VertexArrayObject);
-                    GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
+                    //GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
                     previousMesh = meshData;
                 }
 
