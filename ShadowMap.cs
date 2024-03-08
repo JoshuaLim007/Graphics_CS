@@ -158,9 +158,9 @@ namespace JLGraphics
             DepthOnlyFramebuffer = new FrameBuffer(resolution, resolution, false, new TFP()
             {
                 internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent,
-                magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Nearest,
+                magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 maxMipmap = 0,
-                minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Nearest,
+                minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.ClampToBorder,
                 borderColor = Vector4.One,
                 isShadowMap = true,
