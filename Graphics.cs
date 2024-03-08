@@ -378,7 +378,7 @@ namespace JLGraphics
                     if (!ImGui.IsWindowHovered())
                     {
                         Window.MousePosition = new Vector2(cursorPos.X + GuiRenderSceneSize.X * 0.5f, cursorPos.Y + GuiRenderSceneSize.Y * 0.5f);
-                        Window.ProcessInputEvents();
+                        MouseInput.UpdateMousePosition(Window.MouseState.Position);
                     }
                     IsCursorInSceneWindow = true;
                     IsSceneViewFocused = true;
