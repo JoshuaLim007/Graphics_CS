@@ -128,7 +128,9 @@ namespace JLGraphics
                 GL.Enable(EnableCap.Multisample);
             }
 
-            Window.UpdateFrame += UpdateFrame;
+            MouseInput.UpdateMousePosition(Window.MouseState.Position);
+            MouseInput.UpdateMousePosition(Window.MouseState.Position);
+            Window.RenderFrame += UpdateFrame;
         }
         ShaderProgram DefaultShaderProgram;
         ShaderProgram PassthroughShaderProgram;
@@ -179,8 +181,9 @@ namespace JLGraphics
 
             var m_gameWindowSettings = GameWindowSettings.Default;
             var m_nativeWindowSettings = NativeWindowSettings.Default;
-            m_gameWindowSettings.UpdateFrequency = renderFrequency;
+            //m_gameWindowSettings.UpdateFrequency = renderFrequency;
 
+            m_gameWindowSettings.RenderFrequency = renderFrequency;
             m_nativeWindowSettings.Size = windowResolution;
             m_nativeWindowSettings.Title = windowName;
             m_nativeWindowSettings.IsEventDriven = false;
@@ -283,7 +286,8 @@ namespace JLGraphics
         float smoothDeltaCount = 0;
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
-            DeltaTime = (float)Window.UpdateTime;
+            MouseInput.UpdateMousePosition(Window.MouseState.Position);
+            DeltaTime = (float)Window.RenderTime;
             smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
             SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
             ElapsedTime += DeltaTime;
