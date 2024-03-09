@@ -298,6 +298,7 @@ namespace JLGraphics
         float smoothDeltaCount = 0;
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
+            PerfTimer.Start("UpdateFrame");
             MouseInput.UpdateMousePosition(Window.MouseState.Position);
             DeltaTime = (float)Window.RenderTime;
             smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
@@ -324,6 +325,7 @@ namespace JLGraphics
 
             InvokeNewStarts();
 
+            PerfTimer.Start("UpdateFrame::FixedUpdate");
             fixedTimer += Time.DeltaTime;
             if (fixedTimer >= Time.FixedDeltaTime)
             {
@@ -335,8 +337,11 @@ namespace JLGraphics
                 }
                 fixedTimer = 0;
             }
+            PerfTimer.Stop();
 
+            PerfTimer.Start("UpdateFrame::Update");
             InvokeUpdates();
+            PerfTimer.Stop();
 
             float updateFreq = 1.0f / FixedDeltaTime;
 
@@ -344,7 +349,7 @@ namespace JLGraphics
 #if DEBUG
             fileTracker.ResolveFileTrackQueue();
 #endif
-
+            PerfTimer.Start("UpdateFrame::Stat display");
             string stats = "";
             stats += " | fixed delta time: " + FixedDeltaTime;
             stats += " | draw count: " + GraphicsDebug.DrawCount;
@@ -363,8 +368,11 @@ namespace JLGraphics
             GraphicsDebug.MeshBindCount = 0;
             GraphicsDebug.TotalVertices = 0;
             GraphicsDebug.FrustumCulledEntitiesCount = 0;
+            PerfTimer.Stop();
 
+            PerfTimer.Start("UpdateFrame::RenderScaleChange");
             RenderScaleChange(RenderScale);
+            PerfTimer.Stop();
 
             if (RenderGUI)
             {
@@ -414,7 +422,9 @@ namespace JLGraphics
             frameIncrement++;
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("_Frame"), frameIncrement);
 
+            PerfTimer.Start("UpdateFrame::DoRenderUpdate");
             DoRenderUpdate();
+            PerfTimer.Stop();
 
             if (RenderGUI)
             {
@@ -423,8 +433,11 @@ namespace JLGraphics
             }
 
             Renderer.NewRendererAdded = false;
+            PerfTimer.Start("UpdateFrame::SwapBuffers");
             Window.SwapBuffers();
+            PerfTimer.Stop();
             DestructorCommands.Instance.ExecuteCommands();
+            PerfTimer.Stop();
             PerfTimer.ResetTimers(true);
         }
         private bool WindowResized = false;
@@ -688,7 +701,6 @@ namespace JLGraphics
 
         private void DoRenderUpdate()
         {
-            PerfTimer.Start("DoRenderUpdate");
 
             renderPasses.Sort();
 
@@ -756,7 +768,6 @@ namespace JLGraphics
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             }
 
-            PerfTimer.Stop();
         }
 
         private PointLightSSBO[] pointLightSSBOs = new PointLightSSBO[MAXPOINTLIGHTS];
