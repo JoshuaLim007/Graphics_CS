@@ -149,7 +149,7 @@ namespace JLGraphics
             GL.BindTexture(textureTarget, 0);
         }
         bool textureIsResolved = false;
-        public virtual void ResolveTexture(bool isShadowMap = false)
+        public virtual void ResolveTexture(bool isShadowMap = false, int MSAA = 0)
         {
             if (GlTextureID == 0)
             {
@@ -180,8 +180,14 @@ namespace JLGraphics
 
             var pixelData = LoadPixelData();
 
-            GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelData.Item3, pixelData.Item2, pixelData.Item1);
+            if (MSAA == 0)
+            {
+                GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelData.Item3, pixelData.Item2, pixelData.Item1);
+            }
+            else {
 
+                GL.TexImage2DMultisample((TextureTargetMultisample)((int)textureTarget), MSAA, internalPixelFormat, Width, Height, true);
+            }
             if (generateMipMaps)
             {
                 GL.GenerateTextureMipmap(GlTextureID);

@@ -67,7 +67,11 @@ namespace JLGraphics
                 || internalPixelFormat == PixelInternalFormat.DepthComponent32Sgix
                 || internalPixelFormat == PixelInternalFormat.DepthStencil;
         }
-        public FrameBuffer(int width, int height, bool enableDepthRenderBuffer = false, params TFP[] textureFormat)
+        public FrameBuffer(int width, int height, bool enableDepthRenderBuffer = false, params TFP[] textureFormat) : this(width, height, 0, enableDepthRenderBuffer, textureFormat)
+        {
+            
+        }
+        public FrameBuffer(int width, int height, int MSAA, bool enableDepthRenderBuffer = false, params TFP[] textureFormat)
         {
             Width = width;
             Height = height;
@@ -79,6 +83,7 @@ namespace JLGraphics
             for (int i = 0; i < colorAttachmentCount; i++)
             {
                 TextureAttachments[i] = new Texture();
+                TextureAttachments[i].textureTarget = MSAA > 0 ? TextureTarget.Texture2DMultisample : TextureTarget.Texture2D;
                 TextureAttachments[i].Width = width;
                 TextureAttachments[i].Height = height;
                 TextureAttachments[i].internalPixelFormat = textureFormat[i].internalFormat;
@@ -88,14 +93,14 @@ namespace JLGraphics
                 TextureAttachments[i].mipmapLevels = textureFormat[i].maxMipmap;
                 TextureAttachments[i].generateMipMaps = textureFormat[i].maxMipmap != 0;
                 TextureAttachments[i].borderColor = textureFormat[i].borderColor;
-                TextureAttachments[i].ResolveTexture(textureFormat[i].isShadowMap);
+                TextureAttachments[i].ResolveTexture(textureFormat[i].isShadowMap, MSAA);
                 if (IsDepthComponent(TextureAttachments[i].internalPixelFormat))
                 {
-                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, TextureAttachments[i].GlTextureID, 0);
+                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureAttachments[i].textureTarget, TextureAttachments[i].GlTextureID, 0);
                 }
                 else
                 {
-                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureTarget.Texture2D, TextureAttachments[i].GlTextureID, 0);
+                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureAttachments[i].textureTarget, TextureAttachments[i].GlTextureID, 0);
                 }
             }
 
@@ -104,7 +109,12 @@ namespace JLGraphics
                 RenderbufferStorage renderbufferStorage = RenderbufferStorage.DepthComponent;
                 RenderBufferObject = GL.GenRenderbuffer();
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, RenderBufferObject);
-                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, renderbufferStorage, width, height);
+
+                if(MSAA > 0)
+                    GL.RenderbufferStorageMultisample(RenderbufferTarget.Renderbuffer, MSAA, renderbufferStorage, width, height);
+                else
+                    GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, renderbufferStorage, width, height);
+
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
                 GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, RenderBufferObject);
             }
