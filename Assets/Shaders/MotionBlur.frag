@@ -28,7 +28,10 @@ void main()
     vec4 col = max(texture(MainTex, pos), vec4(0));
 
     vec2 mv = texture(_MotionTexture, pos).rg;
-
+    if(abs(mv.x) < 0.01 && abs(mv.y) < 0.01){
+        FragColor = vec4(col.xyz, 1.0);
+        return;
+    }
     vec2 halfMv = mv * 0.5f;
     vec2 startPos = pos - halfMv;
 
