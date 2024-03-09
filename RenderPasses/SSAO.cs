@@ -114,6 +114,7 @@ namespace JLGraphics.RenderPasses
                 {
                     SSAORt.Dispose();
                     blurRT.Dispose();
+                    accumRT.Dispose();
                 }
                 var res = GetResolution(frameBuffer, 0.5f);
                 var res1 = GetResolution(frameBuffer, 1.0f);
