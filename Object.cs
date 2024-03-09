@@ -153,7 +153,7 @@ namespace JLGraphics
                 return Null == ((Object)obj).Null;
             }
         }
-        public static implicit operator bool(Object a) => a.Null;
+        public static implicit operator bool(Object a) => a is null ? false : !a.Null;
         public override int GetHashCode()
         {
             return (int)mId;
