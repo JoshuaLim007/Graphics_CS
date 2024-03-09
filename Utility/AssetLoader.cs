@@ -377,7 +377,7 @@ namespace JLUtility
     
         public static string GetPathToAsset(string fileName)
         {
-            return GetAssetDir() + fileName;
+            return Path.Combine(GetAssetDir(), fileName);
         }
         public static string GetAssetDir()
         {
