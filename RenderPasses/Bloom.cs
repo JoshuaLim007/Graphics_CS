@@ -1,4 +1,5 @@
 ﻿using Assimp;
+using JLUtility;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace JLGraphics
+namespace JLGraphics.RenderPasses
 {
     public class Bloom : RenderPass
     {
@@ -22,23 +23,25 @@ namespace JLGraphics
         int blurIterations = 7;
         float threshold = 10.0f;
         float intensity = 0.5f;
-        float clamp = (1 << 16);
+        float clamp = 1 << 16;
 
-        public float Threshold {
+        public float Threshold
+        {
             get => threshold;
             set
             {
                 threshold = MathHelper.Clamp(value, 0.0f, float.MaxValue);
             }
         }
-        public int Iterations {
+        public int Iterations
+        {
             get => blurIterations;
             set
             {
                 blurIterations = MathHelper.Clamp(value, 2, 11);
             }
         }
-        public float Intensity 
+        public float Intensity
         {
             get => intensity;
             set
@@ -57,15 +60,21 @@ namespace JLGraphics
 
         public Bloom(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
-            var program = new ShaderProgram("Blur Program", "./Shaders/Bloom.glsl", "./Shaders/Passthrough.vert");
+            var program = new ShaderProgram("Blur Program",
+                AssetLoader.GetPathToAsset("./Shaders/Bloom.glsl"),
+                AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             bloomShader = new Shader("Kawase Bloom", program);
 
-            program = new ShaderProgram("Blur Program", "./Shaders/BloomComposite.glsl", "./Shaders/Passthrough.vert");
+            program = new ShaderProgram("Blur Program",
+                AssetLoader.GetPathToAsset("./Shaders/BloomComposite.glsl"), 
+                AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             bloomCompositeShader = new Shader("Kawase Bloom Composite", program);
 
-            program = new ShaderProgram("Blur Program", "./Shaders/BloomPrepass.glsl", "./Shaders/Passthrough.vert");
+            program = new ShaderProgram("Blur Program", 
+                AssetLoader.GetPathToAsset("./Shaders/BloomPrepass.glsl"),
+                AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             bloomPrepassShader = new Shader("Kawase Bloom Prepass", program);
 
@@ -92,13 +101,13 @@ namespace JLGraphics
             {
                 return;
             }
-            if(previousWidth != frameBuffer.Width || previousHeight != frameBuffer.Height)
+            if (previousWidth != frameBuffer.Width || previousHeight != frameBuffer.Height)
             {
                 previousWidth = frameBuffer.Width;
                 previousHeight = frameBuffer.Height;
                 var res = GetResolution(frameBuffer, 0.5f);
                 var res2 = GetResolution(frameBuffer, 1.0f);
-                if(prepassFitlerRt != null)
+                if (prepassFitlerRt != null)
                 {
                     prepassFitlerRt.Dispose();
                 }
@@ -114,7 +123,7 @@ namespace JLGraphics
                 {
                     int width = MathHelper.Clamp(res.X >> i, 1, int.MaxValue);
                     int height = MathHelper.Clamp(res.Y >> i, 1, int.MaxValue);
-                    if(blurTexture[i] != null)
+                    if (blurTexture[i] != null)
                     {
                         blurTexture[i].Dispose();
                     }

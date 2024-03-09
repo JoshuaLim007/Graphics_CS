@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Net.WebRequestMethods;
 
-namespace JLGraphics
+namespace JLGraphics.RenderPasses
 {
     public enum RenderQueue
     {
@@ -28,13 +28,13 @@ namespace JLGraphics
         public virtual void FrameSetup() { }
         public abstract void Execute(in FrameBuffer frameBuffer);
         public virtual void FrameCleanup() { }
-        public int CompareTo(RenderPass? other)
+        public int CompareTo(RenderPass other)
         {
-            if(other == null)
+            if (other == null)
             {
                 return 0;
             }
-            if(this.Queue < other.Queue)
+            if (Queue < other.Queue)
             {
                 return -1;
             }
@@ -65,7 +65,7 @@ namespace JLGraphics
         }
         public Vector2i GetResolution(FrameBuffer frameBuffer, float scale)
         {
-            return new Vector2i((int)MathF.Max(MathF.Floor(frameBuffer.Width * scale), 1), (int)MathF.Max(MathF.Floor(frameBuffer.Height * scale),1));
+            return new Vector2i((int)MathF.Max(MathF.Floor(frameBuffer.Width * scale), 1), (int)MathF.Max(MathF.Floor(frameBuffer.Height * scale), 1));
         }
     }
 }

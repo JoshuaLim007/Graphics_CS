@@ -137,7 +137,7 @@ namespace JLGraphics
         {
             if (DefaultTexture == null)
             {
-                DefaultTexture = ImageTexture.LoadTextureFromPath("./Textures/1x1_white.bmp");
+                DefaultTexture = ImageTexture.LoadTextureFromPath(AssetLoader.GetPathToAsset("./Textures/1x1_white.bmp"));
                 DefaultTexture.ResolveTexture();
             }
             var types = Program.GetUniformTypes();

@@ -4,16 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JLGraphics
+namespace JLUtility
 {
+    using JLGraphics;
     using System.Collections.Generic;
     using System.IO;
     using Assimp;
     using F23.StringSimilarity;
-    using global::ObjLoader.Loader.Loaders;
-    using JLUtility;
-    using OpenTK;
     using OpenTK.Mathematics;
+    using Mesh = JLGraphics.Mesh;
 
     public static class AssetLoader { 
         private static Assimp.Scene LoadScene(string path)
@@ -374,6 +373,15 @@ namespace JLGraphics
             data.vertexData = vertexData.ToArray();
 
             return data;
+        }
+    
+        public static string GetPathToAsset(string fileName)
+        {
+            return GetAssetDir() + fileName;
+        }
+        public static string GetAssetDir()
+        {
+            return Path.Combine(Directory.GetCurrentDirectory(), "./Assets/");
         }
     }
 

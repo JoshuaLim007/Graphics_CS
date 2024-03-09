@@ -35,7 +35,7 @@ namespace JLGraphics
         {
             if(CubeMapProjectionShader == null)
             {
-                CubemapShaderProgram = new ShaderProgram("Cubemap Program", "./Shaders/Rect2CubeFrag.glsl", "./Shaders/Rect2CubeVert.glsl");
+                CubemapShaderProgram = new ShaderProgram("Cubemap Program", AssetLoader.GetPathToAsset("./Shaders/Rect2CubeFrag.glsl"), AssetLoader.GetPathToAsset("./Shaders/Rect2CubeVert.glsl"));
                 CubemapShaderProgram.CompileProgram();
                 CubeMapProjectionShader = new Shader("Rect2Cube Shader", CubemapShaderProgram, true);
             }

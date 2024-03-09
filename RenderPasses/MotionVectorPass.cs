@@ -1,4 +1,5 @@
 ﻿using Assimp;
+using JLUtility;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common.Input;
@@ -8,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JLGraphics
+namespace JLGraphics.RenderPasses
 {
     public class MotionVectorPass : RenderPass
     {
@@ -20,7 +21,9 @@ namespace JLGraphics
 
         public MotionVectorPass(RenderQueue queue = 0, int queueOffset = 0) : base(queue, queueOffset)
         {
-            var program = new ShaderProgram("Motion Vector Program", "./Shaders/MotionVector.frag", "./Shaders/MotionVector.vert");
+            var program = new ShaderProgram("Motion Vector Program",
+                AssetLoader.GetPathToAsset("./Shaders/MotionVector.frag"),
+                AssetLoader.GetPathToAsset("./Shaders/MotionVector.vert"));
             program.CompileProgram();
             motionVectorShader = new Shader("Motion Vector Shader", program);
         }
@@ -38,9 +41,9 @@ namespace JLGraphics
 
         public override void Execute(in FrameBuffer frameBuffer)
         {
-            if(!FrameBuffer.AlikeResolution(motionVectorTex, frameBuffer))
+            if (!FrameBuffer.AlikeResolution(motionVectorTex, frameBuffer))
             {
-                if(motionVectorTex != null)
+                if (motionVectorTex != null)
                 {
                     motionVectorTex.Dispose();
                 }
@@ -56,9 +59,9 @@ namespace JLGraphics
 
                 motionVectorTex = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, tfp);
             }
-            
+
             //copy original screen color
-            GL.ClearColor(0,0,0,0);
+            GL.ClearColor(0, 0, 0, 0);
             GL.Clear(ClearBufferMask.ColorBufferBit);
             //init matrices
             if (init)
@@ -78,7 +81,7 @@ namespace JLGraphics
             motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), cameraViewProj);
             motionVectorShader.DepthTest = false;
             Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
-            
+
             motionVectorShader.DepthTest = true;
             Graphics.Instance.RenderScene(Camera.Main, motionVectorShader, OnRenderCallback);
 

@@ -150,7 +150,9 @@ namespace JLGraphics
         public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
         {
             this.size = size;
-            ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader", "./Shaders/fragmentEmpty.glsl", "./Shaders/vertexSimple.glsl");
+            ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader",
+                AssetLoader.GetPathToAsset("./Shaders/fragmentEmpty.glsl"),
+                AssetLoader.GetPathToAsset("./Shaders/vertexSimple.glsl"));
             shaderProgram.CompileProgram();
             shader = new Shader("Directional Shadow Material", shaderProgram, true);
             shader.DepthTest = true;
@@ -275,7 +277,10 @@ namespace JLGraphics
         {
             if (shadowShader == null)
             {
-                var program = new ShaderProgram("point light shadow program", "./Shaders/PointLightShadowsFrag.glsl", "./Shaders/vertexSimple.glsl", "./Shaders/PointLightShadowsGeo.glsl");
+                var program = new ShaderProgram("point light shadow program",
+                    AssetLoader.GetPathToAsset("./Shaders/PointLightShadowsFrag.glsl"),
+                    AssetLoader.GetPathToAsset("./Shaders/vertexSimple.glsl"),
+                    AssetLoader.GetPathToAsset("./Shaders/PointLightShadowsGeo.glsl"));
                 program.CompileProgram();
                 shadowShader = new Shader("point light shadow", program);
                 shadowShader.DepthTestFunction = DepthFunction.Lequal;

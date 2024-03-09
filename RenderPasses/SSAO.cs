@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic;
+﻿using JLUtility;
+using Microsoft.VisualBasic;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
@@ -8,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Net.WebRequestMethods;
 
-namespace JLGraphics
+namespace JLGraphics.RenderPasses
 {
     public class SSAO : RenderPass
     {
@@ -26,19 +27,22 @@ namespace JLGraphics
 
         public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
-            var program = new ShaderProgram("SSAO program", "./Shaders/SSAO.frag", "./Shaders/Passthrough.vert");
+            var program = new ShaderProgram("SSAO program",
+                AssetLoader.GetPathToAsset("./Shaders/SSAO.frag"),
+                AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             shader = new Shader("SSAO", program);
 
-            program = new ShaderProgram("SSAO blur", "./Shaders/BoxBlur.frag", "./Shaders/Passthrough.vert");
+            program = new ShaderProgram("SSAO blur",
+                AssetLoader.GetPathToAsset("./Shaders/BoxBlur.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             blur = new Shader("SSAO Blur", program);
 
-            program = new ShaderProgram("SSAO comp", "./Shaders/SSAOComp.frag", "./Shaders/Passthrough.vert");
+            program = new ShaderProgram("SSAO comp", AssetLoader.GetPathToAsset("./Shaders/SSAOComp.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             comp = new Shader("SSAO Comp", program);
 
-            program = new ShaderProgram("SSAO accum", "./Shaders/SSAOAccum.frag", "./Shaders/Passthrough.vert");
+            program = new ShaderProgram("SSAO accum", AssetLoader.GetPathToAsset("./Shaders/SSAOAccum.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             accum = new Shader("SSAO Accum", program);
 
@@ -57,9 +61,9 @@ namespace JLGraphics
         {
             return new FrameBuffer(width, height, false, new TFP()
             {
-                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.R32f,
-                magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
-                minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear
+                internalFormat = PixelInternalFormat.R32f,
+                magFilter = TextureMagFilter.Linear,
+                minFilter = TextureMinFilter.Linear
             });
         }
 
@@ -102,11 +106,11 @@ namespace JLGraphics
             {
                 return;
             }
-            if(previousHeight != frameBuffer.Height || previousWidth != frameBuffer.Width)
+            if (previousHeight != frameBuffer.Height || previousWidth != frameBuffer.Width)
             {
                 previousWidth = frameBuffer.Width;
                 previousHeight = frameBuffer.Height;
-                if(SSAORt != null)
+                if (SSAORt != null)
                 {
                     SSAORt.Dispose();
                     blurRT.Dispose();

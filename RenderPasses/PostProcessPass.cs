@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OpenTK.Graphics.OpenGL4;
+using JLUtility;
 
-namespace JLGraphics
+namespace JLGraphics.RenderPasses
 {
     public class PostProcessPass : RenderPass
     {
@@ -22,7 +23,9 @@ namespace JLGraphics
         FrameBuffer postProcessTexture = null;
         public PostProcessPass(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
-            PostProcessShader = new ShaderProgram("PostProcess", "./Shaders/PostProcess.frag", "./Shaders/Passthrough.vert");
+            PostProcessShader = new ShaderProgram("PostProcess",
+                AssetLoader.GetPathToAsset("./Shaders/PostProcess.frag"),
+                AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             if (Graphics.Instance.GetFileTracker(out var ft))
             {
                 ft.AddFileObject(PostProcessShader.FragFile);
@@ -35,9 +38,9 @@ namespace JLGraphics
 
         public override void Execute(in FrameBuffer frameBuffer)
         {
-            if(postProcessTexture == null)
+            if (postProcessTexture == null)
             {
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb8});
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb8 });
             }
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
@@ -45,11 +48,11 @@ namespace JLGraphics
             shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), GammaCorrection);
             shader.SetBool(Shader.GetShaderPropertyId("Vignette"), Vignette);
             shader.SetFloat(Shader.GetShaderPropertyId("VignetteStrength"), VignetteStrength);
-            
+
             if (!FrameBuffer.AlikeResolution(frameBuffer, postProcessTexture))
             {
                 postProcessTexture.Dispose();
-                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb8});
+                postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb8 });
             }
             Blit(frameBuffer, postProcessTexture, shader);
             Blit(postProcessTexture, frameBuffer);

@@ -1,4 +1,6 @@
 ﻿using ImGuiNET;
+using JLGraphics.Input;
+using JLGraphics.RenderPasses;
 using JLUtility;
 using OpenTK.Graphics.Egl;
 using OpenTK.Graphics.OpenGL4;
@@ -194,11 +196,21 @@ namespace JLGraphics
 
             InitWindow(0, m_gameWindowSettings, m_nativeWindowSettings);
 
-            var defaultShader = new ShaderProgram("DefaultShader", "./Shaders/fragment.glsl", "./Shaders/vertex.glsl");
-            var passThroughShader = new ShaderProgram("PassThroughShader", "./Shaders/CopyToScreen.frag", "./Shaders/Passthrough.vert");
-            var depthOnlyShader = new ShaderProgram("DepthOnlyShader", "./Shaders/DepthOnly.frag", "./Shaders/vertexSimple.glsl");
-            var skyBoxShaderProrgam = new ShaderProgram("Skybox Shader", "./Shaders/SkyBoxFrag.glsl", "./Shaders/skyboxVert.glsl");
-            var skyboxDepthPrepassProgram = new ShaderProgram("Skybox Shader", "./Shaders/fragmentEmpty.glsl", "./Shaders/skyboxVert.glsl");
+            var defaultShader = new ShaderProgram("DefaultShader", 
+                AssetLoader.GetPathToAsset("./Shaders/fragment.glsl"),
+                AssetLoader.GetPathToAsset("./Shaders/vertex.glsl"));
+            var passThroughShader = new ShaderProgram("PassThroughShader", 
+                AssetLoader.GetPathToAsset("./Shaders/CopyToScreen.frag"), 
+                AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
+            var depthOnlyShader = new ShaderProgram("DepthOnlyShader", 
+                AssetLoader.GetPathToAsset("./Shaders/DepthOnly.frag"), 
+                AssetLoader.GetPathToAsset("./Shaders/vertexSimple.glsl"));
+            var skyBoxShaderProrgam = new ShaderProgram("Skybox Shader", 
+                AssetLoader.GetPathToAsset("./Shaders/SkyBoxFrag.glsl"), 
+                AssetLoader.GetPathToAsset("./Shaders/skyboxVert.glsl"));
+            var skyboxDepthPrepassProgram = new ShaderProgram("Skybox Shader", 
+                AssetLoader.GetPathToAsset("./Shaders/fragmentEmpty.glsl"), 
+                AssetLoader.GetPathToAsset("./Shaders/skyboxVert.glsl"));
 #if DEBUG
             fileTracker = new FileTracker();
             fileTracker.AddFileObject(defaultShader.FragFile);
@@ -959,7 +971,7 @@ namespace JLGraphics
         {
             if(AABBDebugShader == null)
             {
-                var program = new ShaderProgram("Gizmo", "./Shaders/aabbDebug.frag", "./Shaders/aabbDebug.vert");
+                var program = new ShaderProgram("Gizmo", AssetLoader.GetPathToAsset("./Shaders/aabbDebug.frag"), AssetLoader.GetPathToAsset("./Shaders/aabbDebug.vert"));
                 program.CompileProgram();
                 AABBDebugShader = new Shader("Gizmo", program);
                 AABBDebugShader.DepthTest = false;
