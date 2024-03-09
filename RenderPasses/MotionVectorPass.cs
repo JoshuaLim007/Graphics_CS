@@ -26,6 +26,10 @@ namespace JLGraphics.RenderPasses
                 AssetLoader.GetPathToAsset("./Shaders/MotionVector.vert"));
             program.CompileProgram();
             motionVectorShader = new Shader("Motion Vector Shader", program);
+            motionVectorShader.ColorMask[0] = true;
+            motionVectorShader.ColorMask[1] = true;
+            motionVectorShader.ColorMask[2] = false;
+            motionVectorShader.ColorMask[3] = false;
         }
 
         public override string Name => "Motion Vector pass";

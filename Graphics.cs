@@ -453,8 +453,6 @@ namespace JLGraphics
             {
                 Debug.Log("Window resized: " + WindowResizeResults);
                 Window.Size = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
-                InitFramebuffers();
-                GL.Viewport(0, 0, WindowResizeResults.X, WindowResizeResults.Y);
                 
                 if(RenderGUI)
                     guiController.WindowResized(WindowResizeResults.X, WindowResizeResults.Y);
@@ -462,6 +460,9 @@ namespace JLGraphics
                     RenderBufferSize = Window.Size;
 
                 WindowResized = false;
+
+                InitFramebuffers();
+                GL.Viewport(0, 0, WindowResizeResults.X, WindowResizeResults.Y);
             }
             WindowResizeResults = new Vector2i(args.Width, args.Height);
             if (!WindowResized)
@@ -683,6 +684,7 @@ namespace JLGraphics
 
         public void RenderSkyBox(Camera camera, Shader overrideShader = null)
         {
+            PerfTimer.Start("RenderSkyBox");
             //render skybox
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, BasicCube.EBO);
             GL.BindVertexArray(BasicCube.VAO);
@@ -697,6 +699,7 @@ namespace JLGraphics
             GraphicsDebug.TotalVertices += BasicCube.VertexCount;
             GraphicsDebug.UseProgramCount++;
             GraphicsDebug.MeshBindCount++;
+            PerfTimer.Stop();
         }
 
         private void DoRenderUpdate()
