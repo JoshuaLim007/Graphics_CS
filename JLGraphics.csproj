@@ -8,11 +8,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   
-  <PropertyGroup>
+  <!--<PropertyGroup>
       <PublishAot>true</PublishAot>
       <OptimizationPreference>Speed</OptimizationPreference>
       <PlatformTarget>x64</PlatformTarget>
-  </PropertyGroup>
+  </PropertyGroup>-->
       
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <LangVersion>preview</LangVersion>
@@ -47,116 +47,116 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Meshes\*">
+    <Content Include="Assets\Meshes\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Shaders\*">
+    <Content Include="Assets\Shaders\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Textures\*">
+    <Content Include="Assets\Textures\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Shaders\aabbDebug.frag" />
-    <None Remove="Shaders\aabbDebug.vert" />
-    <None Remove="Shaders\Bloom.glsl" />
-    <None Remove="Shaders\BloomComposite.glsl" />
-    <None Remove="Shaders\BloomPrepass.glsl" />
-    <None Remove="Shaders\BoxBlur.frag" />
-    <None Remove="shaders\CopyToScreen.frag" />
-    <None Remove="Shaders\DepthOnly.frag" />
-    <None Remove="Shaders\fragmentEmpty.glsl" />
-    <None Remove="Shaders\MotionBlur.frag" />
-    <None Remove="Shaders\MotionVector.frag" />
-    <None Remove="Shaders\MotionVector.vert" />
-    <None Remove="Shaders\MotionVectorCamera.frag" />
-    <None Remove="shaders\Passthrough.vert" />
-    <None Remove="Shaders\PointLightShadowsFrag.glsl" />
-    <None Remove="Shaders\PointLightShadowsGeo.glsl" />
-    <None Remove="Shaders\PostProcess.frag" />
-    <None Remove="Shaders\Rect2CubeFrag.glsl" />
-    <None Remove="Shaders\Rect2CubeVert.glsl" />
-    <None Remove="Shaders\SkyBoxFrag.glsl" />
-    <None Remove="Shaders\skyboxVert.glsl" />
-    <None Remove="Shaders\SSAO.frag" />
-    <None Remove="Shaders\SSAOAccum.frag" />
-    <None Remove="Shaders\SSAOComp.frag" />
-    <None Remove="Shaders\vertexSimple.glsl" />
+    <None Remove="Assets\Shaders\aabbDebug.frag" />
+    <None Remove="Assets\Shaders\aabbDebug.vert" />
+    <None Remove="Assets\Shaders\Bloom.glsl" />
+    <None Remove="Assets\Shaders\BloomComposite.glsl" />
+    <None Remove="Assets\Shaders\BloomPrepass.glsl" />
+    <None Remove="Assets\Shaders\BoxBlur.frag" />
+    <None Remove="Assets\Shaders\CopyToScreen.frag" />
+    <None Remove="Assets\Shaders\DepthOnly.frag" />
+    <None Remove="Assets\Shaders\fragmentEmpty.glsl" />
+    <None Remove="Assets\Shaders\MotionBlur.frag" />
+    <None Remove="Assets\Shaders\MotionVector.frag" />
+    <None Remove="Assets\Shaders\MotionVector.vert" />
+    <None Remove="Assets\Shaders\MotionVectorCamera.frag" />
+    <None Remove="Assets\Shaders\Passthrough.vert" />
+    <None Remove="Assets\Shaders\PointLightShadowsFrag.glsl" />
+    <None Remove="Assets\Shaders\PointLightShadowsGeo.glsl" />
+    <None Remove="Assets\Shaders\PostProcess.frag" />
+    <None Remove="Assets\Shaders\Rect2CubeFrag.glsl" />
+    <None Remove="Assets\Shaders\Rect2CubeVert.glsl" />
+    <None Remove="Assets\Shaders\SkyBoxFrag.glsl" />
+    <None Remove="Assets\Shaders\skyboxVert.glsl" />
+    <None Remove="Assets\Shaders\SSAO.frag" />
+    <None Remove="Assets\Shaders\SSAOAccum.frag" />
+    <None Remove="Assets\Shaders\SSAOComp.frag" />
+    <None Remove="Assets\Shaders\vertexSimple.glsl" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="Shaders\Bloom.glsl">
+    <Content Update="Assets\Shaders\Bloom.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\BloomComposite.glsl">
+    <Content Update="Assets\Shaders\BloomComposite.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\BloomPrepass.glsl">
+    <Content Update="Assets\Shaders\BloomPrepass.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\BoxBlur.frag">
+    <Content Update="Assets\Shaders\BoxBlur.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\CopyToScreen.frag">
+    <Content Update="Assets\Shaders\CopyToScreen.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\MotionBlur.frag">
+    <Content Update="Assets\Shaders\MotionBlur.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\MotionVector.frag">
+    <Content Update="Assets\Shaders\MotionVector.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\MotionVector.vert">
+    <Content Update="Assets\Shaders\MotionVector.vert">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\PointLightShadowsFrag.glsl">
+    <Content Update="Assets\Shaders\PointLightShadowsFrag.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\PointLightShadowsGeo.glsl">
+    <Content Update="Assets\Shaders\PointLightShadowsGeo.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\SkyBoxFrag.glsl">
+    <Content Update="Assets\Shaders\SkyBoxFrag.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\DepthOnly.frag">
+    <Content Update="Assets\Shaders\DepthOnly.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\fragment.glsl">
+    <Content Update="Assets\Shaders\fragment.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\fragmentEmpty.glsl">
+    <Content Update="Assets\Shaders\fragmentEmpty.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\Passthrough.vert">
+    <Content Update="Assets\Shaders\Passthrough.vert">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\PostProcess.frag">
+    <Content Update="Assets\Shaders\PostProcess.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\Rect2CubeFrag.glsl">
+    <Content Update="Assets\Shaders\Rect2CubeFrag.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\Rect2CubeVert.glsl">
+    <Content Update="Assets\Shaders\Rect2CubeVert.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\skyboxVert.glsl">
+    <Content Update="Assets\Shaders\skyboxVert.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\SSAO.frag">
+    <Content Update="Assets\Shaders\SSAO.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\SSAOAccum.frag">
+    <Content Update="Assets\Shaders\SSAOAccum.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\SSAOComp.frag">
+    <Content Update="Assets\Shaders\SSAOComp.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\vertex.glsl">
+    <Content Update="Assets\Shaders\vertex.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Shaders\vertexSimple.glsl">
+    <Content Update="Assets\Shaders\vertexSimple.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
