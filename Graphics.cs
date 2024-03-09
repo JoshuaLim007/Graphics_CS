@@ -425,6 +425,7 @@ namespace JLGraphics
             Renderer.NewRendererAdded = false;
             Window.SwapBuffers();
             DestructorCommands.Instance.ExecuteCommands();
+            PerfTimer.ResetTimers(true);
         }
         private bool WindowResized = false;
         private Vector2i WindowResizeResults;
@@ -651,7 +652,6 @@ namespace JLGraphics
             return null;
         }
 
-        int counter = 0;
         int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
         {
             int renderPassIndex;
@@ -661,20 +661,10 @@ namespace JLGraphics
                 {
                     return renderPassIndex;
                 }
-                var stopw = Stopwatch.StartNew();
+                PerfTimer.Start(renderPasses[renderPassIndex].Name);
                 renderPasses[renderPassIndex].Execute(MainFrameBuffer);
-                stopw.Stop();
-                var ms = stopw.Elapsed.TotalMilliseconds;
-                if(counter > 100)
-                {
-                    Debug.Log(renderPasses[renderPassIndex].Name + ": " + ms + " ms");
-                }
+                PerfTimer.Stop();
             }
-            if (counter > 100)
-            {
-                counter = 0;
-            }
-            counter++;
             return renderPassIndex;
         }
 
@@ -696,12 +686,11 @@ namespace JLGraphics
             GraphicsDebug.MeshBindCount++;
         }
 
-        int counter1 = 0;
         private void DoRenderUpdate()
         {
-            renderPasses.Sort();
+            PerfTimer.Start("DoRenderUpdate");
 
-            var watch = Stopwatch.StartNew();
+            renderPasses.Sort();
 
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
             {
@@ -761,24 +750,20 @@ namespace JLGraphics
                 }
             }
 
-            counter1++;
-            if(counter1 > 100)
-            {
-                counter1 = 0;
-                Debug.Log("render update: " + watch.Elapsed.TotalMilliseconds);
-            }
-
             if (RenderGUI)
             {
                 GL.Viewport(0, 0, Window.Size.X, Window.Size.Y);
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
             }
+
+            PerfTimer.Stop();
         }
 
         private PointLightSSBO[] pointLightSSBOs = new PointLightSSBO[MAXPOINTLIGHTS];
         private UBO<PointLightSSBO> PointLightBufferData;
         void SetupLights(Camera camera)
         {
+            PerfTimer.Start("SetupLights");
             if(PointLightBufferData == null)
             {
                 PointLightBufferData = new UBO<PointLightSSBO>(pointLightSSBOs, pointLightSSBOs.Length, 3);
@@ -855,6 +840,7 @@ namespace JLGraphics
 
             PointLightBufferData.UpdateData(pointLightSSBOs, pointLightSSBOs.Length);
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("PointLightCount"), (int)MathF.Min(pointLights.Count, MAXPOINTLIGHTS));
+            PerfTimer.Stop();
         }
 
         Renderer[] SortRenderersByMaterial(List<Renderer> renderers, int uniqueMaterials, Dictionary<Shader, int> caching)
@@ -1032,6 +1018,7 @@ namespace JLGraphics
         CameraFrustum cameraFrustum = new();
         public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null)
         {
+            PerfTimer.Start("RenderScene");
             Mesh? previousMesh = null;
             Shader? previousMaterial = null;
             bool doOnRenderFunc = OnRender != null;
@@ -1145,6 +1132,7 @@ namespace JLGraphics
             GL.BindVertexArray(0);
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
             Shader.Unbind();
+            PerfTimer.Stop();
         }
 
     }

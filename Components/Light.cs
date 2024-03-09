@@ -67,7 +67,9 @@ namespace JLGraphics
         }
         public override void RenderShadowMap(Camera camera)
         {
+            PerfTimer.Start("RenderShadowMap");
             ShadowMapper.RenderShadowMap(camera);
+            PerfTimer.Stop();
         }
         public DirectionalShadowMap GetShadowMapper()
         {
