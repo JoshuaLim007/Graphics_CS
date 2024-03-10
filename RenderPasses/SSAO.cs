@@ -18,7 +18,7 @@ namespace JLGraphics.RenderPasses
         FrameBuffer accumRT;
         Shader shader, accum;
         Shader blur, comp;
-        public float Radius = 15.0f;
+        public float Radius = 5.0f;
         public float Intensity = 1.0f;
         public float DepthRange = 5.0f;
         public int Samples = 16;
@@ -68,6 +68,19 @@ namespace JLGraphics.RenderPasses
         }
 
         Texture noiseTexture = null;
+        Vector3 GetRandomVectorInSphere()
+        {
+            Vector3 vector3;
+            do
+            {
+                vector3 = new Vector3(
+                   Random.Shared.NextSingle() * 2 - 1,
+                   Random.Shared.NextSingle() * 2 - 1,
+                   Random.Shared.NextSingle() * 2 - 1
+                );
+            } while (vector3.Length > 1);
+            return vector3;
+        }
         void GenerateNoiseTexture(int xSize, int ySize, int slices)
         {
             Random random = new Random();
@@ -76,11 +89,8 @@ namespace JLGraphics.RenderPasses
 
             for (int i = 0; i < slices * xSize * ySize; ++i)
             {
-                Noise[i] = new Vector3(
-                   random.NextSingle(),
-                   random.NextSingle(),
-                   random.NextSingle()
-                );
+                Noise[i] = GetRandomVectorInSphere();
+                Noise[i] *= random.NextSingle();
             }
 
             if (noiseTexture == null)
@@ -88,7 +98,7 @@ namespace JLGraphics.RenderPasses
                 noiseTexture = new Texture()
                 {
                     generateMipMaps = false,
-                    internalPixelFormat = PixelInternalFormat.Rgb,
+                    internalPixelFormat = PixelInternalFormat.Rgb16f,
                     Width = slices * xSize,
                     Height = ySize,
                     textureMinFilter = TextureMinFilter.Nearest,
@@ -164,7 +174,7 @@ namespace JLGraphics.RenderPasses
 
             //compose it to original screen color
             comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
-            Blit(frameBuffer, frameBuffer, comp);
+            Blit(blurRT, frameBuffer);
 
             //generate new noise
             if (TemporalAccumulation)

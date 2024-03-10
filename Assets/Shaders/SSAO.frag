@@ -62,15 +62,21 @@ uniform int _Frame;
 uniform float DepthRange;
 const uint k = 1103515245U;
 
-vec3 hash3( uvec3 p ) 
-{
-    uint n = p.x + 2048 * p.y + (2048 * 2048) * uint(p.z);
+uvec3 pcg3d(uvec3 v) {
 
-    // integer hash copied from Hugo Elias
-	n = (n << 13U) ^ n;
-    n = n * (n * n * 15731U + 789221U) + 1376312589U;
-    uvec3 k = n * uvec3(n,n*16807U,n*48271U);
-    return vec3( k & uvec3(0x7fffffffU))/float(0x7fffffff);
+    v = v * 1664525u + 1013904223u;
+
+    v.x += v.y*v.z;
+    v.y += v.z*v.x;
+    v.z += v.x*v.y;
+
+    v ^= v >> 16u;
+
+    v.x += v.y*v.z;
+    v.y += v.z*v.x;
+    v.z += v.x*v.y;
+
+    return v;
 }
 
 float rand(vec2 co){ return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453); }
@@ -115,16 +121,20 @@ void main()
                         mod(gl_FragCoord.y, noiseSize.y), 
                         i - 1);
 
-        noiseTex = noiseTex * 2 - 1;
-        float len = min(length(noiseTex), 1);
-        noiseTex = normalize(noiseTex) * len;
+//        vec3 randomDir = normalize(pcg3d(uvec3(gl_FragCoord.x, gl_FragCoord.y, i + _Frame * 1000)));
+//        randomDir = randomDir * 2 - 1;
+//        randomDir = randomDir * sign(dot(normalize(randomDir), normal));
+//        float len = min(length(randomDir), 1);
+//        randomDir = normalize(randomDir) * len;
+//        float scale = float(i) / float(samples);
+//        scale = mix(0.1f, Radius, scale * scale);
+//        vec3 samplKernal = position + randomDir * scale;
 
         vec3 randomDir = noiseTex;
         randomDir = randomDir * sign(dot(normalize(randomDir), normal));
         float scale = (i - 1) / samples;
         scale = mix(0.1f, 1.0f, scale * scale);
-
-        vec3 samplKernal = position + randomDir * Radius * scale;
+        vec3 samplKernal = position + randomDir * Radius;
 
         vec4 cl = ProjectionViewMatrix * vec4(samplKernal, 1);
         cl.xyz /= cl.w;
