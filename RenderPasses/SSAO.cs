@@ -174,7 +174,7 @@ namespace JLGraphics.RenderPasses
 
             //compose it to original screen color
             comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
-            Blit(blurRT, frameBuffer);
+            Blit(frameBuffer, frameBuffer, comp);
 
             //generate new noise
             if (TemporalAccumulation)
