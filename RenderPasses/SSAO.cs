@@ -20,7 +20,7 @@ namespace JLGraphics.RenderPasses
         Shader blur, comp;
         public float Radius = 15.0f;
         public float Intensity = 1.0f;
-        public float DepthRange = 15.0f;
+        public float DepthRange = 5.0f;
         public int Samples = 16;
         const int maxAccum = 32;
         public bool TemporalAccumulation = false;
