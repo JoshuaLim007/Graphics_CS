@@ -18,10 +18,10 @@ namespace JLGraphics.RenderPasses
         FrameBuffer accumRT;
         Shader shader, accum;
         Shader blur, comp;
-        public float Radius = 5.0f;
+        public float Radius = 15.0f;
         public float Intensity = 1.0f;
-        public float DepthRange = 5.0f;
-        public int Samples = 16;
+        public float DepthRange = 35.0f;
+        public int Samples = 8;
         const int maxAccum = 32;
         public bool TemporalAccumulation = false;
 
@@ -48,7 +48,7 @@ namespace JLGraphics.RenderPasses
 
             GenerateNoiseTexture(noiseX, noiseY, noiseZ);
         }
-        //64 slices of 4x4 noise texture
+        //64 slices of 8x8 noise texture
         const int noiseX = 8;
         const int noiseY = 8;
         const int noiseZ = 64;
@@ -112,6 +112,16 @@ namespace JLGraphics.RenderPasses
         }
         public override void Execute(in FrameBuffer frameBuffer)
         {
+#if DEBUG
+            if (Graphics.Instance.Window.KeyboardState.IsKeyDown(OpenTK.Windowing.GraphicsLibraryFramework.Keys.T))
+            {
+                Intensity = 0;
+            }
+            else
+            {
+                Intensity = 1;
+            }
+#endif
             if (Intensity == 0)
             {
                 return;
@@ -175,6 +185,7 @@ namespace JLGraphics.RenderPasses
             //compose it to original screen color
             comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
             Blit(frameBuffer, frameBuffer, comp);
+            //Blit(blurRT, frameBuffer);
 
             //generate new noise
             if (TemporalAccumulation)
