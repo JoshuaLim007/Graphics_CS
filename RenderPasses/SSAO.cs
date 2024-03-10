@@ -18,9 +18,9 @@ namespace JLGraphics.RenderPasses
         FrameBuffer accumRT;
         Shader shader, accum;
         Shader blur, comp;
-        public float Radius = 5.0f;
+        public float Radius = 15.0f;
         public float Intensity = 1.0f;
-        public float DepthRange = 5.0f;
+        public float DepthRange = 15.0f;
         public int Samples = 16;
         const int maxAccum = 32;
         public bool TemporalAccumulation = false;
@@ -152,7 +152,7 @@ namespace JLGraphics.RenderPasses
 
             //blur results
             blur.SetInt(Shader.GetShaderPropertyId("DoDepthCheck"), 1);
-            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 1.0f);
+            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 0.15f);
             if (TemporalAccumulation)
             {
                 Blit(accumRT, blurRT, blur);

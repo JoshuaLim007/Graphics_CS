@@ -24,7 +24,12 @@ void main()
             vec2 offset0 = uv + vec2(i - 3.5f, j - 3.5f) * MainTex_TexelSize;
             if(DoDepthCheck){
                 float d = texture(_CameraDepthTexture, offset0).r;
-                if(abs(linearDepth(cR) - linearDepth(d)) > bias){
+
+                float d0 = linearDepth(d);
+                float d1 = linearDepth(cR);
+
+                float percentDiff = abs(d1 - d0) / ((d1 + d0) / 2);
+                if(percentDiff > bias){
                     continue;
                 }
             }
