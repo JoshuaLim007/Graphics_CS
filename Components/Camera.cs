@@ -31,10 +31,10 @@ namespace JLGraphics
                 new Vector3(1, -1, 1),
 
                 //near corners
-                new Vector3(-1, 1, 0),
-                new Vector3(1, 1, 0),
-                new Vector3(-1, -1, 0),
-                new Vector3(1, -1, 0),
+                new Vector3(-1, 1, -1),
+                new Vector3(1, 1, -1),
+                new Vector3(-1, -1, -1),
+                new Vector3(1, -1, -1),
 
             };
 
@@ -43,6 +43,7 @@ namespace JLGraphics
                 Vector4 temp = new Vector4(corners[i].X, corners[i].Y, corners[i].Z, 1);
                 temp = temp * mat;
                 temp /= temp.W;
+                temp.Z *= -1;
                 corners[i] = temp.Xyz;
             }
 

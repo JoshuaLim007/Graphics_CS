@@ -1,14 +1,6 @@
 ﻿using JLUtility;
-using Microsoft.VisualBasic;
-using ObjLoader.Loader.Data;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace JLGraphics
 {
@@ -39,7 +31,7 @@ namespace JLGraphics
             PCSS = 2,
         }
         public FrameBuffer DepthOnlyFramebuffer { get; private set; }
-        float nearPlane, farPlane, size;
+        float nearPlane, farPlane, shadowRange;
         DirectionalLight DirectionalLight;
         Vector2 texelSize;
         
@@ -147,9 +139,9 @@ namespace JLGraphics
                 Shader.SetGlobalVector2(prop, kernals[i]);
             }
         }
-        public DirectionalShadowMap(DirectionalLight directionalLight, float size = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
+        public DirectionalShadowMap(DirectionalLight directionalLight, float ShadowRange = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
         {
-            this.size = size;
+            this.shadowRange = ShadowRange;
             ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader",
                 AssetLoader.GetPathToAsset("./Shaders/fragmentEmpty.glsl"),
                 AssetLoader.GetPathToAsset("./Shaders/vertexSimple.glsl"));
@@ -214,27 +206,70 @@ namespace JLGraphics
 
             var cameraPosition = camera.Transform.Position;
             bool isUp = DirectionalLight.Transform.Forward == Vector3.UnitY || DirectionalLight.Transform.Forward == -Vector3.UnitY;
-            var directionalLightViewMatrix = Matrix4.LookAt(Vector3.Zero, DirectionalLight.Transform.Forward, isUp ? Vector3.UnitX : Vector3.UnitY);
 
-            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(camera.Fov), camera.Width / camera.Height, 1.0f, 200.0f);
+            //var directionalLightViewMatrix = Matrix4.CreateFromQuaternion(DirectionalLight.Transform.Rotation);
+            var directionalLightViewMatrix = Matrix4.LookAt(Vector3.Zero, -DirectionalLight.Transform.Forward, isUp ? Vector3.UnitZ : Vector3.UnitY);
+            //var directionalLightViewMatrix = Matrix4.CreateFromQuaternion(Quaternion.FromEulerAngles(90,0,0));
+            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(camera.Fov), camera.Width / camera.Height, 0.1f, shadowRange);
+            var invView = (Matrix4.CreateTranslation(-camera.Transform.Position) *  Matrix4.CreateFromQuaternion(camera.Transform.Rotation)).Inverted();
 
-            //ndc -> light camera space space
-            var mat = (camera.ViewMatrix * proj).Inverted();
-            var corners = CameraFrustum.GetCorners(mat);
+            //get frustum corners in world space
+            var corners = CameraFrustum.GetCorners(proj.Inverted() * invView);
+
+            var lightSpaceCorners = new Vector3[corners.Length];
+            //get frustum corners in light space
             for (int i = 0; i < corners.Length; i++)
             {
-                corners[i] = (directionalLightViewMatrix * new Vector4(corners[i], 1.0f)).Xyz;
+                lightSpaceCorners[i] = (new Vector4(corners[i], 1.0f) * directionalLightViewMatrix).Xyz;
             }
-            var aabb = AABB.GetBoundingBox(corners);
-            var extents = aabb.Extents;
-            var frustumCenter = aabb.Center;
 
-            //Debug.Log("extents: " + extents);
-            //Debug.Log("min: " + aabb.Min);
-            //Debug.Log("max: " + aabb.Max);
-            //Debug.Log("center: " + aabb.Center);
-            //var testDot = Vector3.Dot(DirectionalLight.Transform.Forward, (directionalLightViewMatrix * new Vector4(Vector3.UnitY, 0)).Xyz);
-            //Debug.Log(testDot);
+            //get bounding box in light space
+            var aabb = AABB.GetBoundingBox(lightSpaceCorners);
+
+            //get light position in world space
+            var minBot = new Vector3(aabb.Min.X, aabb.Min.Y, aabb.Min.Z);
+            var minTop = new Vector3(aabb.Max.X, aabb.Max.Y, aabb.Min.Z);
+            var lightPositionInLightSpace = (minTop + minBot) / 2.0f;
+            var lightPositionInWorldSpace = (new Vector4(lightPositionInLightSpace, 1.0f) * directionalLightViewMatrix.Inverted()).Xyz;
+
+
+            //get new light space matrix
+            var directionalLightViewMatrixPosition = Matrix4.CreateTranslation(-lightPositionInWorldSpace) * directionalLightViewMatrix;
+
+            //get frustum cornes in light space with translation
+            var lightSpaceCornersWithTranslation = new Vector3[corners.Length];
+            for (int i = 0; i < corners.Length; i++)
+            {
+                lightSpaceCornersWithTranslation[i] = (new Vector4(corners[i], 1.0f) * directionalLightViewMatrixPosition).Xyz;
+            }
+
+            //get final aabb
+            var finalAABB = AABB.GetBoundingBox(lightSpaceCornersWithTranslation);
+
+            float xEx = finalAABB.Extents.X - shadowRange * 2.0f;
+            float yEx = finalAABB.Extents.Y - shadowRange * 2.0f;
+            if(xEx < 0)
+            {
+                finalAABB.Max.X += -xEx;
+                finalAABB.Min.X -= -xEx;
+            }                          
+            if(yEx < 0)                
+            {                          
+                finalAABB.Max.Y += -yEx;
+                finalAABB.Min.Y -= -yEx;
+            }
+            finalAABB.Max.Z = MathHelper.Max(finalAABB.Max.Z, 1000.0f);
+
+            //var newCorners = AABB.GetCorners(finalAABB);
+            //Vector3[] newCorners3 = new Vector3[newCorners.Length];
+            //for (int i = 0; i < newCorners.Length; i++)
+            //{
+            //    newCorners3[i] = (newCorners[i] * directionalLightViewMatrixPosition.Inverted()).Xyz;
+            //}
+            //Vector3 offsetCenter = AABB.GetBoundingBox()
+
+            var camOffset = (new Vector4(finalAABB.Center, 0.0f) * directionalLightViewMatrixPosition).Xyz;
+            var finalWorldCenter = cameraPosition + camOffset;
 
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);
 
@@ -242,17 +277,11 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Front);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, DepthOnlyFramebuffer.FrameBufferObject);
 
-            float maxLen = MathHelper.Abs(aabb.Max.Z - aabb.Min.Z);
-            Debug.Log("far: " + maxLen);
-            var lightProjectionMatrix = Matrix4.CreateOrthographic(20, 20, 1.0f, 200);
+            var lightProjectionMatrix = Matrix4.CreateOrthographic(finalAABB.Extents.X, finalAABB.Extents.Y, finalAABB.Min.Z + 0.1f, finalAABB.Max.Z + 0.1f);
 
-            //float perSize = size * 0.015625f;
-            //cameraPosition.X = MathF.Floor(cameraPosition.X / perSize) * perSize;
-            //cameraPosition.Y = MathF.Floor(cameraPosition.Y / perSize) * perSize;
-            //cameraPosition.Z = MathF.Floor(cameraPosition.Z / perSize) * perSize;
-            var ShadowMatrix = 
-                Matrix4.CreateTranslation(-frustumCenter) 
-                * directionalLightViewMatrix 
+            var ShadowMatrix =
+                Matrix4.CreateTranslation(-finalWorldCenter)
+                * directionalLightViewMatrix
                 * lightProjectionMatrix;
 
             GL.Clear(ClearBufferMask.DepthBufferBit);
@@ -265,7 +294,7 @@ namespace JLGraphics
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowFilterMode"), (int)filterMode);
             Shader.SetGlobalBool(Shader.GetShaderPropertyId("HasDirectionalShadow"), true);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
-            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), size);
+            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), shadowRange);
         }
     }
 
