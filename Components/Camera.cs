@@ -20,6 +20,35 @@ namespace JLGraphics
         internal Plane leftFace;
         internal Plane farFace;
         internal Plane nearFace;
+
+        public static Vector3[] GetCorners(Matrix4 mat)
+        {
+            Vector3[] corners = { 
+                //far corners
+                new Vector3(-1, 1, 1),
+                new Vector3(1, 1, 1),
+                new Vector3(-1, -1, 1),
+                new Vector3(1, -1, 1),
+
+                //near corners
+                new Vector3(-1, 1, 0),
+                new Vector3(1, 1, 0),
+                new Vector3(-1, -1, 0),
+                new Vector3(1, -1, 0),
+
+            };
+
+            for (int i = 0; i < corners.Length; i++)
+            {
+                Vector4 temp = new Vector4(corners[i].X, corners[i].Y, corners[i].Z, 1);
+                temp = temp * mat;
+                temp /= temp.W;
+                corners[i] = temp.Xyz;
+            }
+
+            return corners;
+        }
+
         public static CameraFrustum Create(Matrix4 viewProjMat)
         {
             CameraFrustum cameraFrustum = new();
@@ -113,7 +142,7 @@ namespace JLGraphics
         public float Size { get; set; } = 100;
         public static Camera Main { get; set; } = null;
         public Matrix4 ViewMatrix =>
-            (Transform.Parent != null ? Transform.Parent.WorldToLocalMatrix.Inverted() : Matrix4.Identity) *
+            (Transform.Parent != null ? Transform.Parent.ModelMatrix.Inverted() : Matrix4.Identity) *
             Matrix4.CreateTranslation(-Transform.Position) * 
             Matrix4.CreateFromQuaternion(Transform.Rotation);
 

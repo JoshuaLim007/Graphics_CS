@@ -211,24 +211,49 @@ namespace JLGraphics
             }
 #endif
             CalculateSamplingKernals();
+
+            var cameraPosition = camera.Transform.Position;
+            bool isUp = DirectionalLight.Transform.Forward == Vector3.UnitY || DirectionalLight.Transform.Forward == -Vector3.UnitY;
+            var directionalLightViewMatrix = Matrix4.LookAt(Vector3.Zero, DirectionalLight.Transform.Forward, isUp ? Vector3.UnitX : Vector3.UnitY);
+
+            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(camera.Fov), camera.Width / camera.Height, 1.0f, 200.0f);
+
+            //ndc -> light camera space space
+            var mat = (camera.ViewMatrix * proj).Inverted();
+            var corners = CameraFrustum.GetCorners(mat);
+            for (int i = 0; i < corners.Length; i++)
+            {
+                corners[i] = (directionalLightViewMatrix * new Vector4(corners[i], 1.0f)).Xyz;
+            }
+            var aabb = AABB.GetBoundingBox(corners);
+            var extents = aabb.Extents;
+            var frustumCenter = aabb.Center;
+
+            //Debug.Log("extents: " + extents);
+            //Debug.Log("min: " + aabb.Min);
+            //Debug.Log("max: " + aabb.Max);
+            //Debug.Log("center: " + aabb.Center);
+            //var testDot = Vector3.Dot(DirectionalLight.Transform.Forward, (directionalLightViewMatrix * new Vector4(Vector3.UnitY, 0)).Xyz);
+            //Debug.Log(testDot);
+
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);
 
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.CullFace(CullFaceMode.Front);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, DepthOnlyFramebuffer.FrameBufferObject);
 
-            var offset = DirectionalLight.Transform.Forward * farPlane * 0.5f;
-            var cameraPosition = camera.Transform.Position;
-            bool isUp = DirectionalLight.Transform.Forward == Vector3.UnitY || DirectionalLight.Transform.Forward == -Vector3.UnitY;
-            var lightProjectionMatrix = Matrix4.CreateOrthographic(size, size, nearPlane, farPlane);
-            var view = Matrix4.LookAt(offset, Vector3.Zero, isUp ? Vector3.UnitX : Vector3.UnitY);
+            float maxLen = MathHelper.Abs(aabb.Max.Z - aabb.Min.Z);
+            Debug.Log("far: " + maxLen);
+            var lightProjectionMatrix = Matrix4.CreateOrthographic(20, 20, 1.0f, 200);
 
-            float perSize = size * 0.015625f;
-            cameraPosition.X = MathF.Floor(cameraPosition.X / perSize) * perSize;
-            cameraPosition.Y = MathF.Floor(cameraPosition.Y / perSize) * perSize;
-            cameraPosition.Z = MathF.Floor(cameraPosition.Z / perSize) * perSize;
-            var offsetMatrix = Matrix4.CreateTranslation(-cameraPosition);
-            var ShadowMatrix = offsetMatrix * view * lightProjectionMatrix;
+            //float perSize = size * 0.015625f;
+            //cameraPosition.X = MathF.Floor(cameraPosition.X / perSize) * perSize;
+            //cameraPosition.Y = MathF.Floor(cameraPosition.Y / perSize) * perSize;
+            //cameraPosition.Z = MathF.Floor(cameraPosition.Z / perSize) * perSize;
+            var ShadowMatrix = 
+                Matrix4.CreateTranslation(-frustumCenter) 
+                * directionalLightViewMatrix 
+                * lightProjectionMatrix;
 
             GL.Clear(ClearBufferMask.DepthBufferBit);
             shader.SetMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), ShadowMatrix);

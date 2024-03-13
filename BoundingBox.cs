@@ -25,6 +25,53 @@ namespace JLGraphics
             };
         }
 
+        public static AABB GetBoundingBox(Vector3[] positions)
+        {
+            var corners = positions;
+
+            float minx = float.PositiveInfinity;
+            float miny = float.PositiveInfinity;
+            float minz = float.PositiveInfinity;
+
+            float maxx = float.NegativeInfinity;
+            float maxy = float.NegativeInfinity;
+            float maxz = float.NegativeInfinity;
+
+
+            for (int i = 0; i < corners.Length; i++)
+            {
+                if (corners[i].X < minx)
+                {
+                    minx = corners[i].X;
+                }
+                if (corners[i].Y < miny)
+                {
+                    miny = corners[i].Y;
+                }
+                if (corners[i].Z < minz)
+                {
+                    minz = corners[i].Z;
+                }
+
+                if (corners[i].X > maxx)
+                {
+                    maxx = corners[i].X;
+                }
+                if (corners[i].Y > maxy)
+                {
+                    maxy = corners[i].Y;
+                }
+                if (corners[i].Z > maxz)
+                {
+                    maxz = corners[i].Z;
+                }
+            }
+
+            var min = new Vector3(minx, miny, minz);
+            var max = new Vector3(maxx, maxy, maxz);
+
+            return new AABB() { Max = max, Min = min };
+        }
         private static bool CheckPlane(Plane plane, AABB box)
         {
             Vector3 axisVert = new();

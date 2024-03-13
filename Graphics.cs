@@ -987,7 +987,7 @@ namespace JLGraphics
             for (int i = 0; i < renderers.Count; i++)
             {
                 var aabb = renderers[i].Mesh.BoundingBox;
-                var newPoints = AABB.ApplyTransformation(aabb, renderers[i].Transform.WorldToLocalMatrix);
+                var newPoints = AABB.ApplyTransformation(aabb, renderers[i].Transform.ModelMatrix);
                 var corners = AABB.GetCorners(newPoints);
                 float[] vertices = new float[corners.Length * 3];
                 int vertIdx = 0;
@@ -1077,7 +1077,7 @@ namespace JLGraphics
                 var current = renderers[i];
                 if (doFrustumCulling)
                 {
-                    var correctedAABB = AABB.ApplyTransformation(current.Mesh.BoundingBox, current.Transform.WorldToLocalMatrix);
+                    var correctedAABB = AABB.ApplyTransformation(current.Mesh.BoundingBox, current.Transform.ModelMatrix);
                     var skip = AABB.IsOutsideOfFrustum(cameraFrustum, correctedAABB);
                     if (skip)
                     {
@@ -1120,7 +1120,7 @@ namespace JLGraphics
                     previousMaterial = material;
                 }
                 var transform = current.Entity.Transform;
-                var worlToLocalMatrix = transform.WorldToLocalMatrix;
+                var worlToLocalMatrix = transform.ModelMatrix;
                 if (useOverride)
                 {
                     //apply model matrix

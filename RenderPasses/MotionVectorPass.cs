@@ -38,9 +38,9 @@ namespace JLGraphics.RenderPasses
         Matrix4 previousViewProj;
         void OnRenderCallback(Renderer e)
         {
-            var mat = e.Transform.PreviousWorldToLocalMatrix * previousViewProj;
+            var mat = e.Transform.PreviousModelMatrix * previousViewProj;
             GL.UniformMatrix4(location, false, ref mat);
-            e.Transform.PreviousWorldToLocalMatrix = e.Transform.WorldToLocalMatrix;
+            e.Transform.PreviousModelMatrix = e.Transform.ModelMatrix;
         }
 
         public override void Execute(in FrameBuffer frameBuffer)

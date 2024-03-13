@@ -93,7 +93,7 @@ namespace JLGraphics
             }
         }
 
-        public Matrix4 WorldToLocalMatrix => GetWorldToLocalMatrix();
+        public Matrix4 ModelMatrix => GetWorldToLocalMatrix();
         
         private bool isStatic => Entity.StaticFlag == StaticFlags.StaticDraw;
         private Matrix4 bakedMatrix;
@@ -131,7 +131,7 @@ namespace JLGraphics
                 {
                     if (!isMatrixBaked)
                     {
-                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.WorldToLocalMatrix : Matrix4.Identity);
+                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.ModelMatrix : Matrix4.Identity);
                         isMatrixBaked = true;
                     }
                     return bakedMatrix;
@@ -140,7 +140,7 @@ namespace JLGraphics
                 {
                     if (HasChanged)
                     {
-                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.WorldToLocalMatrix : Matrix4.Identity);
+                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.ModelMatrix : Matrix4.Identity);
                         HasChanged = false;
                         return bakedMatrix;
                     }
@@ -149,7 +149,7 @@ namespace JLGraphics
             }
             else
             {
-                return Matrix4.CreateFromQuaternion(Rotation.Inverted()) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.WorldToLocalMatrix : Matrix4.Identity);
+                return Matrix4.CreateFromQuaternion(Rotation.Inverted()) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.ModelMatrix : Matrix4.Identity);
             }
         }
 
@@ -168,11 +168,11 @@ namespace JLGraphics
 
         public void Start()
         {
-            PreviousWorldToLocalMatrix = WorldToLocalMatrix;
+            PreviousModelMatrix = ModelMatrix;
         }
 
-        public Matrix4 LocalToWorldMatrix => Matrix4.Invert(WorldToLocalMatrix);
+        public Matrix4 InvModelMatrix => Matrix4.Invert(ModelMatrix);
 
-        internal Matrix4 PreviousWorldToLocalMatrix { get; set; }
+        internal Matrix4 PreviousModelMatrix { get; set; }
     }
 }
