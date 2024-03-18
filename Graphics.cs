@@ -1030,7 +1030,7 @@ namespace JLGraphics
         }
 
         CameraFrustum cameraFrustum = new();
-        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null)
+        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null, CameraFrustum? viewFrustum = null)
         {
             PerfTimer.Start("RenderScene");
             Mesh? previousMesh = null;
@@ -1068,8 +1068,12 @@ namespace JLGraphics
                 if (camera.FrustumCull)
                 {
                     doFrustumCulling = true;
-                    cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : cameraFrustum;
+                    this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : this.cameraFrustum;
                 }
+            }
+            if(viewFrustum != null)
+            {
+                this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? viewFrustum.Value : this.cameraFrustum;
             }
 
             for (int i = 0; i < renderers.Length; i++)
@@ -1078,7 +1082,7 @@ namespace JLGraphics
                 if (doFrustumCulling)
                 {
                     var correctedAABB = AABB.ApplyTransformation(current.Mesh.BoundingBox, current.Transform.WorldToLocalMatrix);
-                    var skip = AABB.IsOutsideOfFrustum(cameraFrustum, correctedAABB);
+                    var skip = AABB.IsOutsideOfFrustum(this.cameraFrustum, correctedAABB);
                     if (skip)
                     {
                         GraphicsDebug.FrustumCulledEntitiesCount++;
