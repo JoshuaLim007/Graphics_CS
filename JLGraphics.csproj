@@ -59,7 +59,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Assets\Meshes\Dragon.obj" />
     <None Remove="Assets\Shaders\aabbDebug.frag" />
     <None Remove="Assets\Shaders\aabbDebug.vert" />
     <None Remove="Assets\Shaders\Bloom.glsl" />
