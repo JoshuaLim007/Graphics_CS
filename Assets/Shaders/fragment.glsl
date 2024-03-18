@@ -18,7 +18,7 @@ layout(std140, binding = 3) uniform PointLightBuffer
 {
 	PointLight[MAX_POINT_LIGHTS] PointLightData;
 } PL;
-uniform samplerCube PointLightShadowMap[MAX_POINT_SHADOWS];
+uniform samplerCubeShadow PointLightShadowMap[MAX_POINT_SHADOWS];
 uniform int PointLightCount;
 
 in VS_OUT{
@@ -87,7 +87,7 @@ float DirectionalShadowOccluderSearch(vec2 startingProjectedLightSpacePos, float
 	float depthCounter = 0;
 	int samples = 0;
 	int scale = 1000;
-	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+	uvec3 scaledPos = uvec3((gl_FragCoord.x) * scale, (gl_FragCoord.y) * scale, 0);
 	float stride = 3.0f / maxSamples;
 	for (float i = -1; i <= 1; i += stride) {
 		for (float j = -1; j <= 1; j += stride) {
@@ -130,7 +130,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	//pcss
 	if (DirectionalShadowFilterMode == 2) {
 		int scale = 1000;
-		uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
+		uvec3 scaledPos = uvec3((gl_FragCoord.x) * scale, (gl_FragCoord.y) * scale, 0);
 
 		const float MaxBlurRadius = 8.0f;
 		const float MinBlurRadius = 0.5f;
@@ -186,35 +186,35 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 
 	return (percentCovered / samples) * fade;
 }
-float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube depthMap, float far_plane, vec3 normal) {
+float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCubeShadow depthMap, float farPlane, vec3 normal) {
 	// get vector between fragment position and light position
 	vec3 fragToLight = fragPos - lightPos;
 	// now get current linear depth as the length between the fragment and light position
-	float currentDepth = length(fragToLight);
+
 	// now test for shadows
 	float dot = abs(dot(normal, normalize(fragToLight)));
-	float bias = mix(.75, 0.025f, dot);
-
+	float bias = mix(0.008, 0.001, dot);
 	float shadow = 0.0;
-	int samples = 12;
-	float viewDistance = length(lightPos - fragPos);
-	float diskRadius = 0.1f;
-	const int scale = 1000;
-	uvec3 scaledPos = uvec3(abs(gl_FragCoord.x) * scale, abs(gl_FragCoord.y) * scale, 0);
-	for (int i = 0; i < samples; ++i)
+
+	float samples = 4.0;
+	float offset = 0.015;
+	for (float x = -offset; x < offset; x += offset / (samples * 0.5))
 	{
-		int iscale = i * scale + _Frame;
-		vec3 randDir = hash(uvec3(scaledPos.x, scaledPos.y, iscale));
-		randDir = normalize(randDir);
-		float closestDepth = texture(depthMap, fragToLight + randDir * diskRadius).r;
-		closestDepth *= far_plane;   // undo mapping [0;1]
-		if (currentDepth - bias > closestDepth)
-			shadow += 1.0;
+		for (float y = -offset; y < offset; y += offset / (samples * 0.5))
+		{
+			for (float z = -offset; z < offset; z += offset / (samples * 0.5))
+			{
+				vec3 dir = fragToLight + vec3(x, y, z);
+				float currentDepth = length(dir);
+				currentDepth /= farPlane;
+
+				vec4 t = vec4(normalize(dir), currentDepth - bias);
+				shadow += 1 - texture(depthMap, t).r;
+			}
+		}
 	}
-	shadow /= float(samples);
 
-
-	return shadow;
+	return shadow / float(samples * samples * samples);
 }
 
 vec4 GetAmbientColor(vec3 normal) {
@@ -370,13 +370,6 @@ void main(){
 	}
 
 	vec4 c = vec4(brdf + EmissiveColor, 0);
-	//vec4 envColor = vec4(0, 0, 0, 0);
-	//vec4 diffuseAmbientColor = GetAmbientColor(normal);
-	//vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
-	//color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
-	//vec4 sunColor = GetDirectionalLight(normal, fs_in.Normal, reflectedVector);
-	//vec4 pointLightColor = GetPointLight(CameraWorldSpacePos, fs_in.Position.xyz, normal, reflectedVector);
-	//vec4 c = color * (sunColor + pointLightColor + diffuseAmbientColor) + vec4(EmissiveColor, 0);
 
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));

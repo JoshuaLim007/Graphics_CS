@@ -33,12 +33,13 @@ namespace JLGraphics.RenderPasses
                 threshold = MathHelper.Clamp(value, 0.0f, float.MaxValue);
             }
         }
+        const int maxIteration = 11;
         public int Iterations
         {
             get => blurIterations;
             set
             {
-                blurIterations = MathHelper.Clamp(value, 2, 11);
+                blurIterations = MathHelper.Clamp(value, 2, maxIteration);
             }
         }
         public float Intensity
@@ -79,14 +80,14 @@ namespace JLGraphics.RenderPasses
             bloomPrepassShader = new Shader("Kawase Bloom Prepass", program);
 
             bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 1);
-            blurTexture = new FrameBuffer[blurIterations];
-            temporaryRt = new FrameBuffer[blurIterations];
+            blurTexture = new FrameBuffer[maxIteration];
+            temporaryRt = new FrameBuffer[maxIteration];
         }
 
         public override string Name => "Bloom Pass";
         protected override void OnDispose()
         {
-            for (int i = 0; i < blurTexture.Length; i++)
+            for (int i = 0; i < maxIteration; i++)
             {
                 blurTexture[i]?.Dispose();
                 temporaryRt[i]?.Dispose();
@@ -119,7 +120,7 @@ namespace JLGraphics.RenderPasses
                     maxMipmap = 0,
                     wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.MirroredRepeat,
                 });
-                for (int i = 0; i < blurIterations; i++)
+                for (int i = 0; i < maxIteration; i++)
                 {
                     int width = MathHelper.Clamp(res.X >> i, 1, int.MaxValue);
                     int height = MathHelper.Clamp(res.Y >> i, 1, int.MaxValue);

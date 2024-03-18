@@ -28,12 +28,13 @@ void main()
     vec4 col = max(texture(MainTex, pos), vec4(0));
 
     vec2 mv = texture(_MotionTexture, pos).rg;
-    if(abs(mv.x) < 0.01 && abs(mv.y) < 0.01){
-        FragColor = vec4(col.xyz, 1.0);
-        return;
-    }
+
+    float scalerx = smoothstep(0, 0.02f, mv.x);
+    float scalery = smoothstep(0, 0.02f, mv.y);
+    float scaler = max(scalerx, scalery);
+
     vec2 halfMv = mv * 0.5f;
-    vec2 startPos = pos - halfMv;
+    vec2 startPos = pos - halfMv * scaler;
 
     vec2 stride = mv / samples;
     pos = startPos;

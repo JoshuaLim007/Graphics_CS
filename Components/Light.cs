@@ -100,10 +100,17 @@ namespace JLGraphics
         public float AttenLinear { get; set; } = 0.05f;
         public float AttenExp { get; set; } = 0.95f;
         public float Range { get; set; } = 10.0f;
+        static int shadowCount = 0;
+        public const int MAX_SHADOWS = 8;
         public void AddShadows(int resolution = 1024)
         {
+            if(shadowCount > MAX_SHADOWS)
+            {
+                return;
+            }
             HasShadows = true;
             ShadowMapper = new PointLightShadowMap(this, resolution);
+            shadowCount++;
         }
         public override void RenderShadowMap(Camera camera)
         {
@@ -112,6 +119,7 @@ namespace JLGraphics
         }
         public void RemoveShadows()
         {
+            shadowCount--;
             HasShadows = false;
             ShadowMapper.Dispose();
             ShadowMapper = null;

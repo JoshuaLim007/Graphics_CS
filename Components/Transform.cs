@@ -122,7 +122,16 @@ namespace JLGraphics
                 hasChanged = value;
             }
         }
+        public void LookTorwards(Vector3 direction, Vector3 axis)
+        {
+            var pos = Transform.Position;
+            var forward = pos + direction * 1000;
 
+            var mat = Matrix4.LookAt(pos, forward, axis);
+            var rot = mat.ExtractRotation();
+
+            Transform.Rotation = rot;
+        }
         private Matrix4 GetWorldToLocalMatrix()
         {
             if (!IsCameraTransform)
