@@ -370,13 +370,6 @@ void main(){
 	}
 
 	vec4 c = vec4(brdf + EmissiveColor, 0);
-	//vec4 envColor = vec4(0, 0, 0, 0);
-	//vec4 diffuseAmbientColor = GetAmbientColor(normal);
-	//vec4 reflectionColor = mix(vec4(0), envColor, Smoothness);
-	//color = mix(color * vec4(AlbedoColor, 0), reflectionColor, 0.1f);
-	//vec4 sunColor = GetDirectionalLight(normal, fs_in.Normal, reflectedVector);
-	//vec4 pointLightColor = GetPointLight(CameraWorldSpacePos, fs_in.Position.xyz, normal, reflectedVector);
-	//vec4 c = color * (sunColor + pointLightColor + diffuseAmbientColor) + vec4(EmissiveColor, 0);
 
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));
