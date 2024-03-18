@@ -1030,7 +1030,7 @@ namespace JLGraphics
         }
 
         CameraFrustum cameraFrustum = new();
-        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null, CameraFrustum? viewFrustum = null)
+        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null, in CameraFrustum? viewFrustum = null)
         {
             PerfTimer.Start("RenderScene");
             Mesh? previousMesh = null;
@@ -1073,6 +1073,7 @@ namespace JLGraphics
             }
             if(viewFrustum != null)
             {
+                doFrustumCulling = true;
                 this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? viewFrustum.Value : this.cameraFrustum;
             }
 
