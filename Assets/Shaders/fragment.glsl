@@ -196,8 +196,8 @@ float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube
 	float bias = mix(0.008, 0.001, dot);
 	float shadow = 0.0;
 
-	float samples = 3.0;
-	float offset = 0.05;
+	float samples = 4.0;
+	float offset = 0.015;
 	for (float x = -offset; x < offset; x += offset / (samples * 0.5))
 	{
 		for (float y = -offset; y < offset; y += offset / (samples * 0.5))
