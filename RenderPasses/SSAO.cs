@@ -24,9 +24,11 @@ namespace JLGraphics.RenderPasses
         public int Samples = 8;
         const int maxAccum = 32;
         public bool TemporalAccumulation = false;
+        bool downSample = false;
 
-        public SSAO(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
+        public SSAO(bool downSample, int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
+            this.downSample = downSample;
             var program = new ShaderProgram("SSAO program",
                 AssetLoader.GetPathToAsset("./Shaders/SSAO.frag"),
                 AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
@@ -136,8 +138,8 @@ namespace JLGraphics.RenderPasses
                     blurRT.Dispose();
                     accumRT.Dispose();
                 }
-                var res = GetResolution(frameBuffer, 0.5f);
-                var res1 = GetResolution(frameBuffer, 1.0f);
+                var res = GetResolution(frameBuffer, downSample ? 0.5f : 1.0f);
+                var res1 = GetResolution(frameBuffer, downSample ? 0.5f : 1.0f);
                 SSAORt = CreateBuffer(res.X, res.Y);
                 blurRT = CreateBuffer(res.X, res.Y);
                 accumRT = CreateBuffer(res1.X, res1.Y);
