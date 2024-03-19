@@ -133,12 +133,12 @@ void main()
         col.xyz *= vec3(1 - dist);
     }
 
-//    vec2 pos2 = gl_FragCoord.xy / (vec2(2048, 2048)) * 5;
-//    if(pos2.x < 1 && pos2.y < 1){
-//        vec4 shadow = texture(DirectionalShadowDepthMap, pos2);
-//        FragColor = vec4( smoothstep(0.25f, 0.75f, pow(shadow.r, 1.0f)) );
-//        return;
-//    }
+    vec2 pos2 = gl_FragCoord.xy / (vec2(2048, 2048)) * 5;
+    if(pos2.x < 1 && pos2.y < 1){
+        vec4 shadow = texture(DirectionalShadowDepthMap, pos2);
+        FragColor = vec4( smoothstep(0.25f, 0.75f, pow(shadow.r, 1.0f)) );
+        return;
+    }
 
 
     FragColor = vec4(col.xyz, 1.0);

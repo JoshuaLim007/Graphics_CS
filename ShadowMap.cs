@@ -225,6 +225,8 @@ namespace JLGraphics
             light_aabb.Min.Y -= 7.5f;
             light_aabb.Max.Y += 7.5f;
 
+
+            directionalLightViewMatrix = directionalLightViewMatrix.ClearTranslation();
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
         }
@@ -253,10 +255,20 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Front);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, DepthOnlyFramebuffer.FrameBufferObject);
 
+            float worldUnitPerTexelX = light_aabb.Extents.X / Resolution;
+            float worldUnitPerTexelY = light_aabb.Extents.Y / Resolution;
+            light_aabb.Min.X = MathF.Floor(light_aabb.Min.X / worldUnitPerTexelX) * worldUnitPerTexelX;
+            light_aabb.Min.Y = MathF.Floor(light_aabb.Min.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
+
+            light_aabb.Max.X = MathF.Floor(light_aabb.Max.X / worldUnitPerTexelX) * worldUnitPerTexelX;
+            light_aabb.Max.Y = MathF.Floor(light_aabb.Max.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
+
             var lightProjectionMatrix = Matrix4.CreateOrthographic(light_aabb.Extents.X, light_aabb.Extents.Y, -500.0f, 500.0f);
+            var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 
             var ShadowMatrix =
                 directionalLightViewMatrix
+                * offsetMatrix
                 * lightProjectionMatrix;
 
             GL.Clear(ClearBufferMask.DepthBufferBit);
