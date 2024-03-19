@@ -174,5 +174,37 @@ namespace JLGraphics
 
             return new AABB() { Min = minPoint, Max = maxPoint };
         }
+    
+        public static Vector3 ClosestCorner(AABB bounds, Vector3 position)
+        {
+            Vector3 closesetCorner = Vector3.Zero;
+            var corners = AABB.GetCorners(bounds);
+            float t = float.MaxValue;
+            for (int i = 0; i < corners.Length; i++)
+            {
+                float t1 = (corners[i].Xyz - position).LengthSquared;
+                if (t1 < t)
+                {
+                    closesetCorner = corners[i].Xyz;
+                    t = t1;
+                }
+            }
+            return closesetCorner;
+        }
+        public static bool Contains(AABB bounds, Vector3 position, float padding = 0.0f)
+        {
+            if(position.X >= bounds.Min.X - padding
+                && position.Y >= bounds.Min.Y - padding
+                && position.Z >= bounds.Min.Z - padding)
+            {
+                if (position.X <= bounds.Max.X + padding
+                    && position.Y <= bounds.Max.Y + padding
+                    && position.Z <= bounds.Max.Z + padding)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

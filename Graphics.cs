@@ -67,8 +67,6 @@ namespace JLGraphics
         {
             return RenderBufferSize;
         }
-        public bool IsCursorInSceneWindow { get; private set; } = false;
-        public bool IsSceneViewFocused { get; private set; } = false;
         public bool RenderGUI { get; private set; } = false;
         public Shader DefaultMaterial { get; private set; } = null;
         internal float FixedDeltaTime { get; set; } = 0;
@@ -115,11 +113,6 @@ namespace JLGraphics
                 {
                     guiController.MouseScroll(e.Offset);
                 };
-            }
-            else
-            {
-                IsCursorInSceneWindow = true;
-                IsSceneViewFocused = true;
             }
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
@@ -296,10 +289,16 @@ namespace JLGraphics
         int frameIncrement = 0;
         List<Action> temporaryUpdateFrameCommands = new List<Action>();
         float smoothDeltaCount = 0;
+        public Action OnSceneViewGui { get; set; }
+        public Action OnInspectorGui { get; set; }
+        public Action OnHierarchyGui { get; set; }
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
             PerfTimer.Start("UpdateFrame");
-            MouseInput.UpdateMousePosition(Window.MouseState.Position);
+            
+            if(!RenderGUI)
+                MouseInput.UpdateMousePosition(Window.MouseState.Position);
+
             DeltaTime = (float)Window.RenderTime;
             smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
             SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
@@ -392,31 +391,7 @@ namespace JLGraphics
                     new System.Numerics.Vector2(cursorPos.X + MainFrameBuffer.Width, cursorPos.Y + MainFrameBuffer.Height),
                     new System.Numerics.Vector2(0, 1),
                     new System.Numerics.Vector2(1, 0));
-
-                if (Window.CursorState == CursorState.Grabbed || Window.CursorState == CursorState.Hidden)
-                {
-                    if (!ImGui.IsWindowHovered())
-                    {
-                        Window.MousePosition = new Vector2(cursorPos.X + GuiRenderSceneSize.X * 0.5f, cursorPos.Y + GuiRenderSceneSize.Y * 0.5f);
-                        MouseInput.UpdateMousePosition(Window.MouseState.Position);
-                    }
-                    IsCursorInSceneWindow = true;
-                    IsSceneViewFocused = true;
-                }
-                else
-                {
-                    IsSceneViewFocused = false;
-                }
-
-                if (ImGui.IsWindowHovered())
-                {
-                    IsCursorInSceneWindow = true;
-                }
-                else
-                {
-                    IsSceneViewFocused = false;
-                    IsCursorInSceneWindow = false;
-                }
+                OnSceneViewGui?.Invoke();
             }
             
             frameIncrement++;
@@ -966,6 +941,14 @@ namespace JLGraphics
             return final;
         }
         
+        public float GetDepthAt(int x, int y)
+        {
+            float[] results = new float[1];
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
+            GL.ReadPixels(x, y, 1, 1, PixelFormat.DepthComponent, PixelType.Float, results);
+            return results[0];
+        }
+
         Shader AABBDebugShader = null;
         public void RenderBoundingVolumes(Camera camera, FrameBuffer frameBuffer, FrameBuffer restore = null)
         {
@@ -986,6 +969,10 @@ namespace JLGraphics
             var renderers = InternalGlobalScope<Renderer>.Values;
             for (int i = 0; i < renderers.Count; i++)
             {
+                if (!renderers[i].Enabled)
+                {
+                    continue;
+                }
                 var aabb = renderers[i].Mesh.BoundingBox;
                 var newPoints = AABB.ApplyTransformation(aabb, renderers[i].Transform.ModelMatrix);
                 var corners = AABB.GetCorners(newPoints);
