@@ -17,6 +17,7 @@ namespace JLGraphics.Utility
     {
         Graphics graphics;
         public List<Entity> ObjectsSelected { get; private set; } = new List<Entity>();
+        
         public SceneViewManager(GuiManager guiManager, Graphics graphics)
         {
             this.graphics = graphics;
@@ -31,23 +32,8 @@ namespace JLGraphics.Utility
         }
         void OnRender()
         {
-            //handle scene view mouse input
-            var pos = graphics.Window.MousePosition;
-            if (graphics.Window.IsMouseButtonPressed(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Right))
-            {
-                MouseInput.UpdateMousePosition(pos);
-            }
-            if (graphics.Window.IsMouseButtonDown(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Right)) {
-                MouseInput.UpdateMousePosition(pos);
-            }
-            else
-            {
-                if (graphics.Window.IsMouseButtonReleased(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Right))
-                {
-                    MouseInput.UpdateMousePosition(pos);
-                    MouseInput.UpdateMousePosition(pos);
-                }
-            }
+
+
         }
         public Entity FindEntityClosestTo(Vector3 position)
         {

@@ -280,6 +280,7 @@ namespace JLGraphics
         float smoothDeltaCount = 0;
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
+            MouseInput.UpdateMousePosition(Window.MouseState.Position);
             PerfTimer.Start("UpdateFrame");
             
             DeltaTime = (float)Window.RenderTime;

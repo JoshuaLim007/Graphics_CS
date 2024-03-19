@@ -38,6 +38,17 @@ namespace JLGraphics.Utility
             PreviousWindowSize = window.Size;
             Graphics.Instance.BlitFinalResultsToScreen = false;
         }
+        public enum Windows
+        {
+            SceneView,
+            Hierarchy,
+            Inspector,
+            Console,
+            None,
+        }
+
+        public static Windows CurrentWindow { get; private set; } = Windows.None;
+
         Vector2i PreviousWindowSize;
         Vector2i GuiRenderSceneSize;
         public void Update(FrameEventArgs fileSystemEventArgs)
@@ -51,6 +62,12 @@ namespace JLGraphics.Utility
             ImGui.DockSpaceOverViewport();
             ImGui.ShowDebugLogWindow();
             ImGui.ShowMetricsWindow();
+
+            if (!ImGui.IsAnyItemFocused())
+            {
+                CurrentWindow = Windows.None;
+            }
+
 
             if(PreviousWindowSize != Window.Size)
             {
@@ -66,6 +83,7 @@ namespace JLGraphics.Utility
         bool resized = false;
         void RenderSceneView()
         {
+            CurrentWindow = Windows.SceneView;
             ImGui.Begin("Scene Window");
             var pos = ImGui.GetCursorPos();
             var size = ImGui.GetWindowSize();
@@ -82,7 +100,6 @@ namespace JLGraphics.Utility
                     Graphics.Instance.ResizeRenderSize((int)GuiRenderSceneSize.X, (int)GuiRenderSceneSize.Y);
                 resized = true;
             }
-
             var cursorPos = ImGui.GetCursorScreenPos();
             var MainFrameBuffer = Graphics.Instance.FinalRenderTarget;
             ImGui.GetWindowDrawList().AddImage(
@@ -93,6 +110,16 @@ namespace JLGraphics.Utility
                 new System.Numerics.Vector2(1, 0));
             OnSceneViewGui?.Invoke();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+            if (ImGui.IsWindowFocused())
+            {
+                CurrentWindow = Windows.SceneView;
+            }
+            else
+            {
+                CurrentWindow = Windows.None;
+            }
+
             ImGui.End();
         }
     }
