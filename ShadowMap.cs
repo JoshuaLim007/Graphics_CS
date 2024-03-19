@@ -1,6 +1,7 @@
 ﻿using JLUtility;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
+using Quaternion = OpenTK.Mathematics.Quaternion;
 
 namespace JLGraphics
 {
@@ -193,6 +194,43 @@ namespace JLGraphics
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
         }
+
+        AABB CalculateShadowFrustum(Vector3 LightDirection, Quaternion CameraRotation, Vector3 CameraPosition, float CameraFOV, float aspect, out Matrix4 LightViewMatrix)
+        {
+            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(CameraFOV), aspect, 0.1f, 100.0f);
+            var invView = (Matrix4.CreateTranslation(-CameraPosition) * Matrix4.CreateFromQuaternion(CameraRotation)).Inverted();
+
+            //get frustum corners in world space
+            var corners = CameraFrustum.GetCorners(proj.Inverted() * invView);
+
+            //world space aabb
+            var aabb = AABB.GetBoundingBox(corners);
+            var world_center = aabb.Center;
+            LightDirection = -LightDirection;
+            bool isUp = LightDirection == Vector3.UnitY ? true : false;
+            var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, isUp ? Vector3.UnitY : Vector3.UnitZ);
+            var directionalLightViewMatrix = Matrix4.CreateTranslation(-world_center) * direction;
+
+            var aabb_corners = AABB.GetCorners(aabb);
+            Vector3[] aabb_corners_light = new Vector3[aabb_corners.Length];
+            //aabb corners in light view space
+            for (int i = 0; i < aabb_corners.Length; i++)
+            {
+                aabb_corners_light[i] = (directionalLightViewMatrix * aabb_corners[i]).Xyz;
+            }
+
+            var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
+            
+            //add some padding
+            light_aabb.Min.X -= 5;
+            light_aabb.Max.X += 5;
+            light_aabb.Min.Y -= 5;
+            light_aabb.Max.Y += 5;
+
+            LightViewMatrix = directionalLightViewMatrix;
+            return light_aabb;
+        }
+
         public override void RenderShadowMap(Camera camera)
         {
 #if DEBUG
@@ -203,73 +241,13 @@ namespace JLGraphics
             }
 #endif
             CalculateSamplingKernals();
-
-            var cameraPosition = camera.Transform.Position;
-            bool isUp = DirectionalLight.Transform.Forward == Vector3.UnitY || DirectionalLight.Transform.Forward == -Vector3.UnitY;
-
-            //var directionalLightViewMatrix = Matrix4.CreateFromQuaternion(DirectionalLight.Transform.Rotation);
-            var directionalLightViewMatrix = Matrix4.LookAt(Vector3.Zero, -DirectionalLight.Transform.Forward, isUp ? Vector3.UnitZ : Vector3.UnitY);
-            //var directionalLightViewMatrix = Matrix4.CreateFromQuaternion(Quaternion.FromEulerAngles(90,0,0));
-            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(camera.Fov), camera.Width / camera.Height, 0.1f, shadowRange);
-            var invView = (Matrix4.CreateTranslation(-camera.Transform.Position) *  Matrix4.CreateFromQuaternion(camera.Transform.Rotation)).Inverted();
-
-            //get frustum corners in world space
-            var corners = CameraFrustum.GetCorners(proj.Inverted() * invView);
-
-            var lightSpaceCorners = new Vector3[corners.Length];
-            //get frustum corners in light space
-            for (int i = 0; i < corners.Length; i++)
-            {
-                lightSpaceCorners[i] = (new Vector4(corners[i], 1.0f) * directionalLightViewMatrix).Xyz;
-            }
-
-            //get bounding box in light space
-            var aabb = AABB.GetBoundingBox(lightSpaceCorners);
-
-            //get light position in world space
-            var minBot = new Vector3(aabb.Min.X, aabb.Min.Y, aabb.Min.Z);
-            var minTop = new Vector3(aabb.Max.X, aabb.Max.Y, aabb.Min.Z);
-            var lightPositionInLightSpace = (minTop + minBot) / 2.0f;
-            var lightPositionInWorldSpace = (new Vector4(lightPositionInLightSpace, 1.0f) * directionalLightViewMatrix.Inverted()).Xyz;
-
-
-            //get new light space matrix
-            var directionalLightViewMatrixPosition = Matrix4.CreateTranslation(-lightPositionInWorldSpace) * directionalLightViewMatrix;
-
-            //get frustum cornes in light space with translation
-            var lightSpaceCornersWithTranslation = new Vector3[corners.Length];
-            for (int i = 0; i < corners.Length; i++)
-            {
-                lightSpaceCornersWithTranslation[i] = (new Vector4(corners[i], 1.0f) * directionalLightViewMatrixPosition).Xyz;
-            }
-
-            //get final aabb
-            var finalAABB = AABB.GetBoundingBox(lightSpaceCornersWithTranslation);
-
-            float xEx = finalAABB.Extents.X - shadowRange * 2.0f;
-            float yEx = finalAABB.Extents.Y - shadowRange * 2.0f;
-            if(xEx < 0)
-            {
-                finalAABB.Max.X += -xEx;
-                finalAABB.Min.X -= -xEx;
-            }                          
-            if(yEx < 0)                
-            {                          
-                finalAABB.Max.Y += -yEx;
-                finalAABB.Min.Y -= -yEx;
-            }
-            finalAABB.Max.Z = MathHelper.Max(finalAABB.Max.Z, 1000.0f);
-
-            //var newCorners = AABB.GetCorners(finalAABB);
-            //Vector3[] newCorners3 = new Vector3[newCorners.Length];
-            //for (int i = 0; i < newCorners.Length; i++)
-            //{
-            //    newCorners3[i] = (newCorners[i] * directionalLightViewMatrixPosition.Inverted()).Xyz;
-            //}
-            //Vector3 offsetCenter = AABB.GetBoundingBox()
-
-            var camOffset = (new Vector4(finalAABB.Center, 0.0f) * directionalLightViewMatrixPosition).Xyz;
-            var finalWorldCenter = cameraPosition + camOffset;
+            var light_aabb = CalculateShadowFrustum(
+                DirectionalLight.Transform.Forward, 
+                camera.Transform.Rotation, 
+                camera.Transform.Position, 
+                camera.Fov, 
+                camera.Width / camera.Height, 
+                out var directionalLightViewMatrix);
 
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);
 
@@ -277,11 +255,10 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Front);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, DepthOnlyFramebuffer.FrameBufferObject);
 
-            var lightProjectionMatrix = Matrix4.CreateOrthographic(finalAABB.Extents.X, finalAABB.Extents.Y, finalAABB.Min.Z + 0.1f, finalAABB.Max.Z + 0.1f);
+            var lightProjectionMatrix = Matrix4.CreateOrthographic(light_aabb.Extents.X, light_aabb.Extents.Y, light_aabb.Min.Z, light_aabb.Max.Z);
 
             var ShadowMatrix =
-                Matrix4.CreateTranslation(-finalWorldCenter)
-                * directionalLightViewMatrix
+                directionalLightViewMatrix
                 * lightProjectionMatrix;
 
             GL.Clear(ClearBufferMask.DepthBufferBit);

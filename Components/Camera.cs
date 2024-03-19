@@ -43,7 +43,6 @@ namespace JLGraphics
                 Vector4 temp = new Vector4(corners[i].X, corners[i].Y, corners[i].Z, 1);
                 temp = temp * mat;
                 temp /= temp.W;
-                temp.Z *= -1;
                 corners[i] = temp.Xyz;
             }
 

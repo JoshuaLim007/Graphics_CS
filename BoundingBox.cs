@@ -15,7 +15,7 @@ namespace JLGraphics
         public Vector3 Extents { 
             get{
                 var cent = Center;
-                return new Vector3(Max.X - cent.X, Max.Y - cent.Y, Max.Z - cent.Z);
+                return new Vector3(Max.X - Min.X, Max.Y - Min.Y, Max.Z - Min.Z);
             } 
         }
         public static int[] GetIndices()
