@@ -230,7 +230,7 @@ namespace JLGraphics
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
         }
-
+        Quaternion previousCamRotation;
         public override void RenderShadowMap(Camera camera)
         {
 #if DEBUG
@@ -240,11 +240,22 @@ namespace JLGraphics
                 filterMode = (FilterMode)((int)filterMode % 3);
             }
 #endif
+
+            var CameraPosition = camera.Transform.Position;
+            CameraPosition.X = MathF.Floor(CameraPosition.X * 0.5f) * 2.0f;
+            CameraPosition.Y = MathF.Floor(CameraPosition.Y * 0.5f) * 2.0f;
+            CameraPosition.Z = MathF.Floor(CameraPosition.Z * 0.5f) * 2.0f;
+
+            if((camera.Transform.Rotation - previousCamRotation).Length > 0.025f)
+            {
+                previousCamRotation = camera.Transform.Rotation;
+            }
+
             CalculateSamplingKernals();
             var light_aabb = CalculateShadowFrustum(
-                DirectionalLight.Transform.Forward, 
-                camera.Transform.Rotation, 
-                camera.Transform.Position, 
+                DirectionalLight.Transform.Forward,
+                previousCamRotation,
+                CameraPosition, 
                 camera.Fov, 
                 camera.Width / camera.Height, 
                 out var directionalLightViewMatrix);
