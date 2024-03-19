@@ -142,7 +142,7 @@ namespace JLGraphics
         }
         public DirectionalShadowMap(DirectionalLight directionalLight, float ShadowRange = 100.0f, int resolution = 2048) : base(resolution)
         {
-            this.shadowRange = ShadowRange;
+            this.shadowRange = ShadowRange > 1000.0f ? 1000.0f : (ShadowRange < 16 ? 16 : ShadowRange);
             ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader",
                 AssetLoader.GetPathToAsset("./Shaders/fragmentEmpty.glsl"),
                 AssetLoader.GetPathToAsset("./Shaders/vertexSimple.glsl"));
@@ -264,7 +264,7 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Front);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, DepthOnlyFramebuffer.FrameBufferObject);
 
-            var lightProjectionMatrix = Matrix4.CreateOrthographic(light_aabb.Extents.X, light_aabb.Extents.Y, light_aabb.Min.Z, light_aabb.Max.Z);
+            var lightProjectionMatrix = Matrix4.CreateOrthographic(light_aabb.Extents.X, light_aabb.Extents.Y, -500.0f, 500.0f);
 
             var ShadowMatrix =
                 directionalLightViewMatrix
