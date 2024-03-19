@@ -135,8 +135,8 @@ namespace JLGraphics
         public bool FrustumCull { get; set; } = true;
 
         public float Fov { get; set; } = 90;
-        public int Width => Graphics.Instance.GetRenderWindowSize().X;
-        public int Height => Graphics.Instance.GetRenderWindowSize().Y;
+        public int Width => Graphics.Instance.GetRenderSize().X;
+        public int Height => Graphics.Instance.GetRenderSize().Y;
         public float Near { get; set; } = 0.03f;
         public float Far { get; set; } = 1000.0f;
         public float Size { get; set; } = 100;

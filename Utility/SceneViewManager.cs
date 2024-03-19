@@ -17,11 +17,11 @@ namespace JLGraphics.Utility
     {
         Graphics graphics;
         public List<Entity> ObjectsSelected { get; private set; } = new List<Entity>();
-        public SceneViewManager(Graphics graphics)
+        public SceneViewManager(GuiManager guiManager, Graphics graphics)
         {
             this.graphics = graphics;
 
-            this.graphics.OnSceneViewGui += () =>
+            guiManager.OnSceneViewGui += () =>
             {
                 OnRender();
                 if (graphics.Window.IsMouseButtonPressed(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Button1)){
@@ -85,7 +85,7 @@ namespace JLGraphics.Utility
             Vector2 pos;
             pos = graphics.Window.MousePosition - new Vector2(windowPos.X, windowPos.Y);
 
-            var res = graphics.GetRenderWindowSize();
+            var res = graphics.GetRenderSize();
             pos.Y = res.Y - pos.Y;
 
             var uv = pos / res;

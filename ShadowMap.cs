@@ -246,7 +246,7 @@ namespace JLGraphics
                 camera.Transform.Rotation,
                 camera.Transform.Position, 
                 camera.Fov, 
-                camera.Width / camera.Height, 
+                camera.Width / (float)camera.Height, 
                 out var directionalLightViewMatrix);
 
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);

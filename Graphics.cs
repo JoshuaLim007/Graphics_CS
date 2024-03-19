@@ -60,10 +60,11 @@ namespace JLGraphics
         {
         }
 
+        public bool BlitFinalResultsToScreen { get; set; } = true;
         public const int MAXPOINTLIGHTS = 128;
         public GameWindow Window { get; private set; } = null;
         private Vector2i RenderBufferSize { get; set; }
-        public Vector2i GetRenderWindowSize()
+        public Vector2i GetRenderSize()
         {
             return RenderBufferSize;
         }
@@ -73,12 +74,11 @@ namespace JLGraphics
         internal float DeltaTime { get; private set; } = 0;
         internal float SmoothDeltaTime { get; private set; } = 0;
         internal float ElapsedTime { get; private set; } = 0;
-        public bool DisableRendering { get; set; } = false;
 
         private bool m_isInit = false;
         private List<Entity> AllInstancedObjects => InternalGlobalScope<Entity>.Values;
         private List<Camera> AllCameras => InternalGlobalScope<Camera>.Values;
-        public Vector2i OutputResolution => new Vector2i((int)(GetRenderWindowSize().X * RenderScale), (int)(GetRenderWindowSize().Y * RenderScale));
+        public Vector2i OutputResolution => new Vector2i((int)(GetRenderSize().X * RenderScale), (int)(GetRenderSize().Y * RenderScale));
         FileTracker fileTracker;
         public bool GetFileTracker(out FileTracker fileTracker)
         {
@@ -102,18 +102,10 @@ namespace JLGraphics
             Window = new GameWindow(m_gameWindowSettings, m_nativeWindowSettings);
             RenderBufferSize = Window.Size;
             Window.VSync = 0;
-            Window.Resize += Resize;
-            if (RenderGUI)
-            {
-                guiController = new ImGuiController(Window.Size.X, Window.Size.Y);
-                Window.TextInput += (e) => {
-                    guiController.PressChar((char)e.Unicode);
-                };
-                Window.MouseWheel += (e) =>
-                {
-                    guiController.MouseScroll(e.Offset);
-                };
-            }
+            Window.Resize += (e) => { 
+                Resize(e); 
+                Window.Size = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
+            };
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
             GL.Enable(EnableCap.Dither);
@@ -133,7 +125,6 @@ namespace JLGraphics
         float previousRenderScale = 1.0f;
         public GraphicsDebug GraphicsDebug;
         public float RenderScale { get; set; } = 1.0f;
-        ImGuiController guiController;
         void InitFramebuffers() {
 
             if (MainFrameBuffer != null)
@@ -158,14 +149,14 @@ namespace JLGraphics
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.R32f,
             };
-            var windowSize = GetRenderWindowSize();
+            var windowSize = GetRenderSize();
             MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings);
             MainFrameBuffer.SetName("Main frame buffer");
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettings);
             DepthTextureBuffer.SetName("Depth texture buffer");
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
         }
-        public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency, bool renderDebugGui)
+        public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
             m_isInit = true;
             previousRenderScale = RenderScale;
@@ -185,7 +176,6 @@ namespace JLGraphics
 
             m_nativeWindowSettings.API = ContextAPI.OpenGL;
             m_nativeWindowSettings.APIVersion = Version.Parse("4.1");
-            RenderGUI = renderDebugGui;
 
             InitWindow(0, m_gameWindowSettings, m_nativeWindowSettings);
 
@@ -246,8 +236,7 @@ namespace JLGraphics
             {
                 Debug.Log("Graphics is not initialized!", Debug.Flag.Error);
             }
-            if(RenderGUI)
-                guiController.Dispose();
+
             temporaryUpdateFrameCommands.Clear();
             SkyboxDepthPrepassShader.Program.Dispose();
             SkyboxShader.Program.Dispose();
@@ -289,16 +278,10 @@ namespace JLGraphics
         int frameIncrement = 0;
         List<Action> temporaryUpdateFrameCommands = new List<Action>();
         float smoothDeltaCount = 0;
-        public Action OnSceneViewGui { get; set; }
-        public Action OnInspectorGui { get; set; }
-        public Action OnHierarchyGui { get; set; }
         private void UpdateFrame(FrameEventArgs eventArgs)
         {
             PerfTimer.Start("UpdateFrame");
             
-            if(!RenderGUI)
-                MouseInput.UpdateMousePosition(Window.MouseState.Position);
-
             DeltaTime = (float)Window.RenderTime;
             smoothDeltaCount = MathF.Min(++smoothDeltaCount, 60);
             SmoothDeltaTime = SmoothDeltaTime * (1.0f - 1.0f / smoothDeltaCount) + DeltaTime * (1.0f / smoothDeltaCount);
@@ -312,14 +295,6 @@ namespace JLGraphics
                     temporaryUpdateFrameCommands[i].Invoke();
                 }
                 temporaryUpdateFrameCommands.Clear();
-            }
-
-            if (RenderGUI)
-            {
-                guiController.Update(Window, Time.DeltaTime);
-                ImGui.DockSpaceOverViewport();
-                ImGui.ShowDebugLogWindow();
-                ImGui.ShowMetricsWindow();
             }
 
             InvokeNewStarts();
@@ -372,27 +347,6 @@ namespace JLGraphics
             PerfTimer.Start("UpdateFrame::RenderScaleChange");
             RenderScaleChange(RenderScale);
             PerfTimer.Stop();
-
-            if (RenderGUI)
-            {
-                ImGui.Begin("Scene Window");
-                var pos = ImGui.GetCursorPos();
-                var size = ImGui.GetWindowSize();
-                RenderBufferSize = new Vector2i((int)size.X, (int)size.Y);
-                if(GuiRenderSceneSize.X != RenderBufferSize.X || GuiRenderSceneSize.Y != RenderBufferSize.Y)
-                {
-                    GuiRenderSceneSize = RenderBufferSize;
-                    InitFramebuffers();
-                }
-                var cursorPos = ImGui.GetCursorScreenPos();
-                ImGui.GetWindowDrawList().AddImage(
-                    (IntPtr)(MainFrameBuffer.TextureAttachments[0].GlTextureID),
-                    new System.Numerics.Vector2(cursorPos.X, cursorPos.Y),
-                    new System.Numerics.Vector2(cursorPos.X + MainFrameBuffer.Width, cursorPos.Y + MainFrameBuffer.Height),
-                    new System.Numerics.Vector2(0, 1),
-                    new System.Numerics.Vector2(1, 0));
-                OnSceneViewGui?.Invoke();
-            }
             
             frameIncrement++;
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("_Frame"), frameIncrement);
@@ -401,15 +355,10 @@ namespace JLGraphics
             DoRenderUpdate();
             PerfTimer.Stop();
 
-            if (RenderGUI)
-            {
-                ImGui.End();
-                guiController.Render();
-            }
-
             Renderer.NewRendererAdded = false;
             PerfTimer.Start("UpdateFrame::SwapBuffers");
-            Window.SwapBuffers();
+            if(BlitFinalResultsToScreen)
+                Window.SwapBuffers();
             PerfTimer.Stop();
             DestructorCommands.Instance.ExecuteCommands();
             PerfTimer.Stop();
@@ -417,27 +366,11 @@ namespace JLGraphics
         }
         private bool WindowResized = false;
         private Vector2i WindowResizeResults;
-        private Vector2i GuiRenderSceneSize = new Vector2i(0,0);
         private void Resize(ResizeEventArgs args)
         {
-            if(args.Width == Window.Size.X && args.Height == Window.Size.X)
+            if (args.Width == WindowResizeResults.X && args.Height == WindowResizeResults.X)
             {
                 return;
-            }
-            void DoResize()
-            {
-                Debug.Log("Window resized: " + WindowResizeResults);
-                Window.Size = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
-                
-                if(RenderGUI)
-                    guiController.WindowResized(WindowResizeResults.X, WindowResizeResults.Y);
-                else
-                    RenderBufferSize = Window.Size;
-
-                WindowResized = false;
-
-                InitFramebuffers();
-                GL.Viewport(0, 0, WindowResizeResults.X, WindowResizeResults.Y);
             }
             WindowResizeResults = new Vector2i(args.Width, args.Height);
             if (!WindowResized)
@@ -445,9 +378,23 @@ namespace JLGraphics
                 temporaryUpdateFrameCommands.Add(DoResize);
                 WindowResized = true;
             }
+
+            void DoResize()
+            {
+                Debug.Log("Window resized: " + WindowResizeResults);
+                RenderBufferSize = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
+                WindowResized = false;
+
+                InitFramebuffers();
+                GL.Viewport(0, 0, WindowResizeResults.X, WindowResizeResults.Y);
+            }
+        }
+        public void ResizeRenderSize(int width, int height)
+        {
+            Resize(new ResizeEventArgs(width, height));
         }
 
-        private bool WindowScaleChanged = false;
+        private bool RenderScaleChanged = false;
         private void RenderScaleChange(float newScale)
         {
             RenderScale = MathHelper.Clamp(newScale, 0.1f, 2.0f);
@@ -461,13 +408,13 @@ namespace JLGraphics
             {
                 Debug.Log("Render Scale Update: " + RenderScale);
                 InitFramebuffers();
-                WindowScaleChanged = false;
+                RenderScaleChanged = false;
             }
 
-            if (!WindowScaleChanged)
+            if (!RenderScaleChanged)
             {
                 temporaryUpdateFrameCommands.Add(DoRenderScaleChange);
-                WindowScaleChanged = true;
+                RenderScaleChanged = true;
             }
         }
         private void InvokeNewStarts()
@@ -541,8 +488,12 @@ namespace JLGraphics
         public Shader DepthPrepassShader { get; private set; } = null;
         public Shader SkyboxShader { get; private set; } = null;
         Shader SkyboxDepthPrepassShader;
+        
         FrameBuffer MainFrameBuffer = null;
         FrameBuffer DepthTextureBuffer = null;
+
+        public FrameBuffer FinalRenderTarget => MainFrameBuffer;
+
         internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
         {
             StartBlitUnsafe(shader);
@@ -581,7 +532,7 @@ namespace JLGraphics
             }
 
             // second pass
-            var renderWindowSize = GetRenderWindowSize();
+            var renderWindowSize = GetRenderSize();
             int width = dst != null ? dst.Width : renderWindowSize.X;
             int height = dst != null ? dst.Height : renderWindowSize.Y;
             int fbo = dst != null ? dst.FrameBufferObject : 0;
@@ -682,7 +633,7 @@ namespace JLGraphics
 
             renderPasses.Sort();
 
-            for (int cameraIndex = 0; cameraIndex < AllCameras.Count && !DisableRendering; cameraIndex++)
+            for (int cameraIndex = 0; cameraIndex < AllCameras.Count; cameraIndex++)
             {
                 SetupLights(AllCameras[cameraIndex]);
 
@@ -729,9 +680,11 @@ namespace JLGraphics
                     RenderBoundingVolumes(AllCameras[cameraIndex], MainFrameBuffer);
                 }
 
-                //blit render buffer to screen
-                if (!RenderGUI)
+                if (BlitFinalResultsToScreen)
+                {
+                    //blit render buffer to screen
                     Blit(MainFrameBuffer, null, false, null);
+                }
 
                 //frame cleanup
                 for (int i = 0; i < renderPasses.Count; i++)
@@ -739,13 +692,6 @@ namespace JLGraphics
                     renderPasses[i].FrameCleanup();
                 }
             }
-
-            if (RenderGUI)
-            {
-                GL.Viewport(0, 0, Window.Size.X, Window.Size.Y);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            }
-
         }
 
         private PointLightSSBO[] pointLightSSBOs = new PointLightSSBO[MAXPOINTLIGHTS];
