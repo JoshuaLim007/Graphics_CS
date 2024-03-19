@@ -32,7 +32,7 @@ namespace JLGraphics
             PCSS = 2,
         }
         public FrameBuffer DepthOnlyFramebuffer { get; private set; }
-        float nearPlane, farPlane, shadowRange;
+        float shadowRange;
         DirectionalLight DirectionalLight;
         Vector2 texelSize;
         
@@ -140,7 +140,7 @@ namespace JLGraphics
                 Shader.SetGlobalVector2(prop, kernals[i]);
             }
         }
-        public DirectionalShadowMap(DirectionalLight directionalLight, float ShadowRange = 100.0f, float nearPlane = 1.0f, float farPlane = 1000.0f, int resolution = 2048) : base(resolution)
+        public DirectionalShadowMap(DirectionalLight directionalLight, float ShadowRange = 100.0f, int resolution = 2048) : base(resolution)
         {
             this.shadowRange = ShadowRange;
             ShaderProgram shaderProgram = new ShaderProgram("Directional Shadow Shader",
@@ -165,8 +165,6 @@ namespace JLGraphics
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
             this.DirectionalLight = directionalLight;
-            this.nearPlane = nearPlane;
-            this.farPlane = farPlane;
 
             CalculateSamplingKernals();
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);
@@ -197,7 +195,7 @@ namespace JLGraphics
 
         AABB CalculateShadowFrustum(Vector3 LightDirection, Quaternion CameraRotation, Vector3 CameraPosition, float CameraFOV, float aspect, out Matrix4 LightViewMatrix)
         {
-            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(CameraFOV), aspect, 0.1f, 100.0f);
+            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(CameraFOV), aspect, 0.1f, shadowRange);
             var invView = (Matrix4.CreateTranslation(-CameraPosition) * Matrix4.CreateFromQuaternion(CameraRotation)).Inverted();
 
             //get frustum corners in world space
@@ -282,7 +280,7 @@ namespace JLGraphics
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowFilterMode"), (int)filterMode);
             Shader.SetGlobalBool(Shader.GetShaderPropertyId("HasDirectionalShadow"), true);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
-            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), shadowRange);
+            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), shadowRange * 1.5f);
         }
     }
 
