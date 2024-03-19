@@ -220,15 +220,14 @@ namespace JLGraphics
             var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
             
             //add some padding
-            light_aabb.Min.X -= 5;
-            light_aabb.Max.X += 5;
-            light_aabb.Min.Y -= 5;
-            light_aabb.Max.Y += 5;
+            light_aabb.Min.X -= 10;
+            light_aabb.Max.X += 10;
+            light_aabb.Min.Y -= 10;
+            light_aabb.Max.Y += 10;
 
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
         }
-        Quaternion previousCamRotation;
         public override void RenderShadowMap(Camera camera)
         {
 #if DEBUG
@@ -239,21 +238,11 @@ namespace JLGraphics
             }
 #endif
 
-            var CameraPosition = camera.Transform.Position;
-            CameraPosition.X = MathF.Floor(CameraPosition.X * 0.5f) * 2.0f;
-            CameraPosition.Y = MathF.Floor(CameraPosition.Y * 0.5f) * 2.0f;
-            CameraPosition.Z = MathF.Floor(CameraPosition.Z * 0.5f) * 2.0f;
-
-            if((camera.Transform.Rotation - previousCamRotation).Length > 0.025f)
-            {
-                previousCamRotation = camera.Transform.Rotation;
-            }
-
             CalculateSamplingKernals();
             var light_aabb = CalculateShadowFrustum(
                 DirectionalLight.Transform.Forward,
-                previousCamRotation,
-                CameraPosition, 
+                camera.Transform.Rotation,
+                camera.Transform.Position, 
                 camera.Fov, 
                 camera.Width / camera.Height, 
                 out var directionalLightViewMatrix);
@@ -280,7 +269,7 @@ namespace JLGraphics
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowFilterMode"), (int)filterMode);
             Shader.SetGlobalBool(Shader.GetShaderPropertyId("HasDirectionalShadow"), true);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), DepthOnlyFramebuffer.TextureAttachments[0]);
-            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), shadowRange * 1.5f);
+            Shader.SetGlobalFloat(Shader.GetShaderPropertyId("DirectionalShadowRange"), shadowRange);
         }
     }
 
