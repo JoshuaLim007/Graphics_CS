@@ -92,7 +92,7 @@ namespace JLGraphics
             {
                 timer = 0;
                 skip = false;
-                Console.WriteLine("--------------------------");
+                JLUtility.Debug.Log("--------------------------");
             }
             for (int i = 0; i < watchers.Count; i++)
             {
@@ -109,7 +109,7 @@ namespace JLGraphics
                 {
                     float time = (float)(watchers[i].totalMs / watchers[i].samples);
                     float calls = (float)(watchers[i].calls / watchers[i].samples);
-                    Console.WriteLine(calls + " " + watchers[i].name + ": " + time + "ms");
+                    JLUtility.Debug.Log(calls + " " + watchers[i].name + ": " + time + "ms");
                 }
                 watchers[i].Reset();
             }
