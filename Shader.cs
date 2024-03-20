@@ -454,6 +454,11 @@ namespace JLGraphics
             for (int i = 0; i < m_uniformValues.Count; i++)
             {
                 var current = m_uniformValues[i];
+                //if uniform is nowhere to be seen, ignore processing it
+                if(current.uniformLocation == int.MinValue)
+                {
+                    continue;
+                }
 
                 //if the uniform value is a default value but we have a global uniform with same name skip it
                 if (m_uniformValuesDefaultFlag[i] && mIsGlobalUniform(current.propertyId))
@@ -462,14 +467,19 @@ namespace JLGraphics
                 }
 
                 var type = current.UniformType;
+
+                //this should happen once per shader load
                 if(current.uniformLocation == -1)
                 {
                     var temp = current;
                     temp.uniformLocation = Program.GetUniformLocation(current.propertyId);
 
-                    //check if uniform exists, if it doesnt, skip
+                    //even after fetching uniform location, if it doesn't exist, remove it
+                    //this is a slow proces but it should happen only once
                     if(temp.uniformLocation < 0)
                     {
+                        //mark as totally not found
+                        temp.uniformLocation = int.MinValue;
                         continue;
                     }
                     m_uniformValues[i] = temp;
