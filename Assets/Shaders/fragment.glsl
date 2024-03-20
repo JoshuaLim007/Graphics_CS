@@ -319,7 +319,7 @@ void main(){
 	vec3 diffuse = color.xyz / PI;
 
 	float roughness = 1 - Smoothness;
-	vec3 baseRef = mix(vec3(0.01), color.xyz, Metalness);
+	vec3 baseRef = mix(vec3(0.01), diffuse.xyz, Metalness);
 
 	//BRDF
 	vec3 h = halfVector(viewVector, DirectionalLight.Direction);
