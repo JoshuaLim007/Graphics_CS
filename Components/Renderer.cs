@@ -13,6 +13,20 @@ namespace JLGraphics
         static internal bool NewRendererAdded { get; set; } = false;
         public Shader Material { get; set; } = null;
         public Mesh Mesh { get; set; } = null;
+
+        AABB previousBounds;
+        Matrix4 previousModelMatrix;
+        public AABB GetWorldBounds()
+        {
+            if(previousModelMatrix == Transform.ModelMatrix)
+            {
+                return previousBounds;
+            }
+
+            previousModelMatrix = Transform.ModelMatrix;
+            previousBounds = AABB.ApplyTransformation(Mesh.BoundingBox, previousModelMatrix);
+            return previousBounds;
+        }
         public Renderer()
         {
             InternalGlobalScope<Renderer>.Values.Add(this);
@@ -30,6 +44,7 @@ namespace JLGraphics
         }
         public void Start()
         {
+            previousModelMatrix = Matrix4.Zero;
             NewRendererAdded = true;
         }
     }

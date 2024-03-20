@@ -1016,7 +1016,7 @@ namespace JLGraphics
                 var current = renderers[i];
                 if (doFrustumCulling)
                 {
-                    var correctedAABB = AABB.ApplyTransformation(current.Mesh.BoundingBox, current.Transform.ModelMatrix);
+                    var correctedAABB = current.GetWorldBounds();
                     var skip = AABB.IsOutsideOfFrustum(cameraFrustum, correctedAABB);
                     if (skip)
                     {
