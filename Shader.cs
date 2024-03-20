@@ -12,6 +12,7 @@ using static JLGraphics.Shader;
 using System.Data;
 using System.ComponentModel.DataAnnotations;
 using Assimp;
+using ImGuiNET;
 
 namespace JLGraphics
 {
@@ -409,6 +410,13 @@ namespace JLGraphics
                     {
                         continue;
                     }
+
+                    //check if the uniform location actually exists in compiled shader
+                    if(Program.GetUniformLocation(name) == -1)
+                    {
+                        continue;
+                    }
+
                     SetDefaultValue(type, name);
                 }
             }
@@ -463,6 +471,8 @@ namespace JLGraphics
                 //if the uniform value is a default value but we have a global uniform with same name skip it
                 if (m_uniformValuesDefaultFlag[i] && mIsGlobalUniform(current.propertyId))
                 {
+                    current.uniformLocation = int.MinValue;
+                    m_uniformValues[i] = current;
                     continue;
                 }
 
@@ -471,19 +481,18 @@ namespace JLGraphics
                 //this should happen once per shader load
                 if(current.uniformLocation == -1)
                 {
-                    var temp = current;
-                    temp.uniformLocation = Program.GetUniformLocation(current.propertyId);
+                    current.uniformLocation = Program.GetUniformLocation(current.propertyId);
 
                     //even after fetching uniform location, if it doesn't exist, remove it
                     //this is a slow proces but it should happen only once
-                    if(temp.uniformLocation < 0)
+                    if(current.uniformLocation < 0)
                     {
                         //mark as totally not found
-                        temp.uniformLocation = int.MinValue;
+                        current.uniformLocation = int.MinValue;
+                        m_uniformValues[i] = current;
                         continue;
                     }
-                    m_uniformValues[i] = temp;
-                    current = temp;
+                    m_uniformValues[i] = current;
                 }
 
                 if (checkIfPreviousUniformUpdatePushed(current))
