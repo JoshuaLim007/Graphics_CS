@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using JLGraphics.Utility.GuiAttributes;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,7 +54,8 @@ namespace JLGraphics
             temp1.Z = temp.Z;
             return temp1.Normalized();  
         }
-
+        
+        [Gui("Position")]
         Vector3 pos = Vector3.Zero;
         public Vector3 Position {
             get
@@ -66,7 +68,7 @@ namespace JLGraphics
                 pos = value;
             }
         }
-
+        [Gui("Rotation")]
         Quaternion rot = Quaternion.Identity;
         public Quaternion Rotation {
             get
@@ -79,7 +81,7 @@ namespace JLGraphics
                 rot = value;
             } 
         }
-
+        [Gui("Scale")]
         Vector3 scale = Vector3.One;
         public Vector3 Scale { 
             get
@@ -99,7 +101,7 @@ namespace JLGraphics
         private Matrix4 bakedMatrix;
         private bool isMatrixBaked = false;
 
-        bool hasChanged = true;
+        internal bool hasChanged = true;
         public bool HasChanged {
             get { 
                 if(Parent != null)

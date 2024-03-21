@@ -25,8 +25,12 @@ namespace JLGraphics.Utility
             guiManager.OnSceneViewGui += () =>
             {
                 OnRender();
-                if (graphics.Window.IsMouseButtonPressed(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Button1)){
-                    SceneObjectSelection();
+                if (ImGui.IsWindowFocused())
+                {
+                    if (graphics.Window.IsMouseButtonPressed(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Button1))
+                    {
+                        SceneObjectSelection();
+                    }
                 }
             };
         }
@@ -75,7 +79,10 @@ namespace JLGraphics.Utility
             pos.Y = res.Y - pos.Y;
 
             var uv = pos / res;
-
+            if(uv.X < 0 || uv.Y < 0 || uv.X > 1 || uv.X > 1)
+            {
+                return;
+            }
             float depth = graphics.GetDepthAt((int)pos.X, (int)pos.Y);
             Vector4 t = new Vector4(uv.X * 2 - 1, uv.Y * 2 - 1, depth * 2 - 1, 1);
             var vp = Camera.Main.ViewMatrix * Camera.Main.ProjectionMatrix;
@@ -88,6 +95,7 @@ namespace JLGraphics.Utility
             var entity = FindEntityClosestTo(target_pos);
             if(entity == null)
             {
+                ObjectsSelected.Clear();
                 return;
             }
             ObjectsSelected.Clear();

@@ -76,6 +76,8 @@ namespace JLGraphics.Utility
             }
 
             RenderSceneView();
+            RenderInspectorView();
+
             guiController.Render();
             Window.SwapBuffers();
         }
@@ -120,6 +122,13 @@ namespace JLGraphics.Utility
                 CurrentWindow = Windows.None;
             }
 
+            ImGui.End();
+        }
+    
+        void RenderInspectorView()
+        {
+            ImGui.Begin("Inspector Window");
+            OnInspectorGui?.Invoke();
             ImGui.End();
         }
     }

@@ -108,7 +108,10 @@ namespace JLGraphics
             Init(parent, position, rotation, scale);
         }
 
-
+        public Component[] GetAllComponents()
+        {
+            return m_components.ToArray();
+        }
         public List<T> GetComponents<T>() where T : Component
         {
             List<T> list = new List<T>();
