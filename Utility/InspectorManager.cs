@@ -33,6 +33,7 @@ namespace JLGraphics.Utility
             {
                 string name = objects[i].Name;
                 ImGui.InputText(" Entity Name", ref name, 256);
+                objects[i].Name = name;
                 ImGui.Separator();
 
                 var components = objects[i].GetAllComponents();
