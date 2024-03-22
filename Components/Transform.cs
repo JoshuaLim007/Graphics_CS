@@ -53,7 +53,7 @@ namespace JLGraphics
 
         public bool IsCameraTransform { get; internal set; } = false;
 
-        public Vector3 Forward => CalculateLocalAxis(Vector4.UnitZ);
+        public Vector3 Forward => CalculateLocalAxis(-Vector4.UnitZ);
         public Vector3 Right => CalculateLocalAxis(Vector4.UnitX);
         public Vector3 Up => CalculateLocalAxis(Vector4.UnitY);
 
@@ -65,7 +65,7 @@ namespace JLGraphics
             {
                 tempRot = LocalRotation.Inverted();
             }
-            var temp = Matrix4.CreateFromQuaternion(tempRot) * Matrix4.CreateScale(1,1,-1) * direction;
+            var temp = Matrix4.CreateFromQuaternion(tempRot) * direction;
             temp1.X = temp.X;
             temp1.Y = temp.Y;
             temp1.Z = temp.Z;
