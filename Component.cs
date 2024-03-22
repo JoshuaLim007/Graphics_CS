@@ -35,6 +35,7 @@ namespace JLGraphics
                 return entity;
             } 
         }
+        public virtual void OnGuiChange() { }
         public Transform Transform => Entity.Transform;
         /// <summary>
         /// Enabled/Disables component

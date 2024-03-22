@@ -143,8 +143,8 @@ namespace JLGraphics
         public static Camera Main { get; set; } = null;
         public Matrix4 ViewMatrix =>
             (Transform.Parent != null ? Transform.Parent.ModelMatrix.Inverted() : Matrix4.Identity) *
-            Matrix4.CreateTranslation(-Transform.Position) * 
-            Matrix4.CreateFromQuaternion(Transform.Rotation);
+            Matrix4.CreateTranslation(-Transform.LocalPosition) * 
+            Matrix4.CreateFromQuaternion(Transform.LocalRotation);
 
         public Matrix4 ProjectionMatrix => calculateProjectionMatrix();
 

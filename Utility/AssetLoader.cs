@@ -49,25 +49,25 @@ namespace JLUtility
                     renderer.Material = materialPool[currentMesh.MaterialIndex];
                 }
                 node.Transform.Decompose(out Vector3D scaling, out Assimp.Quaternion rot, out Vector3D position);
-                entity.Transform.Position = new Vector3(position.X, position.Y, position.Z);
-                entity.Transform.Scale = new Vector3(scaling.X, scaling.Y, scaling.Z);
-                entity.Transform.Rotation = new OpenTK.Mathematics.Quaternion(rot.X, rot.Y, rot.Z, rot.W);
+                entity.Transform.LocalPosition = new Vector3(position.X, position.Y, position.Z);
+                entity.Transform.LocalScale = new Vector3(scaling.X, scaling.Y, scaling.Z);
+                entity.Transform.LocalRotation = new OpenTK.Mathematics.Quaternion(rot.X, rot.Y, rot.Z, rot.W);
             }
             else
             {
                 node.Transform.Decompose(out Vector3D scaling, out Assimp.Quaternion rot, out Vector3D position);
-                entity.Transform.Position = new Vector3(position.X, position.Y, position.Z);
-                entity.Transform.Scale = new Vector3(scaling.X, scaling.Y, scaling.Z);
-                entity.Transform.Rotation = new OpenTK.Mathematics.Quaternion(rot.X, rot.Y, rot.Z, rot.W);
+                entity.Transform.LocalPosition = new Vector3(position.X, position.Y, position.Z);
+                entity.Transform.LocalScale = new Vector3(scaling.X, scaling.Y, scaling.Z);
+                entity.Transform.LocalRotation = new OpenTK.Mathematics.Quaternion(rot.X, rot.Y, rot.Z, rot.W);
 
                 for (int i = 0; i < node.MeshCount; i++)
                 {
                     var currentMesh = scene.Meshes[node.MeshIndices[i]];
                     var newEntity = Entity.Create(currentMesh.Name);
                     newEntity.AddComponent<Renderer>(out var renderer);
-                    newEntity.Transform.Position = Vector3.Zero;
-                    newEntity.Transform.Scale = Vector3.One;
-                    newEntity.Transform.Rotation = OpenTK.Mathematics.Quaternion.Identity;
+                    newEntity.Transform.LocalPosition = Vector3.Zero;
+                    newEntity.Transform.LocalScale = Vector3.One;
+                    newEntity.Transform.LocalRotation = OpenTK.Mathematics.Quaternion.Identity;
                     entities.Add(newEntity);
                     var meshData = GenerateGLMeshData(currentMesh);
                     renderer.Mesh = new Mesh(meshData, path);

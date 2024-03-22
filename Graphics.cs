@@ -476,7 +476,7 @@ namespace JLGraphics
             var vp = camera.ViewMatrix * camera.ProjectionMatrix;
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("InvProjectionViewMatrix"), vp.Inverted());
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), vp);
-            Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraWorldSpacePos"), camera.Transform.Position);
+            Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraWorldSpacePos"), camera.Transform.LocalPosition);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("CameraDirection"), camera.Transform.Forward);
             Shader.SetGlobalVector4(Shader.GetShaderPropertyId("CameraParams"), new Vector4(camera.Fov, camera.Width / camera.Height, camera.Near, camera.Far));
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("RenderSize"), new Vector2(camera.Width * RenderScale, camera.Height * RenderScale));
@@ -616,7 +616,7 @@ namespace JLGraphics
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, BasicCube.EBO);
             GL.BindVertexArray(BasicCube.VAO);
             var mat = overrideShader == null ? SkyboxShader : overrideShader;
-            mat.SetMat4(Shader.GetShaderPropertyId("ModelMatrix"), Matrix4.CreateTranslation(camera.Transform.Position));
+            mat.SetMat4(Shader.GetShaderPropertyId("ModelMatrix"), Matrix4.CreateTranslation(camera.Transform.LocalPosition));
             mat.AttachShaderForRendering();
             GL.CullFace(CullFaceMode.Front);
             GL.DrawElements(PrimitiveType.Triangles, BasicCube.IndiciesCount, DrawElementsType.UnsignedInt, 0);
@@ -743,8 +743,8 @@ namespace JLGraphics
             //render closer point lights first
             pointLights.Sort((a, b) =>
             {
-                var distance0 = (a.Item1.Transform.Position - camera.Transform.Position).LengthSquared;
-                var distance1 = (b.Item1.Transform.Position - camera.Transform.Position).LengthSquared;
+                var distance0 = (a.Item1.Transform.LocalPosition - camera.Transform.LocalPosition).LengthSquared;
+                var distance1 = (b.Item1.Transform.LocalPosition - camera.Transform.LocalPosition).LengthSquared;
                 if(distance0 < distance1)
                 {
                     return -1;
@@ -759,7 +759,7 @@ namespace JLGraphics
                 PointLight pointLight = pointLights[i].Item1;
                 unsafe
                 {
-                    pointLightSSBOs[i].Position = new Vector4(pointLight.Transform.Position, 0);
+                    pointLightSSBOs[i].Position = new Vector4(pointLight.Transform.LocalPosition, 0);
                     pointLightSSBOs[i].Color = new Vector4(pointLight.Color, 0);
                     pointLightSSBOs[i].Constant = pointLight.AttenConstant;
                     pointLightSSBOs[i].Linear = pointLight.AttenLinear;

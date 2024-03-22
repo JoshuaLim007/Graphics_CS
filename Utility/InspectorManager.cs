@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using JLGraphics.Utility.GuiAttributes;
+using JLUtility;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Quaternion = OpenTK.Mathematics.Quaternion;
 using Vector3 = OpenTK.Mathematics.Vector3;
 
@@ -26,6 +28,7 @@ namespace JLGraphics.Utility
         public void Update()
         {
             var objects = sceneViewManager.ObjectsSelected;
+
             for (int i = 0; i < objects.Count; i++)
             {
                 string name = objects[i].Name;
@@ -53,23 +56,26 @@ namespace JLGraphics.Utility
                 var attribute = field.GetCustomAttribute<GuiAttribute>();
                 if (attribute != null)
                 {
-                    var name = attribute.Label.Trim().Length != 0 ? attribute.Label : field.Name;
                     var value = field.GetValue(component);
-                    var newValue = HandleType(name, field.FieldType, value);
-                    field.SetValue(component, newValue);
-
-                    if (newValue != value && type == typeof(Transform)) {
-                        var t = (Transform)component;
-                        t.hasChanged = true;
+                    var newValue = HandleType(attribute, field.Name, field.FieldType, value);
+                    if(newValue != value)
+                    {
+                        field.SetValue(component, newValue);
+                        component.OnGuiChange();
                     }
                 }
             }
             ImGui.Dummy(new System.Numerics.Vector2(0, 3));
         }
-        private object HandleType(string name, Type type, object value)
+        private object HandleType(GuiAttribute attribute, string fallbackName, Type type, object value)
         {
+            var name = attribute.Label.Trim().Length != 0 ? attribute.Label : fallbackName;
             ImGui.Text(name + ": ");
             ImGui.PushID(name);
+            if (attribute.ReadOnly)
+            {
+                ImGui.BeginDisabled();
+            }
             if(type == typeof(Vector3))
             {
                 value = RenderVector3(value);
@@ -94,13 +100,17 @@ namespace JLGraphics.Utility
             {
 
             }
+            if (attribute.ReadOnly)
+            {
+                ImGui.EndDisabled();
+            }
             return value;
         }
         private Vector3 RenderVector3(object vector3)
         {
             var v3 = (Vector3)vector3;
             System.Numerics.Vector3 val = new System.Numerics.Vector3(v3.X, v3.Y, v3.Z);
-            ImGui.InputFloat3("", ref val);
+            ImGui.DragFloat3("", ref val, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
             v3.X = val.X;
             v3.Y = val.Y;
             v3.Z = val.Z;
@@ -114,7 +124,7 @@ namespace JLGraphics.Utility
                 MathHelper.RadiansToDegrees(eular.Y),
                 MathHelper.RadiansToDegrees(eular.Z));
 
-            ImGui.InputFloat3("", ref val);
+            ImGui.DragFloat3("", ref val, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
 
             eular.X = MathHelper.DegreesToRadians(val.X);
             eular.Y = MathHelper.DegreesToRadians(val.Y);

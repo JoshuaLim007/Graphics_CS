@@ -243,8 +243,8 @@ namespace JLGraphics
             CalculateSamplingKernals();
             var light_aabb = CalculateShadowFrustum(
                 DirectionalLight.Transform.Forward,
-                camera.Transform.Rotation,
-                camera.Transform.Position, 
+                camera.Transform.LocalRotation,
+                camera.Transform.LocalPosition, 
                 camera.Fov, 
                 camera.Width / (float)camera.Height, 
                 out var directionalLightViewMatrix);
@@ -362,7 +362,7 @@ namespace JLGraphics
             float near = 1.0f;
             float far = FarPlane;
             var proj =  Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(90.0f), aspect, near, far);
-            var lightPos = point.Transform.Position;
+            var lightPos = point.Transform.LocalPosition;
             Matrix4[] shadowTransforms = new Matrix4[6];
             shadowTransforms[0] = Matrix4.LookAt(lightPos, lightPos + new Vector3(1.0f, 0.0f, 0.0f), new Vector3(0.0f, -1.0f, 0.0f)) * proj;
             shadowTransforms[1] = Matrix4.LookAt(lightPos, lightPos + new Vector3(-1.0f, 0.0f, 0.0f), new Vector3(0.0f, -1.0f, 0.0f)) * proj;

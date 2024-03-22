@@ -18,6 +18,7 @@ namespace JLGraphics
             }
             set
             {
+                UpdateChildChangeFlag(this, true);
                 if (value != null)
                 {
                     m_parent = value;
@@ -30,6 +31,22 @@ namespace JLGraphics
                 }
             }
         }
+
+        static internal void UpdateChildChangeFlag(Transform child, bool value)
+        {
+            child.hasChanged = value;
+            for (int i = 0; i < child.m_children.Count; i++)
+            {
+                UpdateChildChangeFlag(child.m_children[i], value);
+            }
+        }
+        public override void OnGuiChange()
+        {
+            LocalPosition = pos;
+            LocalRotation = rot;
+            LocalScale = scale;
+        }
+
         public Transform[] Childs => m_children.ToArray();
 
         private List<Transform> m_children { get; } = new List<Transform>();
@@ -43,10 +60,10 @@ namespace JLGraphics
         private Vector3 CalculateLocalAxis(Vector4 direction)
         {
             var temp1 = Vector3.Zero;
-            var tempRot = Rotation;
+            var tempRot = LocalRotation;
             if (!IsCameraTransform)
             {
-                tempRot = Rotation.Inverted();
+                tempRot = LocalRotation.Inverted();
             }
             var temp = Matrix4.CreateFromQuaternion(tempRot) * direction;
             temp1.X = temp.X;
@@ -54,44 +71,57 @@ namespace JLGraphics
             temp1.Z = temp.Z;
             return temp1.Normalized();  
         }
-        
+
+        [Gui("World Position", true)]
+        Vector3 worldPos = Vector3.Zero;
+        [Gui("World Rotation", true)]
+        Quaternion worldRot = Quaternion.Identity;
+        [Gui("World Scale", true)]
+        Vector3 worldScale = Vector3.Zero;
+
+
         [Gui("Position")]
         Vector3 pos = Vector3.Zero;
-        public Vector3 Position {
+        public Vector3 LocalPosition {
             get
             {
                 return pos;
             }
             set
             {
-                HasChanged = true;
+                UpdateChildChangeFlag(this, true);
                 pos = value;
+                worldPos = ModelMatrix.ExtractTranslation();
             }
         }
+
         [Gui("Rotation")]
         Quaternion rot = Quaternion.Identity;
-        public Quaternion Rotation {
+        public Quaternion LocalRotation {
             get
             {
                 return rot;
             }
             set
             {
-                HasChanged = true;
+                UpdateChildChangeFlag(this, true);
                 rot = value;
-            } 
+                worldRot = ModelMatrix.ExtractRotation();
+            }
         }
+
         [Gui("Scale")]
         Vector3 scale = Vector3.One;
-        public Vector3 Scale { 
+        public Vector3 LocalScale { 
             get
             {
                 return scale;
             }
             set
             {
-                HasChanged = true;
+                UpdateChildChangeFlag(this, true);
                 scale = value;
+                worldScale = ModelMatrix.ExtractScale();
             }
         }
 
@@ -99,68 +129,45 @@ namespace JLGraphics
         
         private bool isStatic => Entity.StaticFlag == StaticFlags.StaticDraw;
         private Matrix4 bakedMatrix;
-        private bool isMatrixBaked = false;
 
         internal bool hasChanged = true;
-        public bool HasChanged {
-            get { 
-                if(Parent != null)
-                {
-                    return Parent.HasChanged | hasChanged;
-                }
-                return hasChanged;
-            }
-            set {
-                if(value == true)
-                {
-                    hasChanged = value;
-                    return;
-                }
-
-                if(Parent != null)
-                {
-                    Parent.HasChanged = false;
-                }
-                hasChanged = value;
-            }
-        }
         public void LookTorwards(Vector3 direction, Vector3 axis)
         {
-            var pos = Transform.Position;
+            var pos = Transform.LocalPosition;
             var forward = pos + direction * 1000;
 
             var mat = Matrix4.LookAt(pos, forward, axis);
             var rot = mat.ExtractRotation();
 
-            Transform.Rotation = rot;
+            Transform.LocalRotation = rot;
         }
+        
         private Matrix4 GetWorldToLocalMatrix()
         {
             if (!IsCameraTransform)
             {
                 if (isStatic)
                 {
-                    if (!isMatrixBaked)
-                    {
-                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.ModelMatrix : Matrix4.Identity);
-                        isMatrixBaked = true;
-                    }
-                    return bakedMatrix;
+                    hasChanged = false;
                 }
-                else
+                if (hasChanged)
                 {
-                    if (HasChanged)
-                    {
-                        bakedMatrix = Matrix4.CreateScale(Scale) * Matrix4.CreateFromQuaternion(Rotation) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.ModelMatrix : Matrix4.Identity);
-                        HasChanged = false;
-                        return bakedMatrix;
-                    }
+                    if(Parent != null)
+                        bakedMatrix = Matrix4.CreateScale(LocalScale) * Matrix4.CreateFromQuaternion(LocalRotation) * Matrix4.CreateTranslation(LocalPosition) * Parent.ModelMatrix;
+                    else
+                        bakedMatrix = Matrix4.CreateScale(LocalScale) * Matrix4.CreateFromQuaternion(LocalRotation) * Matrix4.CreateTranslation(LocalPosition);
+
+                    hasChanged = false;
                     return bakedMatrix;
                 }
+                return bakedMatrix;
             }
             else
             {
-                return Matrix4.CreateFromQuaternion(Rotation.Inverted()) * Matrix4.CreateTranslation(Position) * (Parent != null ? Parent.ModelMatrix : Matrix4.Identity);
+                if (Parent != null)
+                    return Matrix4.CreateFromQuaternion(LocalRotation.Inverted()) * Matrix4.CreateTranslation(LocalPosition) * Parent.ModelMatrix;
+                else
+                    return Matrix4.CreateFromQuaternion(LocalRotation.Inverted()) * Matrix4.CreateTranslation(LocalPosition);
             }
         }
 
@@ -172,9 +179,9 @@ namespace JLGraphics
         protected override void OnCreate(params object[] args)
         {
             Parent = (Transform)args[0];
-            Position = (Vector3)args[1];
-            Rotation = (Quaternion)args[2];
-            Scale = (Vector3)args[3];
+            LocalPosition = (Vector3)args[1];
+            LocalRotation = (Quaternion)args[2];
+            LocalScale = (Vector3)args[3];
         }
 
         public void Start()

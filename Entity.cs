@@ -169,9 +169,9 @@ namespace JLGraphics
             newEntity.StaticFlag = entity.StaticFlag;
             newEntity.Enabled = entity.Enabled;
             newEntity.Parent = parent;
-            newEntity.Transform.Position = entity.Transform.Position;
-            newEntity.Transform.Rotation = entity.Transform.Rotation;
-            newEntity.Transform.Scale = entity.Transform.Scale;
+            newEntity.Transform.LocalPosition = entity.Transform.LocalPosition;
+            newEntity.Transform.LocalRotation = entity.Transform.LocalRotation;
+            newEntity.Transform.LocalScale = entity.Transform.LocalScale;
 
             for (int i = 0; i < entity.m_components.Count; i++)
             {
