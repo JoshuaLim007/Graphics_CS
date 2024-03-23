@@ -24,6 +24,8 @@ namespace JLGraphics.RenderPasses
         {
             Queue = (int)queue + queueOffset;
         }
+        public static Camera CurrentCamera => CurrentRenderingCamera;
+        internal static Camera CurrentRenderingCamera;
         public int Queue { get; set; }
         public virtual void FrameSetup() { }
         public abstract void Execute(in FrameBuffer frameBuffer);

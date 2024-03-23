@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace JLGraphics.Utility.GuiAttributes
 {
-    [AttributeUsage(AttributeTargets.Field)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class GuiAttribute : Attribute
     {
         public string Label { get; set; }
@@ -19,6 +19,18 @@ namespace JLGraphics.Utility.GuiAttributes
         {
             ReadOnly = readOnly;
             Label = GuiLabel;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    public class GuiSlider : Attribute
+    {
+        public float min { get; }
+        public float max { get; }
+        public GuiSlider(float min, float max)
+        {
+            this.min = min;
+            this.max = max;
         }
     }
 }

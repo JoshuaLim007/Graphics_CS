@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using JLGraphics.Utility.GuiAttributes;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,37 @@ namespace JLGraphics
         static internal bool NewRendererAdded { get; set; } = false;
         public Shader Material { get; set; } = null;
         public Mesh Mesh { get; set; } = null;
+
+        float s = 0.5f;
+        [Gui("Smoothness")]
+        [GuiSlider(0, 1)]
+        float smoothness { 
+            get {
+                return s;
+            } 
+            set {
+                value = MathHelper.Clamp(value, 0, 1);
+                s = value;
+                Material?.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Smoothness), s);
+            }
+        }
+
+        float m = 0.0f;
+        [Gui("Metalness")]
+        [GuiSlider(0, 1)]
+        float metalness
+        {
+            get
+            {
+                return m;
+            }
+            set
+            {
+                value = MathHelper.Clamp(value, 0, 1);
+                m = value;
+                Material?.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Metalness), m);
+            }
+        }
 
         AABB previousBounds;
         Matrix4 previousModelMatrix;

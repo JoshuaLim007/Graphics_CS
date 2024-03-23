@@ -1,17 +1,12 @@
-﻿using ImGuiNET;
-using JLGraphics.Input;
+﻿using JLGraphics.Input;
 using JLGraphics.RenderPasses;
 using JLUtility;
-using OpenTK.Graphics.Egl;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
 using StbImageSharp;
 using StbiSharp;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using Debug = JLUtility.Debug;
 
 namespace JLGraphics
@@ -636,6 +631,7 @@ namespace JLGraphics
 
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count; cameraIndex++)
             {
+                RenderPass.CurrentRenderingCamera = AllCameras[cameraIndex];
                 SetupLights(AllCameras[cameraIndex]);
 
                 for (int i = 0; i < renderPasses.Count; i++)
@@ -678,7 +674,7 @@ namespace JLGraphics
 
                 if (GraphicsDebug.DrawAABB)
                 {
-                    RenderBoundingVolumes(AllCameras[cameraIndex], MainFrameBuffer);
+                    RenderBoundingBoxes(AllCameras[cameraIndex], MainFrameBuffer);
                 }
 
                 if (BlitFinalResultsToScreen)
@@ -897,22 +893,9 @@ namespace JLGraphics
         }
 
         Shader AABBDebugShader = null;
-        public void RenderBoundingVolumes(Camera camera, FrameBuffer frameBuffer, FrameBuffer restore = null)
+        public void RenderBoundingBoxes(Camera camera, FrameBuffer frameBuffer, FrameBuffer restore = null)
         {
-            if(AABBDebugShader == null)
-            {
-                var program = new ShaderProgram("Gizmo", AssetLoader.GetPathToAsset("./Shaders/aabbDebug.frag"), AssetLoader.GetPathToAsset("./Shaders/aabbDebug.vert"));
-                program.CompileProgram();
-                AABBDebugShader = new Shader("Gizmo", program);
-                AABBDebugShader.DepthTest = false;
-            }
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBuffer.FrameBufferObject);
-            SetShaderCameraData(camera);
-            AABBDebugShader.SetVector4(Shader.GetShaderPropertyId("color"), new Vector4(1,0,1,1));
-            AABBDebugShader.AttachShaderForRendering();
-            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
-            GL.Disable(EnableCap.CullFace);
-            GL.LineWidth(1);
             var renderers = InternalGlobalScope<Renderer>.Values;
             for (int i = 0; i < renderers.Count; i++)
             {
@@ -920,47 +903,66 @@ namespace JLGraphics
                 {
                     continue;
                 }
-                var aabb = renderers[i].Mesh.BoundingBox;
-                var newPoints = AABB.ApplyTransformation(aabb, renderers[i].Transform.ModelMatrix);
-                var corners = AABB.GetCorners(newPoints);
-                float[] vertices = new float[corners.Length * 3];
-                int vertIdx = 0;
-                for (int j = 0; j < vertices.Length; j += 3)
-                {
-                    vertices[j] = corners[vertIdx].X;
-                    vertices[j+1] = corners[vertIdx].Y;
-                    vertices[j+2] = corners[vertIdx].Z;
-                    vertIdx++;
-                }
-
-                var indices = AABB.GetIndices();
-                int vbo = GL.GenBuffer();
-                int eab = GL.GenBuffer();
-                int vao = GL.GenVertexArray();
-                GL.BindVertexArray(vao);
-
-                GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
-                GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
-                GL.EnableVertexAttribArray(0);
-                GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
-
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, eab);
-                GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(int), indices, BufferUsageHint.StaticDraw);
-
-                GL.DrawElements(BeginMode.TriangleStrip, indices.Length, DrawElementsType.UnsignedInt, 0);
-
-                GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-                GL.BindVertexArray(0);
-                GL.DeleteBuffer(vbo);
-                GL.DeleteBuffer(eab);
-                GL.DeleteVertexArray(vao);
+                RenderBounginBox(camera, renderers[i]);
             }
-            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
-            GL.Enable(EnableCap.CullFace);
             if (restore != null)
             {
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, restore.FrameBufferObject);
             }
+        }
+
+        public void RenderBounginBox(Camera camera, Renderer renderer)
+        {
+            if (AABBDebugShader == null)
+            {
+                var program = new ShaderProgram("Gizmo", AssetLoader.GetPathToAsset("./Shaders/aabbDebug.frag"), AssetLoader.GetPathToAsset("./Shaders/aabbDebug.vert"));
+                program.CompileProgram();
+                AABBDebugShader = new Shader("Gizmo", program);
+                AABBDebugShader.DepthTest = false;
+            }
+            SetShaderCameraData(camera);
+            AABBDebugShader.SetVector4(Shader.GetShaderPropertyId("color"), new Vector4(1, 0, 1, 1));
+            AABBDebugShader.AttachShaderForRendering();
+            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
+            GL.Disable(EnableCap.CullFace);
+            GL.LineWidth(1);
+
+            var aabb = renderer.GetWorldBounds();
+            var corners = AABB.GetCorners(aabb);
+            float[] vertices = new float[corners.Length * 3];
+            int vertIdx = 0;
+            for (int j = 0; j < vertices.Length; j += 3)
+            {
+                vertices[j] = corners[vertIdx].X;
+                vertices[j + 1] = corners[vertIdx].Y;
+                vertices[j + 2] = corners[vertIdx].Z;
+                vertIdx++;
+            }
+
+            var indices = AABB.GetIndices();
+            int vbo = GL.GenBuffer();
+            int eab = GL.GenBuffer();
+            int vao = GL.GenVertexArray();
+            GL.BindVertexArray(vao);
+
+            GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
+            GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
+            GL.EnableVertexAttribArray(0);
+            GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
+
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, eab);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(int), indices, BufferUsageHint.StaticDraw);
+
+            GL.DrawElements(BeginMode.TriangleStrip, indices.Length, DrawElementsType.UnsignedInt, 0);
+
+            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            GL.BindVertexArray(0);
+            GL.DeleteBuffer(vbo);
+            GL.DeleteBuffer(eab);
+            GL.DeleteVertexArray(vao);
+
+            GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+            GL.Enable(EnableCap.CullFace);
         }
 
         CameraFrustum cameraFrustum = new();

@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using JLGraphics.Input;
+using JLGraphics.RenderPasses;
 using JLUtility;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
@@ -17,7 +18,31 @@ namespace JLGraphics.Utility
     {
         Graphics graphics;
         public List<Entity> ObjectsSelected { get; private set; } = new List<Entity>();
-        
+        ObjectHighlight objectHighlight = new ObjectHighlight();
+        public class ObjectHighlight : RenderPass
+        {
+            public ObjectHighlight() : base(RenderQueue.AfterPostProcessing, 0)
+            {
+            }
+
+            public override string Name => "Selected Object Highlighting";
+            public List<Entity> ToHighlight { get; set; }
+            public override void Execute(in FrameBuffer frameBuffer)
+            {
+                if(ToHighlight == null)
+                {
+                    return;
+                }
+                for (int i = 0; i < ToHighlight.Count; i++)
+                {
+                    Graphics.Instance.RenderBounginBox(CurrentCamera, ToHighlight[i].GetComponent<Renderer>());
+                }
+            }
+
+            protected override void OnDispose()
+            {
+            }
+        }
         public SceneViewManager(GuiManager guiManager, Graphics graphics)
         {
             this.graphics = graphics;
@@ -33,6 +58,7 @@ namespace JLGraphics.Utility
                     }
                 }
             };
+            graphics.EnqueueRenderPass(objectHighlight);
         }
         void OnRender()
         {
@@ -100,6 +126,7 @@ namespace JLGraphics.Utility
             }
             ObjectsSelected.Clear();
             ObjectsSelected.Add(entity);
+            objectHighlight.ToHighlight = ObjectsSelected;
         }
 
     }

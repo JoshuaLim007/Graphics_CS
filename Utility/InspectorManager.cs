@@ -1,6 +1,7 @@
 ﻿using ImGuiNET;
 using JLGraphics.Utility.GuiAttributes;
 using JLUtility;
+using Microsoft.VisualBasic;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -48,17 +49,19 @@ namespace JLGraphics.Utility
         private void RenderComponent(Component component)
         {
             Type type = component.GetType();
-            FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             ImGui.Separator();
             ImGui.Text(type.Name);
             ImGui.Dummy(new System.Numerics.Vector2(0, 3));
+
+            //handle fields
+            FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             foreach (var field in fields)
             {
                 var attribute = field.GetCustomAttribute<GuiAttribute>();
                 if (attribute != null)
                 {
                     var value = field.GetValue(component);
-                    var newValue = HandleType(attribute, field.Name, field.FieldType, value);
+                    var newValue = HandleType(field, attribute, field.Name, field.FieldType, value);
                     if(newValue != value)
                     {
                         field.SetValue(component, newValue);
@@ -66,13 +69,41 @@ namespace JLGraphics.Utility
                     }
                 }
             }
+
+            //handle properties
+            PropertyInfo[] properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            foreach (var property in properties)
+            {
+                var attribute = property.GetCustomAttribute<GuiAttribute>();
+                if (attribute != null)
+                {
+                    var value = property.GetValue(component);
+                    var newValue = HandleType(property, attribute, property.Name, property.PropertyType, value);
+                    if (newValue != value)
+                    {
+                        property.SetValue(component, newValue);
+                        component.OnGuiChange();
+                    }
+                }
+            }
             ImGui.Dummy(new System.Numerics.Vector2(0, 3));
         }
-        private object HandleType(GuiAttribute attribute, string fallbackName, Type type, object value)
+        
+        bool RenderAsSlider = false;
+        float SliderMin;
+        float SliderMax;
+        private object HandleType(MemberInfo memberInfo, GuiAttribute attribute, string fallbackName, Type type, object value)
         {
             var name = attribute.Label.Trim().Length != 0 ? attribute.Label : fallbackName;
             ImGui.Text(name + ": ");
             ImGui.PushID(name);
+            var sliderInfo = memberInfo.GetCustomAttribute<GuiSlider>();
+            if(sliderInfo != null)
+            {
+                SliderMin = sliderInfo.min;
+                SliderMax = sliderInfo.max;
+                RenderAsSlider = true;
+            }
             if (attribute.ReadOnly)
             {
                 ImGui.BeginDisabled();
@@ -87,31 +118,65 @@ namespace JLGraphics.Utility
             }
             else if(type == typeof(float))
             {
-
+                value = RenderFloat(value);
             }
             else if (type == typeof(int))
             {
-
+                value = RenderInt(value);
             }
             else if (type == typeof(bool))
             {
-
+                value = RenderBool(value);
             }
             else if (type == typeof(string))
             {
-
+                value = RenderString(value);
             }
             if (attribute.ReadOnly)
             {
                 ImGui.EndDisabled();
             }
+            RenderAsSlider = false;
             return value;
+        }
+        private bool RenderBool(object value)
+        {
+            var str = (bool)value;
+            ImGui.Checkbox("", ref str);
+            return str;
+        }
+        private float RenderInt(object value)
+        {
+            var str = (int)value;
+            if (RenderAsSlider)
+                ImGui.SliderInt("", ref str, (int)SliderMin, (int)SliderMax);
+            else
+                ImGui.DragInt("", ref str, 1.0f);
+            return str;
+        }
+        private float RenderFloat(object value)
+        {
+            var str = (float)value;
+            if(!RenderAsSlider)
+                ImGui.DragFloat("", ref str, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
+            else
+                ImGui.SliderFloat("", ref str, SliderMin, SliderMax, "%.3f");
+            return str;
+        }
+        private string RenderString(object value)
+        {
+            var str = (string)value;
+            ImGui.InputText("", ref str, 256);
+            return str;
         }
         private Vector3 RenderVector3(object vector3)
         {
             var v3 = (Vector3)vector3;
             System.Numerics.Vector3 val = new System.Numerics.Vector3(v3.X, v3.Y, v3.Z);
-            ImGui.DragFloat3("", ref val, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
+            if (!RenderAsSlider)
+                ImGui.DragFloat3("", ref val, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
+            else
+                ImGui.SliderFloat3("", ref val, SliderMin, SliderMax, "%.3f");
             v3.X = val.X;
             v3.Y = val.Y;
             v3.Z = val.Z;
@@ -120,12 +185,8 @@ namespace JLGraphics.Utility
         private Quaternion RenderVectorQuat(object quaternion)
         {
             var eular = ((Quaternion)quaternion).ToEulerAngles();
-            System.Numerics.Vector3 val = new System.Numerics.Vector3(
-                MathHelper.RadiansToDegrees(eular.X),
-                MathHelper.RadiansToDegrees(eular.Y),
-                MathHelper.RadiansToDegrees(eular.Z));
 
-            ImGui.DragFloat3("", ref val, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
+            var val = RenderVector3(eular);
 
             eular.X = MathHelper.DegreesToRadians(val.X);
             eular.Y = MathHelper.DegreesToRadians(val.Y);
