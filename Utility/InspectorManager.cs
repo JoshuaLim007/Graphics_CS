@@ -185,12 +185,19 @@ namespace JLGraphics.Utility
         private Quaternion RenderVectorQuat(object quaternion)
         {
             var eular = ((Quaternion)quaternion).ToEulerAngles();
+            System.Numerics.Vector3 val = new System.Numerics.Vector3(
+                MathHelper.RadiansToDegrees(eular.X),
+                MathHelper.RadiansToDegrees(eular.Y),
+                MathHelper.RadiansToDegrees(eular.Z));
 
-            var val = RenderVector3(eular);
+            eular.X = val.X;
+            eular.Y = val.Y;
+            eular.Z = val.Z;
+            eular = RenderVector3(eular);
 
-            eular.X = MathHelper.DegreesToRadians(val.X);
-            eular.Y = MathHelper.DegreesToRadians(val.Y);
-            eular.Z = MathHelper.DegreesToRadians(val.Z);
+            eular.X = MathHelper.DegreesToRadians(eular.X);
+            eular.Y = MathHelper.DegreesToRadians(eular.Y);
+            eular.Z = MathHelper.DegreesToRadians(eular.Z);
 
             return Quaternion.FromEulerAngles(eular);
         }
