@@ -16,9 +16,19 @@ namespace JLGraphics.Utility
 {
     public class GuiManager
     {
-        public Action OnSceneViewGui { get; set; }
-        public Action OnInspectorGui { get; set; }
-        public Action OnHierarchyGui { get; set; }
+        public Func<Type> OnSceneViewGui { get; set; }
+        
+        struct GuiWindow
+        {
+            public string windowName;
+            public Action callback;
+            public Type Type;
+        }
+        List<GuiWindow> guiWindows = new List<GuiWindow>();
+        public void AddWindow(string window, Action updateCallback, Type type)
+        {
+            guiWindows.Add(new GuiWindow { callback = updateCallback, windowName = window, Type = type });
+        }
         ImGuiController guiController;
         GameWindow Window;
         public GuiManager(GameWindow window)
@@ -38,16 +48,8 @@ namespace JLGraphics.Utility
             PreviousWindowSize = window.Size;
             Graphics.Instance.BlitFinalResultsToScreen = false;
         }
-        public enum Windows
-        {
-            SceneView,
-            Hierarchy,
-            Inspector,
-            Console,
-            None,
-        }
 
-        public static Windows CurrentWindow { get; private set; } = Windows.None;
+        public static Type CurrentWindow { get; private set; } = null;
 
         Vector2i PreviousWindowSize;
         Vector2i GuiRenderSceneSize;
@@ -65,7 +67,7 @@ namespace JLGraphics.Utility
 
             if (!ImGui.IsAnyItemFocused())
             {
-                CurrentWindow = Windows.None;
+                CurrentWindow = null;
             }
 
 
@@ -76,7 +78,17 @@ namespace JLGraphics.Utility
             }
 
             RenderSceneView();
-            RenderInspectorView();
+
+            for (int i = 0; i < guiWindows.Count; i++)
+            {
+                ImGui.Begin(guiWindows[i].windowName);
+                if (ImGui.IsWindowFocused())
+                {
+                    CurrentWindow = guiWindows[i].Type;
+                }
+                guiWindows[i].callback.Invoke();
+                ImGui.End();
+            }
 
             guiController.Render();
             Window.SwapBuffers();
@@ -85,7 +97,6 @@ namespace JLGraphics.Utility
         bool resized = false;
         void RenderSceneView()
         {
-            CurrentWindow = Windows.SceneView;
             ImGui.Begin("Scene Window");
             var pos = ImGui.GetCursorPos();
             var size = ImGui.GetWindowSize();
@@ -110,25 +121,18 @@ namespace JLGraphics.Utility
                 new System.Numerics.Vector2(cursorPos.X + MainFrameBuffer.Width / Graphics.Instance.RenderScale, cursorPos.Y + MainFrameBuffer.Height / Graphics.Instance.RenderScale),
                 new System.Numerics.Vector2(0, 1),
                 new System.Numerics.Vector2(1, 0));
-            OnSceneViewGui?.Invoke();
+            var windowType = OnSceneViewGui?.Invoke();
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
 
-            if (ImGui.IsWindowFocused())
+            if (!ImGui.IsWindowFocused())
             {
-                CurrentWindow = Windows.SceneView;
+                CurrentWindow = null;
             }
             else
             {
-                CurrentWindow = Windows.None;
+                CurrentWindow = windowType;
             }
 
-            ImGui.End();
-        }
-    
-        void RenderInspectorView()
-        {
-            ImGui.Begin("Inspector Window");
-            OnInspectorGui?.Invoke();
             ImGui.End();
         }
     }

@@ -19,6 +19,12 @@ namespace JLGraphics.Utility
         Graphics graphics;
         public List<Entity> ObjectsSelected { get; private set; } = new List<Entity>();
         ObjectHighlight objectHighlight = new ObjectHighlight();
+        public void OverrideSelection(Entity entity)
+        {
+            ObjectsSelected.Clear();
+            ObjectsSelected.Add(entity);
+            objectHighlight.ToHighlight = ObjectsSelected;
+        }
         public class ObjectHighlight : RenderPass
         {
             public ObjectHighlight() : base(RenderQueue.AfterPostProcessing, 0)
@@ -57,6 +63,7 @@ namespace JLGraphics.Utility
                         SceneObjectSelection();
                     }
                 }
+                return typeof(SceneViewManager);
             };
             graphics.EnqueueRenderPass(objectHighlight);
         }

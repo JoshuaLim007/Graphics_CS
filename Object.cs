@@ -96,7 +96,15 @@ namespace JLGraphics
             @object.InternalOnImmediateDestroy();
             @object.OnDestroy();
         }
-
+        internal void AssertNull()
+        {
+#if DEBUG
+            if (Null)
+            {
+                throw new NullReferenceException("Entity has been destroyed!");
+            }
+#endif
+        }
         protected virtual void InternalOnImmediateDestroy() { }
         public virtual void OnDestroy() { }
         public static bool operator ==(Object a, Object b)

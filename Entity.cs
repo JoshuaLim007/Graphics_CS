@@ -9,15 +9,49 @@ namespace JLGraphics
 
     public class Entity : NamedObject
     {
-        public StaticFlags StaticFlag { get; set; } = StaticFlags.None;
-        public bool Enabled { get; set; } = true;
-        public Transform Transform { get; private set; } = null;
+        StaticFlags staticFlags;
+        public StaticFlags StaticFlag {
+            get
+            {
+                AssertNull();
+                return staticFlags;
+            }
+            set
+            {
+                AssertNull();
+                staticFlags = value;
+            }
+        }
+
+        bool _enabled = true;
+        public bool Enabled {
+            get
+            {
+                AssertNull();
+                return _enabled;
+            }
+            set
+            {
+                AssertNull();
+                _enabled = value;
+            } 
+        } 
+        Transform _transform;
+        public Transform Transform
+        {
+            get
+            {
+                AssertNull();
+                return _transform;
+            }
+        }
 
         public Entity Parent
         {
             set
             {
-                if(value == null)
+                AssertNull();
+                if (value == null)
                 {
                     Transform.Parent = null;
                 }
@@ -28,7 +62,8 @@ namespace JLGraphics
             }
             get
             {
-                if(Transform.Parent != null)
+                AssertNull();
+                if (Transform.Parent != null)
                 {
                     return Transform.Parent.Entity;
                 }
@@ -38,15 +73,17 @@ namespace JLGraphics
         public Entity[] Children { 
             get
             {
-                if(Transform.Childs.Length == 0)
+                AssertNull();
+                var childs = Transform.Childs;
+                if (childs.Length == 0)
                 {
                     return null;
                 }
 
                 Entity[] arr = new Entity[Transform.Childs.Length];
-                for (int i = 0; i < Transform.Childs.Length; i++)
+                for (int i = 0; i < childs.Length; i++)
                 {
-                    arr[i] = Transform.Childs[i].Entity;
+                    arr[i] = childs[i].Entity;
                 }
                 return arr;
             }
@@ -78,10 +115,10 @@ namespace JLGraphics
         private List<Component> m_components = new List<Component>();
         private void Init(Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
         {
-            AddComponent<Transform>(out var t, parent, position, rotation, scale);
-            Transform = t;
-            InternalGlobalScope<Entity>.Values.Add(this);
             CallCreate(this, null);
+            AddComponent<Transform>(out var t, parent, position, rotation, scale);
+            _transform = t;
+            InternalGlobalScope<Entity>.Values.Add(this);
         }
         internal Entity(string Name) : base(Name)
         {
@@ -102,10 +139,12 @@ namespace JLGraphics
 
         public Component[] GetAllComponents()
         {
+            AssertNull();
             return m_components.ToArray();
         }
         public List<T> GetComponents<T>() where T : Component
         {
+            AssertNull();
             List<T> list = new List<T>();
             for (int i = 0; i < m_components.Count; i++)
             {
@@ -118,6 +157,7 @@ namespace JLGraphics
         }
         public T GetComponent<T>() where T : Component
         {
+            AssertNull();
             for (int i = 0; i < m_components.Count; i++)
             {
                 if (m_components[i].GetType() == typeof(T))
@@ -129,6 +169,7 @@ namespace JLGraphics
         }
         public Entity AddComponent<T>(params object[] args) where T : Component, new()
         {
+            AssertNull();
             T instance = new T();
             instance.OnAddComponentEvent(this, args);
             m_components.Add(instance);
@@ -136,6 +177,7 @@ namespace JLGraphics
         }
         public Entity AddComponent<T>(out T instance, params object[] args) where T : Component, new()
         {
+            AssertNull();
             instance = new T();
             instance.OnAddComponentEvent(this, args);
             m_components.Add(instance);
@@ -143,6 +185,7 @@ namespace JLGraphics
         }
         public bool HasComponent<T>(out T instance) where T : Component
         {
+            AssertNull();
             for (int i = 0; i < m_components.Count; i++)
             {
                 if (m_components[i].GetType() == typeof(T))
@@ -157,6 +200,7 @@ namespace JLGraphics
         
         public static Entity Clone(Entity entity, Entity parent = null)
         {
+            entity.AssertNull();
             var newEntity = Entity.Create(entity.Name + "_clone");
             newEntity.StaticFlag = entity.StaticFlag;
             newEntity.Enabled = entity.Enabled;
@@ -176,12 +220,12 @@ namespace JLGraphics
                 component.OnAddComponentEvent(newEntity, null);
                 newEntity.m_components.Add(component);
             }
-
-            if(entity.Children != null)
+            var children = entity.Children;
+            if (children != null)
             {
-                for (int i = 0; i < entity.Children.Length; i++)
+                for (int i = 0; i < children.Length; i++)
                 {
-                    Clone(entity.Children[i], newEntity);
+                    Clone(children[i], newEntity);
                 }
             }
 
@@ -190,6 +234,7 @@ namespace JLGraphics
 
         public static void Destroy<T>(ref T toDestroy) where T : Object
         {
+            toDestroy.AssertNull();
             if (typeof(T) == typeof(Component))
             {
                 Component? component = toDestroy as Component;
@@ -208,6 +253,7 @@ namespace JLGraphics
         }
         public static Entity Create(string Name, Transform parent)
         {
+            parent.Entity.AssertNull();
             return new Entity(Name, parent);
         }
         public static Entity Create(string Name, Vector3 position, Quaternion rotation, Vector3 scale)
@@ -216,6 +262,7 @@ namespace JLGraphics
         }
         public static Entity Create(string Name, Transform parent, Vector3 position, Quaternion rotation, Vector3 scale)
         {
+            parent.Entity.AssertNull();
             return new Entity(Name, parent, position, rotation, scale);
         }
         

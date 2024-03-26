@@ -23,36 +23,49 @@ namespace JLGraphics
         }
         internal void OnAddComponentEvent(Entity entity, params object[] args)
         {
-            entityReference = new WeakReference<Entity>(entity);
+            entityReference = entity;
             Name = entity.Name + "_Component_" + GetType().Name;
             CallCreate(this, args);
         }
 
-        WeakReference<Entity> entityReference;
+        Entity entityReference;
         public Entity Entity {
             get
             {
-                entityReference.TryGetTarget(out var entity);
-                return entity;
+                AssertNull();
+                return entityReference;
             } 
         }
         public virtual void OnGuiChange() { }
         public Transform Transform => Entity.Transform;
+        bool _enabled = true;
         /// <summary>
         /// Enabled/Disables component
         /// </summary>
         [Gui("Enable/Disable")]
-        public bool Enabled { get; set; } = true;
+        public bool Enabled { get { return _enabled; } set { AssertNull(); _enabled = value; } }
 
         bool IComponentEvent.IsActiveAndEnabled()
         {
-            return Enabled && Entity.Enabled;
+            AssertNull();
+            return IsActiveAndEnabled;
         }
-
+        bool GetAllEnabled()
+        {
+            AssertNull();
+            bool enabled = Enabled & Entity.Enabled;
+            Entity parent = Entity.Parent;
+            while (parent)
+            {
+                enabled &= parent.Enabled;
+                parent = parent.Parent;
+            }
+            return enabled;
+        }
         /// <summary>
         /// Returns true if the component and entity is enabled.
         /// Returns false if the component or entity is disabled.
         /// </summary>
-        public bool IsActiveAndEnabled => Enabled && Entity.Enabled;
+        public bool IsActiveAndEnabled => GetAllEnabled();
     }
 }

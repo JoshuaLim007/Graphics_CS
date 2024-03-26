@@ -24,7 +24,7 @@ namespace JLGraphics.Utility
         public InspectorManager(GuiManager guiManager, SceneViewManager sceneViewManager)
         {
             this.sceneViewManager = sceneViewManager;
-            guiManager.OnInspectorGui += Update;
+            guiManager.AddWindow("Inspector Window", Update, typeof(SceneViewManager));
         }
         public void Update()
         {
