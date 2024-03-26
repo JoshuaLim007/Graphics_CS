@@ -167,6 +167,25 @@ namespace JLGraphics
             }
             return null;
         }
+        public T GetComponentInChild<T>() where T : Component
+        {
+            AssertNull();
+            var res = GetComponent<T>();
+            if(res != null)
+            {
+                return res;
+            }
+            var childs = Children;
+            for (int i = 0; childs != null && i < childs.Length; i++)
+            {
+                res = childs[i].GetComponentInChild<T>();
+                if(res != null)
+                {
+                    return res;
+                }
+            }
+            return null;
+        }
         public Entity AddComponent<T>(params object[] args) where T : Component, new()
         {
             AssertNull();

@@ -922,10 +922,6 @@ namespace JLGraphics
 
         public void RenderBounginBox(Camera camera, Renderer renderer)
         {
-            if(renderer == null)
-            {
-                return;
-            }
             if (AABBDebugShader == null)
             {
                 var program = new ShaderProgram("Gizmo", AssetLoader.GetPathToAsset("./Shaders/aabbDebug.frag"), AssetLoader.GetPathToAsset("./Shaders/aabbDebug.vert"));
