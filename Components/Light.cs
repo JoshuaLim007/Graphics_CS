@@ -19,7 +19,6 @@ namespace JLGraphics
         }
         protected override void InternalOnImmediateDestroy()
         {
-            base.InternalOnImmediateDestroy();
             InternalGlobalScope<Light>.Values.Remove(this);
         }
         public float Intensity { get; set; } = 1.0f;

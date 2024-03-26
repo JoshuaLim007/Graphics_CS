@@ -11,7 +11,7 @@ namespace JLGraphics
 {
     public class Renderer : Component, IStart
     {
-        static internal bool NewRendererAdded { get; set; } = false;
+        static internal bool RendererAddedOrDestroyed { get; set; } = false;
         public Shader Material { get; set; } = null;
         public Mesh Mesh { get; set; } = null;
 
@@ -45,6 +45,11 @@ namespace JLGraphics
                 Material?.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Metalness), m);
             }
         }
+        protected override void InternalOnImmediateDestroy()
+        {
+            RendererAddedOrDestroyed = true;
+            InternalGlobalScope<Renderer>.Values.Remove(this);
+        }
 
         AABB previousBounds;
         Matrix4 previousModelMatrix;
@@ -77,7 +82,7 @@ namespace JLGraphics
         public void Start()
         {
             previousModelMatrix = Matrix4.Zero;
-            NewRendererAdded = true;
+            RendererAddedOrDestroyed = true;
         }
     }
 }

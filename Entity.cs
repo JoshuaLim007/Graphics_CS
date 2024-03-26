@@ -51,7 +51,7 @@ namespace JLGraphics
             set
             {
                 AssertNull();
-                if (value == null)
+                if (value is null)
                 {
                     Transform.Parent = null;
                 }
@@ -268,9 +268,16 @@ namespace JLGraphics
         
         protected override void InternalOnImmediateDestroy()
         {
+            Parent = null;
             for (int i = 0; i < m_components.Count; i++)
             {
                 CallDestroy(m_components[i]);
+            }
+            var children = Children;
+            for (int i = 0; children != null && i < children.Length; i++)
+            {
+                var t = children[i];
+                Destroy(ref t);
             }
             InternalGlobalScope<Entity>.Values.Remove(this);
         }

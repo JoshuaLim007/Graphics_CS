@@ -19,7 +19,7 @@ namespace JLGraphics
             set
             {
                 UpdateChildChangeFlag(this, true);
-                if (value != null)
+                if (value is not null)
                 {
                     m_parent = value;
                     m_parent.m_children.Add(this);

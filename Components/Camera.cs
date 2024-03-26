@@ -163,7 +163,6 @@ namespace JLGraphics
         }
         protected override void InternalOnImmediateDestroy()
         {
-            base.InternalOnImmediateDestroy();
             InternalGlobalScope<Camera>.Values.Remove(this);
         }
         private Matrix4 calculateProjectionMatrix()

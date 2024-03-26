@@ -351,7 +351,7 @@ namespace JLGraphics
             DoRenderUpdate();
             PerfTimer.Stop();
 
-            Renderer.NewRendererAdded = false;
+            Renderer.RendererAddedOrDestroyed = false;
             PerfTimer.Start("UpdateFrame::SwapBuffers");
             if(BlitFinalResultsToScreen)
                 Window.SwapBuffers();
@@ -999,7 +999,7 @@ namespace JLGraphics
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
             //least amount of state changes
             Renderer[] renderers;
-            if (Renderer.NewRendererAdded)
+            if (Renderer.RendererAddedOrDestroyed)
             {
                 sortedRenderers = SortRenderersByProgramByMaterials(InternalGlobalScope<Renderer>.Values, true);
             }

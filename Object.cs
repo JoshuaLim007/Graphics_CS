@@ -75,7 +75,6 @@ namespace JLGraphics
         internal static void CallDestroy(Object @object)
         {
             previousDestroyedObject.Push(@object.mId);
-            @object.mId = 0;
 
             if (typeof(IUpdate).IsAssignableFrom(@object.GetType()))
             {
@@ -94,7 +93,7 @@ namespace JLGraphics
                 InternalGlobalScope<IOnRender>.Values.Remove(@object as IOnRender);
             }
             @object.InternalOnImmediateDestroy();
-            @object.OnDestroy();
+            @object.mId = 0;
         }
         internal void AssertNull()
         {
@@ -106,7 +105,6 @@ namespace JLGraphics
 #endif
         }
         protected virtual void InternalOnImmediateDestroy() { }
-        public virtual void OnDestroy() { }
         public static bool operator ==(Object a, Object b)
         {
             object ao = a;
@@ -158,7 +156,7 @@ namespace JLGraphics
             }
             else
             {
-                return Null == ((Object)obj).Null;
+                return InstanceID == ((Object)obj).InstanceID;
             }
         }
         public static implicit operator bool(Object a) => a is null ? false : !a.Null;
