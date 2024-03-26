@@ -73,11 +73,26 @@ namespace JLGraphics
         }
 
         [Gui("World Position", true)]
-        Vector3 worldPos = Vector3.Zero;
+        Vector3 worldPos { 
+            get { 
+                return ModelMatrix.ExtractTranslation();
+            }
+        }
         [Gui("World Rotation", true)]
-        Quaternion worldRot = Quaternion.Identity;
+        Quaternion worldRot {
+            get
+            {
+                return ModelMatrix.ExtractRotation();
+            }
+        }
         [Gui("World Scale", true)]
-        Vector3 worldScale = Vector3.Zero;
+        Vector3 worldScale
+        {
+            get
+            {
+                return ModelMatrix.ExtractScale();
+            }
+        }
 
 
         [Gui("Position")]
@@ -91,7 +106,6 @@ namespace JLGraphics
             {
                 UpdateChildChangeFlag(this, true);
                 pos = value;
-                worldPos = ModelMatrix.ExtractTranslation();
             }
         }
 
@@ -106,7 +120,6 @@ namespace JLGraphics
             {
                 UpdateChildChangeFlag(this, true);
                 rot = value;
-                worldRot = ModelMatrix.ExtractRotation();
             }
         }
 
@@ -121,7 +134,6 @@ namespace JLGraphics
             {
                 UpdateChildChangeFlag(this, true);
                 scale = value;
-                worldScale = ModelMatrix.ExtractScale();
             }
         }
 

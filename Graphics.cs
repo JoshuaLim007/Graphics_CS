@@ -1027,7 +1027,7 @@ namespace JLGraphics
                     }
                 }
 
-                if (current == null || !current.Enabled)
+                if (current == null || !current.IsActiveAndEnabled)
                 {
                     continue;
                 }

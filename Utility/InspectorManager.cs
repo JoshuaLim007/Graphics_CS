@@ -32,9 +32,7 @@ namespace JLGraphics.Utility
 
             for (int i = 0; i < objects.Count; i++)
             {
-                string name = objects[i].Name;
-                ImGui.InputText(" Entity Name", ref name, 256);
-                objects[i].Name = name;
+                RenderEntity(entity: objects[i]);
                 ImGui.Separator();
 
                 var components = objects[i].GetAllComponents();
@@ -45,7 +43,16 @@ namespace JLGraphics.Utility
             }
             ImGui.Separator();
         }
+        private void RenderEntity(Entity entity)
+        {
+            string name = entity.Name;
+            ImGui.InputText("Entity Name", ref name, 256);
+            entity.Name = name;
 
+            bool enable = entity.Enabled;
+            ImGui.Checkbox("Enable", ref enable);
+            entity.Enabled = enable;
+        }
         private void RenderComponent(Component component)
         {
             Type type = component.GetType();
@@ -74,12 +81,16 @@ namespace JLGraphics.Utility
             PropertyInfo[] properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var property in properties)
             {
+                if (!property.CanRead)
+                {
+                    continue;
+                }
                 var attribute = property.GetCustomAttribute<GuiAttribute>();
                 if (attribute != null)
                 {
                     var value = property.GetValue(component);
                     var newValue = HandleType(property, attribute, property.Name, property.PropertyType, value);
-                    if (newValue != value)
+                    if (newValue != value && property.CanWrite)
                     {
                         property.SetValue(component, newValue);
                         component.OnGuiChange();

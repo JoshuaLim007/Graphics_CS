@@ -1,4 +1,5 @@
-﻿using System;
+﻿using JLGraphics.Utility.GuiAttributes;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -40,6 +41,7 @@ namespace JLGraphics
         /// <summary>
         /// Enabled/Disables component
         /// </summary>
+        [Gui("Enable/Disable")]
         public bool Enabled { get; set; } = true;
 
         bool IComponentEvent.IsActiveAndEnabled()
