@@ -710,6 +710,11 @@ namespace JLGraphics
                 switch (lights[i])
                 {
                     case DirectionalLight t0:
+                        if (!lights[i].IsActiveAndEnabled)
+                        {
+                            Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Color"), Vector3.Zero);
+                            continue;
+                        }
                         if (t0.HasShadows)
                         {
                             t0.RenderShadowMap(camera);
@@ -719,6 +724,10 @@ namespace JLGraphics
                         Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Direction"), t0.Transform.Forward);
                         break;
                     case PointLight t0:
+                        if (!lights[i].IsActiveAndEnabled)
+                        {
+                            continue;
+                        }
                         pointLights.Add((t0, pointLightShadowCount));
                         if (t0.HasShadows)
                         {
