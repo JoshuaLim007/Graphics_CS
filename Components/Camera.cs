@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using JLGraphics.Utility.GuiAttributes;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -131,15 +132,61 @@ namespace JLGraphics
     }
     public sealed class Camera : Component
     {
-        public bool EnabledWireFrame { get; set; } = false;
+        [Gui("Frustum Cull")]
         public bool FrustumCull { get; set; } = true;
 
-        public float Fov { get; set; } = 90;
+        float fov = 90;
+        [Gui("Perspective FOV")]
+        public float Fov {
+            get => fov;
+            set
+            {
+                fov = MathHelper.Clamp(value, 1.0f, 179.0f);
+            }
+        }
+
         public int Width => Graphics.Instance.GetRenderSize().X;
         public int Height => Graphics.Instance.GetRenderSize().Y;
-        public float Near { get; set; } = 0.03f;
-        public float Far { get; set; } = 1000.0f;
-        public float Size { get; set; } = 100;
+
+        float near = 0.03f;
+        [Gui("Near")]
+        public float Near {
+            get => near;
+            set
+            {
+                near = MathHelper.Clamp(value, 0.01f, float.PositiveInfinity);
+                if(far <= near)
+                {
+                    far = near + 0.01f;
+                }
+            }
+        }
+
+        float far = 1000.0f;
+        [Gui("Far")]
+        public float Far
+        {
+            get => far;
+            set
+            {
+                far = MathHelper.Clamp(value, 0.01f, float.PositiveInfinity);
+                if (far <= near)
+                {
+                    far = near + 0.01f;
+                }
+            }
+        }
+
+        float size = 100;
+        [Gui("Orthographics Half Size")]
+        public float Size
+        {
+            get => size;
+            set
+            {
+                size = MathHelper.Clamp(value, 0.01f, float.PositiveInfinity);
+            }
+        }
         public static Camera Main { get; set; } = null;
         public Matrix4 ViewMatrix =>
             (Transform.Parent != null ? Transform.Parent.ModelMatrix.Inverted() : Matrix4.Identity) *
@@ -148,6 +195,7 @@ namespace JLGraphics
 
         public Matrix4 ProjectionMatrix => calculateProjectionMatrix();
 
+        [Gui("Camera Mode")]
         public CameraType CameraMode { get; set; } = CameraType.Perspecitve;
 
         public enum CameraType

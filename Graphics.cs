@@ -631,6 +631,10 @@ namespace JLGraphics
 
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count; cameraIndex++)
             {
+                if (!AllCameras[cameraIndex].IsActiveAndEnabled)
+                {
+                    continue;
+                }
                 RenderPass.CurrentRenderingCamera = AllCameras[cameraIndex];
                 SetupLights(AllCameras[cameraIndex]);
 
