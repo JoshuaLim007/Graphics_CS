@@ -2,6 +2,7 @@
 using JLGraphics.Utility.GuiAttributes;
 using JLUtility;
 using Microsoft.VisualBasic;
+using OpenTK.Audio.OpenAL;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -121,7 +122,14 @@ namespace JLGraphics.Utility
             }
             if(type == typeof(Vector3))
             {
-                value = RenderVector3(value);
+                if (attribute.Color)
+                {
+                    value = RenderColor(value);
+                }
+                else
+                {
+                    value = RenderVector3(value);
+                }
             }
             else if(type == typeof(Quaternion))
             {
@@ -180,14 +188,27 @@ namespace JLGraphics.Utility
             ImGui.InputText("", ref str, 256);
             return str;
         }
+        private Vector3 RenderColor(object vector3)
+        {
+            var v3 = (Vector3)vector3;
+            System.Numerics.Vector3 val = new System.Numerics.Vector3(v3.X, v3.Y, v3.Z);
+            ImGui.ColorPicker3("", ref val);
+            v3.X = val.X;
+            v3.Y = val.Y;
+            v3.Z = val.Z;
+            return v3;
+        }
         private Vector3 RenderVector3(object vector3)
         {
             var v3 = (Vector3)vector3;
             System.Numerics.Vector3 val = new System.Numerics.Vector3(v3.X, v3.Y, v3.Z);
+            
             if (!RenderAsSlider)
                 ImGui.DragFloat3("", ref val, 0.5f, float.NegativeInfinity, float.PositiveInfinity, "%.3f");
             else
                 ImGui.SliderFloat3("", ref val, SliderMin, SliderMax, "%.3f");
+
+
             v3.X = val.X;
             v3.Y = val.Y;
             v3.Z = val.Z;
@@ -209,7 +230,6 @@ namespace JLGraphics.Utility
             eular.X = MathHelper.DegreesToRadians(eular.X);
             eular.Y = MathHelper.DegreesToRadians(eular.Y);
             eular.Z = MathHelper.DegreesToRadians(eular.Z);
-
             return Quaternion.FromEulerAngles(eular);
         }
     }

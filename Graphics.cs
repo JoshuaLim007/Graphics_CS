@@ -768,7 +768,7 @@ namespace JLGraphics
                     pointLightSSBOs[i].Color = new Vector4(pointLight.Color, 0);
                     pointLightSSBOs[i].Constant = pointLight.AttenConstant;
                     pointLightSSBOs[i].Linear = pointLight.AttenLinear;
-                    pointLightSSBOs[i].Exp = pointLight.AttenExp;
+                    pointLightSSBOs[i].Exp = 1 - pointLight.AttenLinear;
                     pointLightSSBOs[i].Range = pointLight.Range;
                     pointLightSSBOs[i].HasShadows = pointLight.HasShadows ? 1 : 0;
                 }

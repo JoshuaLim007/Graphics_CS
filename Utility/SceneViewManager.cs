@@ -41,7 +41,12 @@ namespace JLGraphics.Utility
                 }
                 for (int i = 0; i < ToHighlight.Count; i++)
                 {
-                    Graphics.Instance.RenderBounginBox(CurrentCamera, ToHighlight[i].GetComponentInChild<Renderer>());
+                    var rend = ToHighlight[i].GetComponentInChild<Renderer>();
+                    if(rend == null)
+                    {
+                        continue;
+                    }
+                    Graphics.Instance.RenderBounginBox(CurrentCamera, rend);
                 }
             }
 

@@ -1,4 +1,5 @@
-﻿using JLUtility;
+﻿using JLGraphics.Utility.GuiAttributes;
+using JLUtility;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -21,12 +22,15 @@ namespace JLGraphics
         {
             InternalGlobalScope<Light>.Values.Remove(this);
         }
+        [Gui("Intensity")]
         public float Intensity { get; set; } = 1.0f;
+        [Gui("Tint", false, true)]
         public Vector3 Tint { get; set; } = Vector3.One;
 
         private float temperature = 5000;
         private Vector3 blackBodyColor;
         public Vector3 Color => blackBodyColor * Tint * Intensity;
+        [Gui("Temperature")]
         public float Temperature {
             get { return temperature; }
             set { 
@@ -95,10 +99,14 @@ namespace JLGraphics
     public class PointLight : Light
     {
         PointLightShadowMap ShadowMapper;
+        [Gui("Constant")]
         public float AttenConstant { get; set; } = 0.1f;
+        [Gui("Linear")]
+        [GuiSlider(0.0f, 1.0f)]
         public float AttenLinear { get; set; } = 0.05f;
-        public float AttenExp { get; set; } = 0.95f;
+        [Gui("Range")]
         public float Range { get; set; } = 10.0f;
+
         static int shadowCount = 0;
         public const int MAX_SHADOWS = 8;
         public void AddShadows(int resolution = 1024)
