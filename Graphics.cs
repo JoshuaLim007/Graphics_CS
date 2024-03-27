@@ -606,6 +606,10 @@ namespace JLGraphics
 
         public void RenderSkyBox(Camera camera, Shader overrideShader = null)
         {
+            if(camera.CameraMode == Camera.CameraType.Orthographic)
+            {
+                return;
+            }
             PerfTimer.Start("RenderSkyBox");
             //render skybox
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, BasicCube.EBO);

@@ -120,42 +120,71 @@ namespace JLGraphics.Utility
             {
                 ImGui.BeginDisabled();
             }
-            if(type == typeof(Vector3))
+
+            if (type.IsEnum)
             {
-                if (attribute.Color)
+                value = RenderEnum(type, value);
+            }
+            else
+            {
+                if (type == typeof(Vector3))
                 {
-                    value = RenderColor(value);
+                    if (attribute.Color)
+                    {
+                        value = RenderColor(value);
+                    }
+                    else
+                    {
+                        value = RenderVector3(value);
+                    }
                 }
-                else
+                else if (type == typeof(Quaternion))
                 {
-                    value = RenderVector3(value);
+                    value = RenderVectorQuat(value);
                 }
+                else if (type == typeof(float))
+                {
+                    value = RenderFloat(value);
+                }
+                else if (type == typeof(int))
+                {
+                    value = RenderInt(value);
+                }
+                else if (type == typeof(bool))
+                {
+                    value = RenderBool(value);
+                }
+                else if (type == typeof(string))
+                {
+                    value = RenderString(value);
+                }
+
             }
-            else if(type == typeof(Quaternion))
-            {
-                value = RenderVectorQuat(value);
-            }
-            else if(type == typeof(float))
-            {
-                value = RenderFloat(value);
-            }
-            else if (type == typeof(int))
-            {
-                value = RenderInt(value);
-            }
-            else if (type == typeof(bool))
-            {
-                value = RenderBool(value);
-            }
-            else if (type == typeof(string))
-            {
-                value = RenderString(value);
-            }
+
             if (attribute.ReadOnly)
             {
                 ImGui.EndDisabled();
             }
             RenderAsSlider = false;
+            return value;
+        }
+        private object RenderEnum(Type type, object value)
+        {
+            var arr = type.GetEnumValues();
+            if(ImGui.BeginCombo("", value.ToString()))
+            {
+                foreach (var item in arr)
+                {
+                    bool is_selected = (value == item);
+                    if (ImGui.Selectable(item.ToString(), is_selected))
+                        value = item;
+
+                    if (is_selected)
+                        ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
+            }
+
             return value;
         }
         private bool RenderBool(object value)
