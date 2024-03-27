@@ -117,6 +117,11 @@ namespace JLGraphics.Utility
         }
         void SceneObjectSelection()
         {
+            if(Camera.Main == null)
+            {
+                Debug.Log("No main camera found!", Debug.Flag.Warning);
+                return;
+            }
             var windowPos = ImGui.GetCursorScreenPos();
             Vector2 pos;
             pos = graphics.Window.MousePosition - new Vector2(windowPos.X, windowPos.Y);

@@ -1,4 +1,5 @@
-﻿using OpenTK.Mathematics;
+﻿using JLGraphics.Components;
+using OpenTK.Mathematics;
 namespace JLGraphics
 {
     public enum StaticFlags

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static Assimp.Metadata;
 
-namespace JLGraphics
+namespace JLGraphics.Components
 {
     public class Component : NamedObject, IComponentEvent
     {
@@ -29,12 +29,13 @@ namespace JLGraphics
         }
 
         Entity entityReference;
-        public Entity Entity {
+        public Entity Entity
+        {
             get
             {
                 AssertNull();
                 return entityReference;
-            } 
+            }
         }
         public virtual void OnGuiChange() { }
         public Transform Transform => Entity.Transform;

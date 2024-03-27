@@ -74,8 +74,6 @@ namespace JLGraphics
         }
         internal static void CallDestroy(Object @object)
         {
-            previousDestroyedObject.Push(@object.mId);
-
             if (typeof(IUpdate).IsAssignableFrom(@object.GetType()))
             {
                 InternalGlobalScope<IUpdate>.Values.Remove(@object as IUpdate);
@@ -93,6 +91,7 @@ namespace JLGraphics
                 InternalGlobalScope<IOnRender>.Values.Remove(@object as IOnRender);
             }
             @object.InternalOnImmediateDestroy();
+            previousDestroyedObject.Push(@object.mId);
             @object.mId = 0;
         }
         internal void AssertNull()

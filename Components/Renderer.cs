@@ -1,4 +1,5 @@
-﻿using JLGraphics.Utility.GuiAttributes;
+﻿using JLGraphics.Components;
+using JLGraphics.Utility.GuiAttributes;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
