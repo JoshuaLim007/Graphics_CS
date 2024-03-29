@@ -226,8 +226,6 @@ namespace JLGraphics
                 axis = Vector3.UnitY;
             }
 
-            Debug.Log(axis);
-
             var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, axis);
 
             var directionalLightViewMatrix = direction;
