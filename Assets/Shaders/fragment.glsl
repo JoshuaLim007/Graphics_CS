@@ -1,6 +1,6 @@
 ﻿#version 430
 #define MAX_POINT_LIGHTS 128
-#define MAX_SHADOW_SAMPLES 256
+#define MAX_SHADOW_SAMPLES 16
 #define MAX_POINT_SHADOWS 8
 
 struct PointLight {
