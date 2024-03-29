@@ -13,6 +13,7 @@ using System.Data;
 using System.ComponentModel.DataAnnotations;
 using Assimp;
 using ImGuiNET;
+using System.Collections.Generic;
 
 namespace JLGraphics
 {
@@ -69,32 +70,17 @@ namespace JLGraphics
         public bool[] ColorMask { get; private set; } = new bool[4] { true, true, true, true };
         public bool IsTransparent { get; set; } = false;
         public BlendingFactor BlendingFactor { get; set; } = BlendingFactor.SrcAlpha;
-        private int textureMask = 0;
         const int TotalTextures = 32;
         private Texture[] textures = new Texture[TotalTextures];
-        private int[] texturePropertyIds = new int[TotalTextures];
+        private Dictionary<int, int> propertyId2TextureUnit = new Dictionary<int, int>();
         Stack<int> availableTextureSlots = new Stack<int>();
-        int textureIndexFromUniform(int propertyId)
+        int PropertyIdTextureUnit(int propertyId)
         {
-            for (int i = TotalTextures - 1; i >= 0; i--)
+            if(propertyId2TextureUnit.TryGetValue(propertyId, out var index))
             {
-                if (texturePropertyIds[i] == propertyId)
-                {
-                    return i;
-                }
+                return index;
             }
             return -1;
-        }
-        void set_int_bool(int index, bool value, ref int number)
-        {
-            if (value)
-            {
-                number |= 1 << index;
-            }
-            else
-            {
-                number &= ~(1 << index);
-            }
         }
         internal void SetTextureUnsafe(int propertyId, Texture texture, TextureTarget? textureTarget = null)
         {
@@ -102,27 +88,25 @@ namespace JLGraphics
             {
                 throw new System.ArgumentNullException("This is not supposed to happen!");
             }
-            int textureIndex = textureIndexFromUniform(propertyId);
 
-            //override texture target
+            int textureUnit = PropertyIdTextureUnit(propertyId);
+
             if (textureTarget != null)
                 texture.textureTarget = textureTarget.Value;
 
-            //add new texture if we dont have that texture slot added yet
-            if (textureIndex == -1)
+            if (textureUnit == -1)
             {
                 if (availableTextureSlots.Count == 0)
                 {
                     Debug.Log("Cannot add more textures to shader material: " + Name, Debug.Flag.Error);
                     return;
                 }
-                textureIndex = availableTextureSlots.Pop();
-                texturePropertyIds[textureIndex] = propertyId;
+                textureUnit = availableTextureSlots.Pop();
+                propertyId2TextureUnit.Add(propertyId, textureUnit);
             }
 
-            textures[textureIndex] = texture;
-            SetInt(propertyId, textureIndex);
-            set_int_bool(textureIndex, true, ref textureMask);
+            textures[textureUnit] = texture;
+            SetInt(propertyId, textureUnit);
         }
         static Texture DefaultTexture = null;
         private void SetDefaultTexture()
@@ -161,11 +145,13 @@ namespace JLGraphics
         static List<WeakReference<Shader>> AllInstancedShaders = new List<WeakReference<Shader>>();
         void SetAllTextureUnitToUniform()
         {
-            for (int i = 0; i < TotalTextures; i++)
+            foreach (var item in propertyId2TextureUnit)
             {
-                if (textures[i] != null)
+                var uniform = item.Key;
+                var unit = item.Value;
+                if (textures[unit] != null)
                 {
-                    SetTexture(texturePropertyIds[i], textures[i]);
+                    SetTexture(uniform, textures[unit]);
                 }
             }
         }
@@ -178,8 +164,7 @@ namespace JLGraphics
             availableTextureSlots = new Stack<int>(new Stack<int>(other.availableTextureSlots));
 
             Array.Copy(other.textures, textures, TotalTextures);
-            Array.Copy(other.texturePropertyIds, texturePropertyIds, TotalTextures);
-            textureMask = other.textureMask;
+            propertyId2TextureUnit = new Dictionary<int, int>(other.propertyId2TextureUnit);
             SetAllTextureUnitToUniform();
         }
         public Shader(Shader shader)
@@ -209,7 +194,6 @@ namespace JLGraphics
         void ShaderReload()
         {
             Debug.Log("\tShader Reload.. Rebinding Textures, Setting uniforms for program " + Program.Id + " for material " + Name);
-            SetInt(GetShaderPropertyId("textureMask"), textureMask);
             UseProgram();
             SetAllTextureUnitToUniform();
             AttachShaderForRendering();
@@ -219,7 +203,6 @@ namespace JLGraphics
         void init()
         {
             Program.OnShaderReload += ShaderReload;
-            SetInt(GetShaderPropertyId("textureMask"), textureMask);
             SetDefaultTexture();
         }
         ~Shader()
@@ -413,38 +396,22 @@ namespace JLGraphics
 
             //apply texture units, set local textures
             //optimized such that the update uniform wont update the same uniforms with same values as the previously update uniform
-            for (int i = 0; i < TotalTextures; i++)
+            foreach (var uniform2unit in propertyId2TextureUnit)
             {
-                if (IntToBool(textureMask, i))
+                var uniform = uniform2unit.Key;
+                var unit = uniform2unit.Value;
+
+                if (PreviousTextureState[unit].TexturePtr != textures[unit].GlTextureID)
                 {
-                    if (PreviousTextureState[i].TexturePtr != textures[i].GlTextureID)
-                    {
-                        //go to texture unit i
-                        GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
-                        
-                        //bind the texture to it
-                        GL.BindTexture(textures[i].textureTarget, textures[i].GlTextureID);
-                        hasUpdated = true;
-                    }
-
-
-                    PreviousTextureState[i].TexturePtr = textures[i].GlTextureID;
-                    PreviousTextureState[i].textureTarget = textures[i].textureTarget;
+                    //go to texture unit i
+                    GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + unit));
+                    //bind the texture to it
+                    GL.BindTexture(textures[unit].textureTarget, textures[unit].GlTextureID);
+                    hasUpdated = true;
                 }
-                else
-                {
-                    if (PreviousTextureState[i].TexturePtr != 0)
-                    {
-                        //go to texture unit i
-                        GL.ActiveTexture((TextureUnit)((int)TextureUnit.Texture0 + i));
+                PreviousTextureState[unit].TexturePtr = textures[unit].GlTextureID;
+                PreviousTextureState[unit].textureTarget = textures[unit].textureTarget;
 
-                        //unbind any textures to it
-                        GL.BindTexture(PreviousTextureState[i].textureTarget, 0);
-                        hasUpdated = true;
-                    }
-
-                    PreviousTextureState[i].TexturePtr = 0;
-                }
             }
 
             //apply local uniforms
