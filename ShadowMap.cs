@@ -204,9 +204,12 @@ namespace JLGraphics
             //world space aabb
             var aabb = AABB.GetBoundingBox(corners);
             var world_center = aabb.Center;
+            
+
             LightDirection = -LightDirection;
             bool isUp = LightDirection == Vector3.UnitY ? true : false;
-            var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, isUp ? Vector3.UnitY : Vector3.UnitZ);
+            var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, isUp ? Vector3.UnitY : -Vector3.UnitX);
+
             var directionalLightViewMatrix = Matrix4.CreateTranslation(-world_center) * direction;
 
             var aabb_corners = AABB.GetCorners(aabb);
@@ -263,12 +266,18 @@ namespace JLGraphics
             light_aabb.Max.X = MathF.Floor(light_aabb.Max.X / worldUnitPerTexelX) * worldUnitPerTexelX;
             light_aabb.Max.Y = MathF.Floor(light_aabb.Max.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
 
-            var lightProjectionMatrix = Matrix4.CreateOrthographic(light_aabb.Extents.X, light_aabb.Extents.Y, -500.0f, 500.0f);
-            var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
+            var lightProjectionMatrix = Matrix4.CreateOrthographicOffCenter(
+                light_aabb.Min.X,
+                light_aabb.Max.X,
+                light_aabb.Min.Y,
+                light_aabb.Max.Y,
+                -500.0f, 
+                500.0f);
+
+            //var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 
             var ShadowMatrix =
                 directionalLightViewMatrix
-                * offsetMatrix
                 * lightProjectionMatrix;
 
             GL.Clear(ClearBufferMask.DepthBufferBit);

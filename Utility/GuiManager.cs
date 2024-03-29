@@ -25,9 +25,9 @@ namespace JLGraphics.Utility
             public Type Type;
         }
         List<GuiWindow> guiWindows = new List<GuiWindow>();
-        public void AddWindow(string window, Action updateCallback, Type type)
+        public void AddWindow(string window, Action updateCallback, Type callerType)
         {
-            guiWindows.Add(new GuiWindow { callback = updateCallback, windowName = window, Type = type });
+            guiWindows.Add(new GuiWindow { callback = updateCallback, windowName = window, Type = callerType });
         }
         ImGuiController guiController;
         GameWindow Window;
