@@ -1,6 +1,6 @@
 ﻿#version 430
 #define MAX_POINT_LIGHTS 128
-#define MAX_SHADOW_SAMPLES 16
+#define MAX_SHADOW_SAMPLES_SQD 256
 #define MAX_POINT_SHADOWS 8
 
 struct PointLight {
@@ -38,7 +38,7 @@ uniform sampler2D DirectionalShadowDepthMap;				//used to sample occluder depth
 uniform sampler2DShadow DirectionalShadowDepthMap_Smooth;	//used to sample actual shadow
 uniform vec2 DirectionalShadowDepthMapTexelSize;			//shadow map inv resolution
 uniform int DirectionalShadowFilterMode;					//0 = hard, 1 = pcf, 2 = pcss
-uniform vec2 DirectionalShadowSampleKernals[MAX_SHADOW_SAMPLES];
+uniform vec2 DirectionalShadowSampleKernals[MAX_SHADOW_SAMPLES_SQD];
 uniform int DirectionalShadowSamples;
 
 //out to render texture
