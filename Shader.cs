@@ -98,18 +98,19 @@ namespace JLGraphics
         }
         internal void SetTextureUnsafe(int propertyId, Texture texture, TextureTarget? textureTarget = null)
         {
+            if (texture == null)
+            {
+                throw new System.ArgumentNullException("This is not supposed to happen!");
+            }
             int textureIndex = textureIndexFromUniform(propertyId);
 
+            //override texture target
             if (textureTarget != null)
                 texture.textureTarget = textureTarget.Value;
 
             //add new texture if we dont have that texture slot added yet
             if (textureIndex == -1)
             {
-                if (texture == null)
-                {
-                    return;
-                }
                 if (availableTextureSlots.Count == 0)
                 {
                     Debug.Log("Cannot add more textures to shader material: " + Name, Debug.Flag.Error);
@@ -120,17 +121,8 @@ namespace JLGraphics
             }
 
             textures[textureIndex] = texture;
-            if (texture != null)
-            {
-                SetInt(propertyId, textureIndex);
-                set_int_bool(textureIndex, true, ref textureMask);
-            }
-            else
-            {
-                texturePropertyIds[textureIndex] = 0;
-                set_int_bool(textureIndex, false, ref textureMask);
-                availableTextureSlots.Push(textureIndex);
-            }
+            SetInt(propertyId, textureIndex);
+            set_int_bool(textureIndex, true, ref textureMask);
         }
         static Texture DefaultTexture = null;
         private void SetDefaultTexture()
