@@ -584,6 +584,24 @@ namespace JLGraphics
         {
             SetGlobalInt(id, value ? 1 : 0);
         }
+        public static bool GetGlobalUniform<T>(int id, out T value)
+        {
+            value = default(T);
+            if (GlobalUniformIndexCache.TryGetValue(id, out int index))
+            {
+                var uniform = GlobalUniformValues[index];
+                if(uniform.value is T t)
+                {
+                    value = t;
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
         void mPushAllGlobalUniformsToShaderProgram()
         {
             for (int i = 0; i < GlobalUniformValues.Count; i++)
@@ -674,6 +692,24 @@ namespace JLGraphics
             mAddUniform(id, UniformType.vec2, value, isDefault);
         }
 
+        public bool GetUniform<T>(int id, out T value)
+        {
+            value = default(T);
+            if(m_uniformValues_cache.TryGetValue(id, out var index))
+            {
+                var uniform = m_uniformValues[index];
+                if(uniform.value is T t)
+                {
+                    value = t;
+                    return true;
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         public int GetUniformLocation(string id)
         {
             int d = GetShaderPropertyId(id);
