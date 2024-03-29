@@ -109,7 +109,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	if(!HasDirectionalShadow){
 		return 0;
 	}
-	float nDotL = max(dot(normal, DirectionalLight.Direction), 0);
+	//float nDotL = max(dot(normal, DirectionalLight.Direction), 0);
 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
@@ -155,7 +155,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	}
 	//pcf
 	else if(DirectionalShadowFilterMode == 1) {
-		int borderCount = int(DirectionalShadowSamples - pow(sqrt(float(DirectionalShadowSamples)) - 2, 2));
+		//int borderCount = int(DirectionalShadowSamples - pow(sqrt(float(DirectionalShadowSamples)) - 2, 2));
 		//check borders
 		int i = 0;
 		//todo fix optimization bug
