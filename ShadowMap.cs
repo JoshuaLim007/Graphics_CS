@@ -203,14 +203,34 @@ namespace JLGraphics
 
             //world space aabb
             var aabb = AABB.GetBoundingBox(corners);
-            var world_center = aabb.Center;
-            
 
             LightDirection = -LightDirection;
-            bool isUp = LightDirection == Vector3.UnitY ? true : false;
-            var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, isUp ? Vector3.UnitY : -Vector3.UnitX);
 
-            var directionalLightViewMatrix = Matrix4.CreateTranslation(-world_center) * direction;
+            float yDot = (Vector3.Dot(LightDirection, Vector3.UnitY));  
+            float xDot = -(Vector3.Dot(LightDirection, Vector3.UnitX)); 
+            float zDot = -(Vector3.Dot(LightDirection, Vector3.UnitZ));
+
+            Vector3 axis = new Vector3(xDot, yDot, zDot);
+            axis.Normalize();
+
+            if(MathF.Abs(yDot) == 1)
+            {
+                axis = Vector3.UnitZ;
+            }
+            else if (MathF.Abs(xDot) == 1)
+            {
+                axis = Vector3.UnitY;
+            }
+            else if (MathF.Abs(zDot) == 1)
+            {
+                axis = Vector3.UnitY;
+            }
+
+            Debug.Log(axis);
+
+            var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, axis);
+
+            var directionalLightViewMatrix = direction;
 
             var aabb_corners = AABB.GetCorners(aabb);
             Vector3[] aabb_corners_light = new Vector3[aabb_corners.Length];
@@ -221,15 +241,13 @@ namespace JLGraphics
             }
 
             var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
-            
+
             //add some padding
             light_aabb.Min.X -= 7.5f;
             light_aabb.Max.X += 7.5f;
             light_aabb.Min.Y -= 7.5f;
             light_aabb.Max.Y += 7.5f;
 
-
-            directionalLightViewMatrix = directionalLightViewMatrix.ClearTranslation();
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
         }
