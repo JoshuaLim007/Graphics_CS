@@ -96,7 +96,6 @@ namespace JLGraphics
                 number &= ~(1 << index);
             }
         }
-        bool mIsWithinShader = false;
         internal void SetTextureUnsafe(int propertyId, Texture texture, TextureTarget? textureTarget = null)
         {
             int textureIndex = textureIndexFromUniform(propertyId);
@@ -369,7 +368,6 @@ namespace JLGraphics
             }
 
             bool hasUpdated = false;
-            mIsWithinShader = true;
             if (DepthTest)
             {
                 GL.Enable(EnableCap.DepthTest);
@@ -506,7 +504,6 @@ namespace JLGraphics
             }
 
             PreviousProgram = Program;
-            mIsWithinShader = false;
             return (hasUpdated ? 1 : 0) << 1 | (hasUpdateProgram ? 1 : 0);
         }
         internal static void Unbind()
