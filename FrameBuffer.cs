@@ -42,6 +42,7 @@ namespace JLGraphics
     public class FrameBuffer : SafeDispose, IGlobalScope
     {
         internal Texture[] TextureAttachments { get; } = null;
+        DrawBuffersEnum[] ColorAttachmentsEnums = null;
         internal int FrameBufferObject { get; } = 0;
         internal int RenderBufferObject { get; } = 0;
         public int Width { get; } = 0;
@@ -100,7 +101,8 @@ namespace JLGraphics
                 }
                 else
                 {
-                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + i, TextureAttachments[i].textureTarget, TextureAttachments[i].GlTextureID, 0);
+                    FramebufferAttachment framebufferAttachment = FramebufferAttachment.ColorAttachment0 + i;
+                    GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, framebufferAttachment, TextureAttachments[i].textureTarget, TextureAttachments[i].GlTextureID, 0);
                 }
             }
 
@@ -115,12 +117,10 @@ namespace JLGraphics
                 else
                     GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, renderbufferStorage, width, height);
 
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
                 GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, RenderbufferTarget.Renderbuffer, RenderBufferObject);
             }
 
 
-            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, FrameBufferObject);
             GL.DrawBuffer(DrawBufferMode.None);
 
             if(colorAttachmentCount != 0)
@@ -136,16 +136,20 @@ namespace JLGraphics
                 }
                 if(attachments.Count > 0)
                 {
-                    GL.DrawBuffers(attachments.Count, attachments.ToArray());
+                    ColorAttachmentsEnums = attachments.ToArray();
                 }
             }
-
-            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, FrameBufferObject);
-            GL.ReadBuffer(ReadBufferMode.None);
 
             if (GL.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != FramebufferErrorCode.FramebufferComplete)
                 Debug.Log("Framebuffer is not complete!", Debug.Flag.Error);
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        }
+        public static void BindFramebuffer(FrameBuffer frameBuffer)
+        {
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBuffer.FrameBufferObject);
+            GL.DrawBuffers(frameBuffer.ColorAttachmentsEnums.Length, frameBuffer.ColorAttachmentsEnums);
+            GL.ReadBuffer(ReadBufferMode.None);
+            GL.Viewport(0, 0, frameBuffer.Width, frameBuffer.Height);
         }
         protected override void OnDispose()
         {

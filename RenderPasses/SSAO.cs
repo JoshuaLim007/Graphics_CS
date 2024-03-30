@@ -202,13 +202,13 @@ namespace JLGraphics.RenderPasses
 
         protected override void OnDispose()
         {
-            accumRT.Dispose();
-            noiseTexture.Dispose();
-            SSAORt.Dispose();
-            blurRT.Dispose();
-            shader.Program.Dispose();
-            comp.Program.Dispose();
-            blur.Program.Dispose();
+            accumRT?.Dispose();
+            noiseTexture?.Dispose();
+            SSAORt?.Dispose();
+            blurRT?.Dispose();
+            shader.Program?.Dispose();
+            comp.Program?.Dispose();
+            blur.Program?.Dispose();
             shader = null;
         }
     }

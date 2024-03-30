@@ -137,6 +137,14 @@ namespace JLGraphics
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.Rgb32f,
             };
+            var normalBufferSettings = new TFP()
+            {
+                wrapMode = TextureWrapMode.MirroredRepeat,
+                maxMipmap = 0,
+                minFilter = TextureMinFilter.Nearest,
+                magFilter = TextureMagFilter.Nearest,
+                internalFormat = PixelInternalFormat.Rgb16f,
+            };
             var depthSettings = new TFP() { 
                 wrapMode = TextureWrapMode.ClampToEdge,
                 maxMipmap = 0,
@@ -145,11 +153,12 @@ namespace JLGraphics
                 internalFormat = PixelInternalFormat.R32f,
             };
             var windowSize = GetRenderSize();
-            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings);
+            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings, normalBufferSettings);
             MainFrameBuffer.SetName("Main frame buffer");
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettings);
             DepthTextureBuffer.SetName("Depth texture buffer");
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraNormalTexture"), MainFrameBuffer.TextureAttachments[1]);
         }
         public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
@@ -503,8 +512,7 @@ namespace JLGraphics
             EndBlitUnsafe(shader);
             if (restoreSrc)
             {
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, src.FrameBufferObject);
-                GL.Viewport(0, 0, src.Width, src.Height);
+                FrameBuffer.BindFramebuffer(src);
             }
         }
         
@@ -533,12 +541,22 @@ namespace JLGraphics
                 return;
             }
 
-            // second pass
             var renderWindowSize = GetRenderSize();
-            int width = dst != null ? dst.Width : renderWindowSize.X;
-            int height = dst != null ? dst.Height : renderWindowSize.Y;
-            int fbo = dst != null ? dst.FrameBufferObject : 0;
-            
+            bool isDefault = dst == null;
+            int width;
+            int height;
+
+            if (isDefault)
+            {
+                width = renderWindowSize.X;
+                height = renderWindowSize.Y;
+            }
+            else
+            {
+                width = dst.Width;
+                height = dst.Height;
+            }
+
             unsafeBlitShader.SetVector2(Shader.GetShaderPropertyId("MainTex_TexelSize"), new Vector2(1.0f / width, 1.0f / height));
             unsafeBlitShader.SetTexture(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
             int results = unsafeBlitShader.AttachShaderForRendering();
@@ -550,8 +568,21 @@ namespace JLGraphics
             {
                 GraphicsDebug.UseProgramCount++;
             }
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
-            GL.Viewport(0, 0, width, height);
+
+            if (isDefault)
+            {
+                //bind default framebuffer
+                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+                GL.Viewport(0, 0, width, height);
+            }
+            else
+            {
+                //bind custom framebuffer
+                //force to draw only to first color attachment buffer
+                FrameBuffer.BindFramebuffer(dst);
+                GL.DrawBuffers(1, new DrawBuffersEnum[] { DrawBuffersEnum.ColorAttachment0 });
+            }
+
             GL.BindVertexArray(FullScreenQuad.VAO);
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, FullScreenQuad.EBO);
 
