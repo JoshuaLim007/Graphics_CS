@@ -141,9 +141,17 @@ namespace JLGraphics
             {
                 wrapMode = TextureWrapMode.MirroredRepeat,
                 maxMipmap = 0,
-                minFilter = TextureMinFilter.Nearest,
-                magFilter = TextureMagFilter.Nearest,
+                minFilter = TextureMinFilter.Linear,
+                magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.Rgb16f,
+            };
+            var specularMetal = new TFP()
+            {
+                wrapMode = TextureWrapMode.MirroredRepeat,
+                maxMipmap = 0,
+                minFilter = TextureMinFilter.Linear,
+                magFilter = TextureMagFilter.Linear,
+                internalFormat = PixelInternalFormat.Rgba8,
             };
             var depthSettings = new TFP() { 
                 wrapMode = TextureWrapMode.ClampToEdge,
@@ -153,12 +161,13 @@ namespace JLGraphics
                 internalFormat = PixelInternalFormat.R32f,
             };
             var windowSize = GetRenderSize();
-            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings, normalBufferSettings);
+            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings, normalBufferSettings, specularMetal);
             MainFrameBuffer.SetName("Main frame buffer");
             DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettings);
             DepthTextureBuffer.SetName("Depth texture buffer");
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraNormalTexture"), MainFrameBuffer.TextureAttachments[1]);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraSpecularTexture"), MainFrameBuffer.TextureAttachments[2]);
         }
         public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {

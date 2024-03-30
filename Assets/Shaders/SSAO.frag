@@ -5,6 +5,7 @@ uniform sampler2D MainTex;
 uniform vec2 MainTex_TexelSize;
 
 uniform sampler2D _CameraDepthTexture;
+uniform sampler2D _CameraNormalTexture;
 uniform mat4 InvProjectionViewMatrix;
 uniform vec4 CameraParams;
 uniform mat4 ProjectionViewMatrix;
@@ -100,7 +101,7 @@ void main()
         return;
     }
 
-    vec3 normal = calcNormalFromPosition(uv);
+    vec3 normal = texture(_CameraNormalTexture, uv).xyz;
     vec3 position = calcPositionFromDepth(uv, depth);
 
     float occlusion = 0;

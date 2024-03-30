@@ -31,6 +31,7 @@ namespace JLGraphics.Utility
         }
         ImGuiController guiController;
         GameWindow Window;
+        public Action OnGuiFinish { get; set; }
         public GuiManager(GameWindow window)
         {
             Window = window;
@@ -92,6 +93,8 @@ namespace JLGraphics.Utility
 
             guiController.Render();
             Window.SwapBuffers();
+
+            OnGuiFinish?.Invoke();
         }
 
         bool resized = false;

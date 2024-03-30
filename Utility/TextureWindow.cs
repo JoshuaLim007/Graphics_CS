@@ -1,4 +1,5 @@
 ﻿using ImGuiNET;
+using ObjLoader.Loader.Data.VertexData;
 using OpenTK.Graphics.OpenGL4;
 using System;
 using System.Collections.Generic;
@@ -18,10 +19,29 @@ namespace JLGraphics.Utility
             propId = GlobalTexturePropertyID;
             string name = GlobalTexturePropertyID + " texture preview";
             guiManager.AddWindow(name, Update, typeof(TextureWindow));
+            guiManager.OnGuiFinish += Reset;
+        }
+        Texture texture1;
+        void Reset()
+        {
+
+            if(texture1 != null)
+            {
+                GL.BindTexture(TextureTarget.Texture2D, texture1.GlTextureID);
+                //reset swizzle
+                var swizzle = new int[]{
+                    (int)All.Red,   // Shader Red   channel source = Texture Red
+                    (int)All.Green, // Shader Green channel source = Texture Green
+                    (int)All.Blue,  // Shader Blue  channel source = Texture Blue
+                    (int)All.Alpha    // Shader Alpha channel source = One
+                };
+                GL.TextureParameterI(texture1.GlTextureID, TextureParameterName.TextureSwizzleRgba, swizzle);
+            }
         }
         public void Update()
         {
             if(Shader.GetGlobalUniform<Texture>(Shader.GetShaderPropertyId(propId), out Texture texture)){
+                texture1 = texture;
                 ImGui.SliderFloat("Texture Scale", ref TextureScale, 0.5f, 1.0f);
                 var cursorPos = ImGui.GetCursorScreenPos();
 
@@ -51,6 +71,16 @@ namespace JLGraphics.Utility
 
                 var min = cursorPos;
                 var max = cursorPos + normImageSize;
+                
+                //make alpha one
+                GL.BindTexture(TextureTarget.Texture2D, texture.GlTextureID);
+                int[] swizzle = new int[]{
+                    (int)All.Red,   // Shader Red   channel source = Texture Red
+                    (int)All.Green, // Shader Green channel source = Texture Green
+                    (int)All.Blue,  // Shader Blue  channel source = Texture Blue
+                    (int)All.One    // Shader Alpha channel source = One
+                };
+                GL.TextureParameterI(texture.GlTextureID, TextureParameterName.TextureSwizzleRgba, swizzle);
 
                 ImGui.GetWindowDrawList().AddImage(
                     (IntPtr)(texture.GlTextureID),

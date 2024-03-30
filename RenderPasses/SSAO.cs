@@ -185,13 +185,9 @@ namespace JLGraphics.RenderPasses
             }
 
             //compose it to original screen color
-            comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
             Blit(frameBuffer, frameBuffer, comp);
             //Blit(blurRT, frameBuffer);
-
-#if DEBUG
-            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
-#endif
 
             //generate new noise
             if (TemporalAccumulation)

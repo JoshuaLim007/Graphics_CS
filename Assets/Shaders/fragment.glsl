@@ -42,6 +42,7 @@ uniform int DirectionalFilterRadius;
 //out to render texture
 layout(location = 0) out vec4 frag;
 layout(location = 1) out vec4 norm;
+layout(location = 2) out vec4 specmet;
 
 //textures
 uniform sampler2D AlbedoTex;	//rgba texture
@@ -329,5 +330,6 @@ void main(){
 	c = mix(vec4(c), vec4(FogColor, 1), 1 - density);
 
 	norm = vec4(normal, 0);
+	specmet = vec4(roughness, baseRef.xyz);
 	frag = c;
 }
