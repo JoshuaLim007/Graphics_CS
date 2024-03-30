@@ -36,16 +36,10 @@ namespace JLGraphics
         DirectionalLight DirectionalLight;
         Vector2 texelSize;
         
-        float SamplingBox = 3.5f;
-        int SampleCount = 12;
-        int previousSampleCount = 0;
+        int SampleCount = 64;
         public void SetSampleCount(int value)
         {
-            SampleCount = MathHelper.Clamp(value, 3, 16);
-        }
-        public void SetBlurRadius(float value)
-        {
-            SamplingBox = MathHelper.Clamp(value, 1.0f, 8.0f);
+            SampleCount = MathHelper.Clamp(value, 1, 64);
         }
         public FilterMode filterMode { get; set; } = FilterMode.PCSS;
         public override string Name => "Directional Shadow Map: " + DirectionalLight.Name;
@@ -57,88 +51,6 @@ namespace JLGraphics
         {
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap"), null);
             Shader.SetGlobalBool(Shader.GetShaderPropertyId("HasDirectionalShadow"), false);
-        }
-        void CalculateSamplingKernals()
-        {
-            if(previousSampleCount == SampleCount)
-            {
-                return;
-            }
-            previousSampleCount = SampleCount;
-            int sc = SampleCount;
-            List<Vector2> borderKernals = new List<Vector2>();
-            List<Vector2> nonBorderKernals = new List<Vector2>();
-            Vector2[] kernals = new Vector2[sc * sc];
-
-            for (int i = 0; i < sc; i++)
-            {
-                for (int j = 0; j < sc; j++)
-                {
-                    //borders
-                    if(i == 0 || i == sc - 1 || j == 0 || j == sc - 1)
-                    {
-                        borderKernals.Add(
-                            new Vector2() { 
-                                X = i, 
-                                Y = j 
-                            });
-                    }
-                    //non borders
-                    else
-                    {
-                        nonBorderKernals.Add(new Vector2()
-                        {
-                            X = i,
-                            Y = j
-                        });
-                    }
-                }
-            }
-
-            //collect kernals
-            //collect borders first
-            int kernalIndex = 0;
-            for (int i = 0; i < borderKernals.Count; i++)
-            {
-                kernals[kernalIndex] = borderKernals[i];
-                kernalIndex++;
-            }
-            for(int i = 0; i < nonBorderKernals.Count; i++)
-            {
-                kernals[kernalIndex] = nonBorderKernals[i];
-                kernalIndex++;
-            }
-
-            //normalize kernals
-            for (int i = 0; i < sc * sc; i++)
-            {
-                //add noise
-                kernals[i].X += (Random.Shared.NextSingle() * 2 - 1) * 0.5f;
-                kernals[i].Y += (Random.Shared.NextSingle() * 2 - 1) * 0.5f;
-
-                //map 0 -> sc to 0 -> 1
-                kernals[i].X /= sc;
-                kernals[i].Y /= sc;
-
-                //map 0 -> 1 to -1 -> 1
-                kernals[i].X = kernals[i].X * 2 - 1;
-                kernals[i].Y = kernals[i].Y * 2 - 1;
-
-                //map -1 -> 1 to -SamplingBox/2 -> SamplingBox/2
-                kernals[i].X *= SamplingBox * 0.5f;
-                kernals[i].Y *= SamplingBox * 0.5f;
-
-                //center
-                kernals[i].X += SamplingBox * 0.5f / sc;
-                kernals[i].Y += SamplingBox * 0.5f / sc;
-            }
-            
-            //var borderCount = kernals.Length - Math.Pow(MathF.Sqrt((float)kernals.Length) - 2, 2);
-            for(int i = 0; i < SampleCount * SampleCount; i++)
-            {
-                var prop = Shader.GetShaderPropertyId("DirectionalShadowSampleKernals[" + i + "]");
-                Shader.SetGlobalVector2(prop, kernals[i]);
-            }
         }
         public DirectionalShadowMap(DirectionalLight directionalLight, float ShadowRange = 100.0f, int resolution = 2048) : base(resolution)
         {
@@ -166,8 +78,7 @@ namespace JLGraphics
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
             this.DirectionalLight = directionalLight;
 
-            CalculateSamplingKernals();
-            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);
+            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), SampleCount);
         }
         public void ResizeResolution(int resolution)
         {
@@ -259,7 +170,6 @@ namespace JLGraphics
             }
 #endif
 
-            CalculateSamplingKernals();
             var light_aabb = CalculateShadowFrustum(
                 DirectionalLight.Transform.Forward,
                 camera.Transform.LocalRotation,
@@ -268,7 +178,7 @@ namespace JLGraphics
                 camera.Width / (float)camera.Height, 
                 out var directionalLightViewMatrix);
 
-            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), filterMode == FilterMode.PCSS ? SampleCount : SampleCount * SampleCount);
+            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), SampleCount);
 
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.CullFace(CullFaceMode.Front);

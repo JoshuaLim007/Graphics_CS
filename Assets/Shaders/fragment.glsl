@@ -1,6 +1,5 @@
 ﻿#version 430
 #define MAX_POINT_LIGHTS 128
-#define MAX_SHADOW_SAMPLES_SQD 256
 #define MAX_POINT_SHADOWS 8
 
 struct PointLight {
@@ -38,7 +37,6 @@ uniform sampler2D DirectionalShadowDepthMap;				//used to sample occluder depth
 uniform sampler2DShadow DirectionalShadowDepthMap_Smooth;	//used to sample actual shadow
 uniform vec2 DirectionalShadowDepthMapTexelSize;			//shadow map inv resolution
 uniform int DirectionalShadowFilterMode;					//0 = hard, 1 = pcf, 2 = pcss
-uniform vec2 DirectionalShadowSampleKernals[MAX_SHADOW_SAMPLES_SQD];
 uniform int DirectionalShadowSamples;
 
 //out to render texture
@@ -109,8 +107,6 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	if(!HasDirectionalShadow){
 		return 0;
 	}
-	//float nDotL = max(dot(normal, DirectionalLight.Direction), 0);
-
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
 
@@ -155,27 +151,15 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	}
 	//pcf
 	else if(DirectionalShadowFilterMode == 1) {
-		//int borderCount = int(DirectionalShadowSamples - pow(sqrt(float(DirectionalShadowSamples)) - 2, 2));
-		//check borders
-		int i = 0;
-		//todo fix optimization bug
-		//for (; i < borderCount; i++) {
-		//	vec2 offset = DirectionalShadowSampleKernals[i];
-		//	offset *= DirectionalShadowDepthMapTexelSize;
-		//	percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
-		//	samples++;
-		//}
-		////checking along border, if we all in shadow or all in light, return early
-		//float tempPercentCovered = percentCovered / samples;
-		//if (tempPercentCovered == 1 || tempPercentCovered == 0) {
-		//	return tempPercentCovered * fade;
-		//}
-		//continue sampling
-		for (; i < DirectionalShadowSamples; i++) {
-			vec2 offset = DirectionalShadowSampleKernals[i];
-			offset *= DirectionalShadowDepthMapTexelSize;
-			percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
-			samples++;
+		float x, y;
+		float range = sqrt(float(DirectionalShadowSamples)) * 0.5;
+		//64 samples
+		for (y = -range; y <= range; y += 1.0) {
+			for (x = -range; x <= range; x += 1.0) {
+				vec2 offset = vec2(x, y) * DirectionalShadowDepthMapTexelSize;
+				percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
+				samples++;
+			}
 		}
 	}
 	//hard
@@ -184,7 +168,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 		percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy, currentDepth)).r;
 	}
 
-	return (percentCovered / samples) * fade;
+	return smoothstep(0, 1, percentCovered / samples) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCubeShadow depthMap, float farPlane, vec3 normal) {
 	// get vector between fragment position and light position
