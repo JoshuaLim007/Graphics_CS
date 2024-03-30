@@ -41,6 +41,7 @@ uniform int DirectionalFilterRadius;
 
 //out to render texture
 layout(location = 0) out vec4 frag;
+layout(location = 1) out vec4 norm;
 
 //textures
 uniform sampler2D AlbedoTex;	//rgba texture
@@ -326,6 +327,7 @@ void main(){
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));
 	c = mix(vec4(c), vec4(FogColor, 1), 1 - density);
-	
+
+	norm = vec4(normal, 0);
 	frag = c;
 }
