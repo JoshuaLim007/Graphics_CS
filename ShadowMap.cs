@@ -104,7 +104,7 @@ namespace JLGraphics
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
         }
 
-        AABB CalculateShadowFrustum(Vector3 LightDirection, Quaternion CameraRotation, Vector3 CameraPosition, float CameraFOV, float aspect, out Matrix4 LightViewMatrix)
+        AABB CalculateShadowFrustum(Transform lightTransform, Quaternion CameraRotation, Vector3 CameraPosition, float CameraFOV, float aspect, out Matrix4 LightViewMatrix)
         {
             var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(CameraFOV), aspect, 0.1f, shadowRange);
             var invView = (Matrix4.CreateTranslation(-CameraPosition) * Matrix4.CreateFromQuaternion(CameraRotation)).Inverted();
@@ -115,27 +115,31 @@ namespace JLGraphics
             //world space aabb
             var aabb = AABB.GetBoundingBox(corners);
 
-            LightDirection = -LightDirection;
+            var LightDirection = lightTransform.Forward;
 
-            float yDot = (Vector3.Dot(LightDirection, Vector3.UnitY));  
-            float xDot = -(Vector3.Dot(LightDirection, Vector3.UnitX)); 
-            float zDot = -(Vector3.Dot(LightDirection, Vector3.UnitZ));
+            float xDot = MathF.Abs(Vector3.Dot(LightDirection, Vector3.UnitX));
 
-            Vector3 axis = new Vector3(xDot, yDot, zDot);
+            Vector3 axis = Vector3.Lerp(Vector3.UnitZ, -Vector3.UnitY, xDot);
             axis.Normalize();
 
-            if(MathF.Abs(yDot) == 1)
-            {
-                axis = Vector3.UnitZ;
-            }
-            else if (MathF.Abs(xDot) == 1)
-            {
-                axis = Vector3.UnitY;
-            }
-            else if (MathF.Abs(zDot) == 1)
-            {
-                axis = Vector3.UnitY;
-            }
+            //if(MathF.Abs(yDot) == 1)
+            //{
+            //    axis = Vector3.UnitZ;
+            //}
+            //else if (MathF.Abs(xDot) == 1)
+            //{
+            //    axis = Vector3.UnitY;
+            //}
+            //else if (MathF.Abs(zDot) == 1)
+            //{
+            //    axis = Vector3.UnitY;
+            //}
+
+            LightDirection = -LightDirection;
+
+            //Debug.Log("light " + LightDirection);
+            //Debug.Log("xDot " + xDot);
+            //Debug.Log("axis " + axis);
 
             var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, axis);
 
@@ -152,10 +156,10 @@ namespace JLGraphics
             var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
 
             //add some padding
-            light_aabb.Min.X -= 7.5f;
-            light_aabb.Max.X += 7.5f;
-            light_aabb.Min.Y -= 7.5f;
-            light_aabb.Max.Y += 7.5f;
+            //light_aabb.Min.X -= 7.5f;
+            //light_aabb.Max.X += 7.5f;
+            //light_aabb.Min.Y -= 7.5f;
+            //light_aabb.Max.Y += 7.5f;
 
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
@@ -171,7 +175,7 @@ namespace JLGraphics
 #endif
 
             var light_aabb = CalculateShadowFrustum(
-                DirectionalLight.Transform.Forward,
+                DirectionalLight.Transform,
                 camera.Transform.LocalRotation,
                 camera.Transform.LocalPosition, 
                 camera.Fov, 

@@ -138,6 +138,7 @@ float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube
 	float bias = mix(0.008, 0.001, dot);
 	float shadow = 0.0;
 
+	//fix at 64 samples
 	float samples = 4.0;
 	float offset = 0.015;
 	for (float x = -offset; x < offset; x += offset / (samples * 0.5))
@@ -156,7 +157,7 @@ float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCube
 		}
 	}
 
-	return shadow / float(samples * samples * samples);
+	return smoothstep(0, 1, shadow / float(samples * samples * samples));
 }
 
 vec4 GetAmbientColor(vec3 normal) {
