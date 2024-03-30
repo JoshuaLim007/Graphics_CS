@@ -37,7 +37,7 @@ uniform sampler2D DirectionalShadowDepthMap;				//used to sample occluder depth
 uniform sampler2DShadow DirectionalShadowDepthMap_Smooth;	//used to sample actual shadow
 uniform vec2 DirectionalShadowDepthMapTexelSize;			//shadow map inv resolution
 uniform int DirectionalShadowFilterMode;					//0 = hard, 1 = pcf, 2 = pcss
-uniform int DirectionalShadowSamples;
+uniform int DirectionalFilterRadius;
 
 //out to render texture
 layout(location = 0) out vec4 frag;
@@ -80,34 +80,11 @@ vec3 hash(uvec3 x)
 
 	return vec3(x) * (1.0 / float(0xffffffffU));
 }
-float DirectionalShadowOccluderSearch(vec2 startingProjectedLightSpacePos, float radius, float maxSamples) {
 
-	float depthCounter = 0;
-	int samples = 0;
-	int scale = 1000;
-	uvec3 scaledPos = uvec3((gl_FragCoord.x) * scale, (gl_FragCoord.y) * scale, 0);
-	float stride = 3.0f / maxSamples;
-	for (float i = -1; i <= 1; i += stride) {
-		for (float j = -1; j <= 1; j += stride) {
-			samples++;
-			int iscale = samples * scale + _Frame;
-			vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-			randOffset = (randOffset * 2 - 1) * 0.5f;
-			vec2 offset = vec2(i, j) + randOffset;
-			offset *= radius;
-			offset *= DirectionalShadowDepthMapTexelSize;
-			depthCounter += texture(DirectionalShadowDepthMap, startingProjectedLightSpacePos + offset).r;
-		}
-	}
-
-	depthCounter /= samples;
-	return depthCounter;
-}
-float SampleShadow(vec3 position, int samples, out int sampleCount) {
+float SampleDirectionalShadow(vec3 position, float range) {
 	float x, y;
-	float range = sqrt(float(samples)) * 0.5;
 	float percentCovered = 0;
-	sampleCount = 0;
+	int sampleCount = 0;
 	for (y = -range; y <= range; y += 1.0) {
 		for (x = -range; x <= range; x += 1.0) {
 			vec2 offset = vec2(x, y) * DirectionalShadowDepthMapTexelSize;
@@ -115,7 +92,7 @@ float SampleShadow(vec3 position, int samples, out int sampleCount) {
 			sampleCount++;
 		}
 	}
-	return percentCovered;
+	return percentCovered / sampleCount;
 }
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) {
 	if(!HasDirectionalShadow){
@@ -130,7 +107,6 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 
 	float percentCovered = 0.0f;
 	float currentDepth = projCoords.z;
-	int samples = 0;
 
 	//apply shadow fading
 	float distToCam = length(worldPosition - CameraWorldSpacePos);
@@ -139,41 +115,18 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 
 	//pcss
 	if (DirectionalShadowFilterMode == 2) {
-		int scale = 1000;
-		uvec3 scaledPos = uvec3((gl_FragCoord.x) * scale, (gl_FragCoord.y) * scale, 0);
-
-		const float MaxBlurRadius = 8.0f;
-		const float MinBlurRadius = 0.5f;
-		float blurRadius = 1.0f;
-		float avgOccluderDepth = DirectionalShadowOccluderSearch(projCoords.xy, MaxBlurRadius * 2.0f, float(DirectionalShadowSamples));
-		float depthDiff = min(abs(currentDepth - avgOccluderDepth) * 50, 1);
-		blurRadius = mix(MinBlurRadius, MaxBlurRadius, depthDiff);
-
-		float stride = 3.0f / float(DirectionalShadowSamples);
-		for (float i = -1; i <= 1; i += stride) {
-			for (float j = -1; j <= 1; j += stride) {
-				samples++;
-				int iscale = samples * scale + _Frame;
-				vec2 randOffset = hash(uvec3(scaledPos.x, scaledPos.y, iscale)).xy;
-				randOffset = randOffset * 2 - 1;
-				vec2 offset = vec2(i, j) + randOffset * 0.5f;
-				offset *= DirectionalShadowDepthMapTexelSize;
-				offset *= blurRadius;
-				percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
-			}
-		}
+		return 0;
 	}
 	//pcf
 	else if(DirectionalShadowFilterMode == 1) {
-		percentCovered = SampleShadow(projCoords, DirectionalShadowSamples, samples);
+		percentCovered = SampleDirectionalShadow(projCoords, DirectionalFilterRadius);
 	}
 	//hard
 	else {
-		samples = 1;
 		percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy, currentDepth)).r;
 	}
 
-	return smoothstep(0, 1, percentCovered / samples) * fade;
+	return smoothstep(0, 1, percentCovered) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCubeShadow depthMap, float farPlane, vec3 normal) {
 	// get vector between fragment position and light position

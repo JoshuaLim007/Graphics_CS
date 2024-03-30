@@ -36,12 +36,12 @@ namespace JLGraphics
         DirectionalLight DirectionalLight;
         Vector2 texelSize;
         
-        int SampleCount = 64;
-        public void SetSampleCount(int value)
+        int FilterRadius = 4;
+        public void SetFilterRadius(int value)
         {
-            SampleCount = MathHelper.Clamp(value, 1, 64);
+            FilterRadius = MathHelper.Clamp(value, 1, 4);
         }
-        public FilterMode filterMode { get; set; } = FilterMode.PCSS;
+        public FilterMode filterMode { get; set; } = FilterMode.PCF;
         public override string Name => "Directional Shadow Map: " + DirectionalLight.Name;
         protected override void OnDispose()
         {
@@ -78,7 +78,7 @@ namespace JLGraphics
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
             this.DirectionalLight = directionalLight;
 
-            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), SampleCount);
+            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalFilterRadius"), FilterRadius);
         }
         public void ResizeResolution(int resolution)
         {
@@ -178,7 +178,7 @@ namespace JLGraphics
                 camera.Width / (float)camera.Height, 
                 out var directionalLightViewMatrix);
 
-            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalShadowSamples"), SampleCount);
+            Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalFilterRadius"), FilterRadius);
 
             GL.Viewport(0, 0, Resolution, Resolution);
             GL.CullFace(CullFaceMode.Front);
