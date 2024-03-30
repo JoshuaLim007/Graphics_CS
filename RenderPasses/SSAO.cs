@@ -174,7 +174,7 @@ namespace JLGraphics.RenderPasses
 
             //blur results
             blur.SetInt(Shader.GetShaderPropertyId("DoDepthCheck"), 1);
-            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 0.15f);
+            blur.SetFloat(Shader.GetShaderPropertyId("MaxDepthDiff"), 0.05f);
             if (TemporalAccumulation)
             {
                 Blit(accumRT, blurRT, blur);
@@ -188,6 +188,10 @@ namespace JLGraphics.RenderPasses
             comp.SetTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
             Blit(frameBuffer, frameBuffer, comp);
             //Blit(blurRT, frameBuffer);
+
+#if DEBUG
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("AOTex"), blurRT.TextureAttachments[0]);
+#endif
 
             //generate new noise
             if (TemporalAccumulation)

@@ -210,8 +210,14 @@ namespace JLGraphics
             SkyboxDepthPrepassShader.DepthTestFunction = DepthFunction.Less;
 
             DefaultMaterial = new Shader("Default Material", DefaultShaderProgram);
+            DefaultMaterial.DepthMask = false;
+            DefaultMaterial.DepthTest = true;
+            DefaultMaterial.DepthTestFunction = DepthFunction.Equal;
+
             DepthPrepassShader = new Shader("Default depth only", DepthPrepassShaderProgram);
             DepthPrepassShader.DepthTestFunction = DepthFunction.Less;
+            DepthPrepassShader.DepthMask = true;
+            DepthPrepassShader.DepthTest = true;
             DepthPrepassShader.ColorMask[0] = true;
             DepthPrepassShader.ColorMask[1] = false;
             DepthPrepassShader.ColorMask[2] = false;
