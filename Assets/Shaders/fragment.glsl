@@ -103,6 +103,20 @@ float DirectionalShadowOccluderSearch(vec2 startingProjectedLightSpacePos, float
 	depthCounter /= samples;
 	return depthCounter;
 }
+float SampleShadow(vec3 position, int samples, out int sampleCount) {
+	float x, y;
+	float range = sqrt(float(samples)) * 0.5;
+	float percentCovered = 0;
+	sampleCount = 0;
+	for (y = -range; y <= range; y += 1.0) {
+		for (x = -range; x <= range; x += 1.0) {
+			vec2 offset = vec2(x, y) * DirectionalShadowDepthMapTexelSize;
+			percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(position.xy + offset, position.z)).r;
+			sampleCount++;
+		}
+	}
+	return percentCovered;
+}
 float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) {
 	if(!HasDirectionalShadow){
 		return 0;
@@ -151,16 +165,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	}
 	//pcf
 	else if(DirectionalShadowFilterMode == 1) {
-		float x, y;
-		float range = sqrt(float(DirectionalShadowSamples)) * 0.5;
-		//64 samples
-		for (y = -range; y <= range; y += 1.0) {
-			for (x = -range; x <= range; x += 1.0) {
-				vec2 offset = vec2(x, y) * DirectionalShadowDepthMapTexelSize;
-				percentCovered += 1 - texture(DirectionalShadowDepthMap_Smooth, vec3(projCoords.xy + offset, currentDepth)).r;
-				samples++;
-			}
-		}
+		percentCovered = SampleShadow(projCoords, DirectionalShadowSamples, samples);
 	}
 	//hard
 	else {
