@@ -57,9 +57,9 @@ namespace JLGraphics.RenderPasses
         {
             Graphics.Instance.StartBlitUnsafe(_);
         }
-        public void BlitUnsafe(FrameBuffer src, FrameBuffer dst)
+        public void BlitUnsafe(FrameBuffer src, FrameBuffer dst, int targetColorAttachment = 0)
         {
-            Graphics.Instance.BlitUnsafe(src, dst);
+            Graphics.Instance.BlitUnsafe(src, dst, targetColorAttachment);
         }
         public void EndBlitUnsafe(Shader _)
         {

@@ -505,10 +505,10 @@ namespace JLGraphics
 
         public FrameBuffer FinalRenderTarget => MainFrameBuffer;
 
-        internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null)
+        internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null, int targetColorAttachment = 0)
         {
             StartBlitUnsafe(shader);
-            BlitUnsafe(src, dst);
+            BlitUnsafe(src, dst, targetColorAttachment);
             EndBlitUnsafe(shader);
             if (restoreSrc)
             {
@@ -529,7 +529,7 @@ namespace JLGraphics
             blitShader.DepthTest = false;
             this.unsafeBlitShader = blitShader;
         }
-        internal void BlitUnsafe(FrameBuffer src, FrameBuffer dst)
+        internal void BlitUnsafe(FrameBuffer src, FrameBuffer dst, int targetColorAttachment)
         {
             if (!blitUnsafeFlag)
             {
@@ -580,7 +580,7 @@ namespace JLGraphics
                 //bind custom framebuffer
                 //force to draw only to first color attachment buffer
                 FrameBuffer.BindFramebuffer(dst);
-                GL.DrawBuffers(1, new DrawBuffersEnum[] { DrawBuffersEnum.ColorAttachment0 });
+                GL.DrawBuffers(1, new DrawBuffersEnum[] { DrawBuffersEnum.ColorAttachment0 + targetColorAttachment });
             }
 
             GL.BindVertexArray(FullScreenQuad.VAO);
