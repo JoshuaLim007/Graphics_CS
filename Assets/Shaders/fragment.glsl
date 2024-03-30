@@ -129,25 +129,34 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	return smoothstep(0, 1, percentCovered) * fade;
 }
 float GetPointLightShadow(vec3 viewPos, vec3 fragPos, vec3 lightPos, samplerCubeShadow depthMap, float farPlane, vec3 normal) {
+	
 	// get vector between fragment position and light position
 	vec3 fragToLight = fragPos - lightPos;
-	// now get current linear depth as the length between the fragment and light position
+	
+	float d = 1 - abs(dot(normal, normalize(fragToLight)));
+	float bias = mix(0.001, 0.05, d);
 
 	// now test for shadows
-	float dot = abs(dot(normal, normalize(fragToLight)));
-	float bias = mix(0.008, 0.001, dot);
 	float shadow = 0.0;
+	float dist = length(fragToLight);
 
 	//fix at 64 samples
 	float samples = 4.0;
-	float offset = 0.015;
+	
+	float offset = 0.005 * dist;
+
 	for (float x = -offset; x < offset; x += offset / (samples * 0.5))
 	{
 		for (float y = -offset; y < offset; y += offset / (samples * 0.5))
 		{
 			for (float z = -offset; z < offset; z += offset / (samples * 0.5))
 			{
-				vec3 dir = fragToLight + vec3(x, y, z);
+				//orient to direction to light
+				vec3 offset = vec3(x, y, z);
+				offset *= -sign(dot(offset, fragToLight));
+
+				vec3 dir = fragToLight + offset;
+
 				float currentDepth = length(dir);
 				currentDepth /= farPlane;
 
