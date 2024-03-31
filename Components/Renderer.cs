@@ -21,6 +21,7 @@ namespace JLGraphics
         [GuiSlider(0, 1)]
         float smoothness { 
             get {
+                Material.GetUniform<float>(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Smoothness), out s);
                 return s;
             } 
             set {
@@ -37,6 +38,7 @@ namespace JLGraphics
         {
             get
             {
+                Material.GetUniform<float>(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Metalness), out m);
                 return m;
             }
             set
