@@ -9,12 +9,20 @@ using JLUtility;
 
 namespace JLGraphics.RenderPasses
 {
+    public enum ToneCurve
+    {
+        //low quality
+        Gamma,
+        //high quality
+        Srgb,
+    }
     public class PostProcessPass : RenderPass
     {
+        public ToneCurve ToneCurve = ToneCurve.Srgb;
         public float FogDensity = .0025f;
         public Vector3 FogColor = new Vector3(1, 1, 1);
         public bool Tonemapping = true;
-        public bool GammaCorrection = true;
+        public float Gamma = 2.4f;
         public bool Vignette = true;
         public float VignetteStrength = 0.5f;
 
@@ -45,7 +53,17 @@ namespace JLGraphics.RenderPasses
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
             shader.SetBool(Shader.GetShaderPropertyId("Tonemapping"), Tonemapping);
-            shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), GammaCorrection);
+            if(ToneCurve == ToneCurve.Srgb)
+            {
+                shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), false);
+                shader.SetBool(Shader.GetShaderPropertyId("Srgb"), true);
+            }
+            else if(ToneCurve == ToneCurve.Gamma)
+            {
+                shader.SetBool(Shader.GetShaderPropertyId("GammaCorrection"), true);
+                shader.SetBool(Shader.GetShaderPropertyId("Srgb"), false);
+            }
+            shader.SetFloat(Shader.GetShaderPropertyId("Gamma"), Gamma);
             shader.SetBool(Shader.GetShaderPropertyId("Vignette"), Vignette);
             shader.SetFloat(Shader.GetShaderPropertyId("VignetteStrength"), VignetteStrength);
 

@@ -9,6 +9,8 @@ uniform vec2 MainTex_TexelSize;
 uniform vec4 CameraParams;
 uniform int Tonemapping;
 uniform int GammaCorrection;
+uniform float Gamma;
+uniform int Srgb;
 uniform int Vignette;
 uniform float VignetteStrength;
 uniform sampler2D DirectionalShadowDepthMap;
@@ -91,7 +93,9 @@ vec3 calcNormalFromPosition_fast(vec2 texCoords) {
     vec3 dy = dFdy(pos0);
     return normalize(cross(dx, dy));
 }
-
+vec3 linear_srgb(vec3 x) {
+    return mix(1.055*pow(x, vec3(1./Gamma)) - 0.055, 12.92*x, step(x,vec3(0.0031308)));
+}
 void main()
 { 
     vec2 pos = gl_FragCoord.xy * MainTex_TexelSize;
@@ -119,10 +123,14 @@ void main()
         col.xyz = aces_tonemap(col.xyz);
     }
 
-    //gamma correction
+    //Linear to Gamma
     if(GammaCorrection == 1){
-        float gamma = 2.2;
-        col.rgb = pow(col.rgb, vec3(1.0/gamma));
+        col.rgb = pow(col.rgb, vec3(1.0/Gamma));
+    }
+
+    //Linear to Srgb 
+    if(Srgb == 1){
+        col.xyz = linear_srgb(col.xyz);
     }
 
     if(Vignette == 1){
@@ -139,7 +147,6 @@ void main()
 //        FragColor = vec4( smoothstep(0.25f, 0.75f, pow(shadow.r, 1.0f)) );
 //        return;
 //    }
-
 
     FragColor = vec4(col.xyz, 1.0);
 //    FragColor = vec4(normal, 0);
