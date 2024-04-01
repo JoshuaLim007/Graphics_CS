@@ -114,6 +114,9 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	float distToCam = length(worldPosition - CameraWorldSpacePos);
 	float halfShadowRange = DirectionalShadowRange;
 	float fade = smoothstep(halfShadowRange, max(DirectionalShadowRange - 5, 0), distToCam);
+	if (fade == 0) {
+		return 0;
+	}
 
 	//pcss
 	if (DirectionalShadowFilterMode == 2) {
