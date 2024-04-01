@@ -147,7 +147,7 @@ namespace JLGraphics
         public void LookTorwards(Vector3 direction, Vector3 axis)
         {
             var pos = Transform.LocalPosition;
-            var forward = pos + direction * 1000;
+            var forward = pos + direction;
 
             var mat = Matrix4.LookAt(pos, forward, axis);
             var rot = mat.ExtractRotation();
