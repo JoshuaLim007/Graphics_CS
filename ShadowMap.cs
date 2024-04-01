@@ -39,7 +39,7 @@ namespace JLGraphics
         int FilterRadius = 4;
         public void SetFilterRadius(int value)
         {
-            FilterRadius = MathHelper.Clamp(value, 1, 4);
+            FilterRadius = MathHelper.Clamp(value, 0, 4);
         }
         public FilterMode filterMode { get; set; } = FilterMode.PCF;
         public override string Name => "Directional Shadow Map: " + DirectionalLight.Name;
