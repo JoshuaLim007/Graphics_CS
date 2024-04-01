@@ -166,14 +166,6 @@ namespace JLGraphics
         }
         public override void RenderShadowMap(Camera camera)
         {
-#if DEBUG
-            if (Graphics.Instance.Window.IsKeyPressed(OpenTK.Windowing.GraphicsLibraryFramework.Keys.K))
-            {
-                filterMode++;
-                filterMode = (FilterMode)((int)filterMode % 3);
-            }
-#endif
-
             var light_aabb = CalculateShadowFrustum(
                 DirectionalLight.Transform,
                 camera.Transform.LocalRotation,
