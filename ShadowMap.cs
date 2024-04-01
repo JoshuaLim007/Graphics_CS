@@ -156,10 +156,10 @@ namespace JLGraphics
             var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
 
             //add some padding
-            //light_aabb.Min.X -= 7.5f;
-            //light_aabb.Max.X += 7.5f;
-            //light_aabb.Min.Y -= 7.5f;
-            //light_aabb.Max.Y += 7.5f;
+            light_aabb.Min.X -= 1.0f;
+            light_aabb.Max.X += 1.0f;
+            light_aabb.Min.Y -= 1.0f;
+            light_aabb.Max.Y += 1.0f;
 
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
