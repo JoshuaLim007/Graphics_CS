@@ -248,6 +248,8 @@ namespace JLGraphics
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
             InitFramebuffers();
+
+            SkyboxController.Init(SkyboxShader);
         }
         public void Dispose()
         {
