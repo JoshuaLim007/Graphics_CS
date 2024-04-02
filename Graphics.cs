@@ -403,6 +403,8 @@ namespace JLGraphics
 
             void DoResize()
             {
+                WindowResizeResults.X = (int)MathF.Max(16, WindowResizeResults.X);
+                WindowResizeResults.Y = (int)MathF.Max(16, WindowResizeResults.Y);
                 Debug.Log("Window resized: " + WindowResizeResults);
                 RenderBufferSize = new Vector2i(WindowResizeResults.X, WindowResizeResults.Y);
                 WindowResized = false;
@@ -618,10 +620,18 @@ namespace JLGraphics
         List<RenderPass> renderPasses = new List<RenderPass>();
         public void EnqueueRenderPass(RenderPass renderPass)
         {
+            if (renderPass == null)
+            {
+                return;
+            }
             renderPasses.Add(renderPass);
         }
         public void DequeueRenderPass(RenderPass renderPass)
         {
+            if(renderPass == null)
+            {
+                return;
+            }
             renderPasses.Remove(renderPass);
         }
         public T GetRenderPass<T>() where T : RenderPass

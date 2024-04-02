@@ -36,6 +36,7 @@ void main()
     vec2 halfMv = mv * 0.5f;
     vec2 startPos = pos - halfMv * scaler;
 
+    int sampleCount = 1;
     vec2 stride = mv / samples;
     pos = startPos;
     for(int i = 1; i <= samples; i++){
@@ -43,7 +44,8 @@ void main()
         vec2 offset = stride * r;
         pos += stride;
         col += max(texture(MainTex, pos + offset), vec4(0));
+        sampleCount++;
     }
-    col /= samples;
+    col /= sampleCount;
     FragColor = vec4(col.xyz, 1.0);
 }

@@ -32,7 +32,7 @@ namespace JLGraphics
             PCSS = 2,
         }
         public FrameBuffer DepthOnlyFramebuffer { get; private set; }
-        float shadowRange;
+        public float shadowRange { get; }
         DirectionalLight DirectionalLight;
         Vector2 texelSize;
         
@@ -45,6 +45,7 @@ namespace JLGraphics
         public override string Name => "Directional Shadow Map: " + DirectionalLight.Name;
         protected override void OnDispose()
         {
+            shader.Program.Dispose();
             DepthOnlyFramebuffer.Dispose();
         }
         public static void SetShadowMapToWhite()

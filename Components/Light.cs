@@ -60,14 +60,107 @@ namespace JLGraphics
     public class DirectionalLight : Light
     {
         DirectionalShadowMap ShadowMapper;
+        DirectionalShadowMap.FilterMode p0;
+        float p1;
+        int p2;
+
+        [Gui]
+        DirectionalShadowMap.FilterMode shadowFilterMode {
+            get
+            {
+                if(ShadowMapper != null)
+                {
+                    p0 = ShadowMapper.filterMode;
+                }
+                return p0;
+            }
+            set
+            {
+                p0 = value;
+                ShadowMapper.filterMode = p0;
+            }
+        }
+        [Gui]
+        float shadowRange {
+            get
+            {
+                if (ShadowMapper != null)
+                {
+                    p1 = ShadowMapper.shadowRange;
+                }
+                return p1;
+            }
+            set
+            {
+                p1 = value;
+                if (enableShadows)
+                {
+                    RemoveShadows();
+                    AddShadows(p1, p2);
+                    ShadowMapper.filterMode = p0;
+                }
+            }
+        }
+        [Gui]
+        int shadowResolution {
+            get
+            {
+                if (ShadowMapper != null)
+                {
+                    p2 = ShadowMapper.Resolution;
+                }
+                return p2;
+            }
+            set
+            {
+                p2 = MathHelper.Clamp(value, 256, 8192);
+                if (enableShadows)
+                {
+                    RemoveShadows();
+                    AddShadows(p1, p2);
+                    ShadowMapper.filterMode = p0;
+                }
+            }
+        }
+        [Gui]
+        bool enableShadows { 
+            get {
+                return ShadowMapper != null;
+            } 
+            set 
+            {
+                if (value)
+                {
+                    RemoveShadows();
+                    AddShadows(p1, p2);
+                    ShadowMapper.filterMode = p0;
+                }
+                else
+                {
+                    RemoveShadows();
+                }
+            } 
+        }
+
         public DirectionalLight()
         {
             HasShadows = false;
         }
         public void AddShadows(float ShadowRange, int ShadowResolution)
         {
+            p1 = ShadowRange;
+            p2 = ShadowResolution;
             ShadowMapper = new DirectionalShadowMap(this, ShadowRange, ShadowResolution);
             HasShadows = true;
+        }
+        public void RemoveShadows()
+        {
+            if (ShadowMapper != null)
+            {
+                ShadowMapper.Dispose();
+            }
+            ShadowMapper = null;
+            HasShadows = false;
         }
         public override void RenderShadowMap(Camera camera)
         {

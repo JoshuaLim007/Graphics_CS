@@ -71,7 +71,7 @@ namespace JLGraphics.Utility
                 {
                     var value = field.GetValue(component);
                     var newValue = HandleType(field, attribute, field.Name, field.FieldType, value);
-                    if(newValue != value)
+                    if(!newValue.Equals(value))
                     {
                         field.SetValue(component, newValue);
                         component.OnGuiChange();
@@ -92,7 +92,7 @@ namespace JLGraphics.Utility
                 {
                     var value = property.GetValue(component);
                     var newValue = HandleType(property, attribute, property.Name, property.PropertyType, value);
-                    if (newValue != value && property.CanWrite)
+                    if (!newValue.Equals(value) && property.CanWrite)
                     {
                         property.SetValue(component, newValue);
                         component.OnGuiChange();
@@ -194,14 +194,14 @@ namespace JLGraphics.Utility
             ImGui.Checkbox("", ref str);
             return str;
         }
-        private float RenderInt(object value)
+        private int RenderInt(object value)
         {
             var str = (int)value;
             if (RenderAsSlider)
                 ImGui.SliderInt("", ref str, (int)SliderMin, (int)SliderMax);
             else
                 ImGui.DragInt("", ref str, 1.0f);
-            return str;
+            return (int)str;
         }
         private float RenderFloat(object value)
         {
