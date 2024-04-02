@@ -206,7 +206,7 @@ vec3 reinhard(vec3 v)
 	return v / (1.0f + v);
 }
 uniform samplerCube SkyBox;
-const float PI = 3.1415;
+const float PI = 3.14159265359;
 float DistributionGGX(vec3 N, vec3 H, float a)
 {
 	float a1 = a * a;
@@ -220,7 +220,7 @@ float DistributionGGX(vec3 N, vec3 H, float a)
 
 	return nom / denom;
 }
-const float denomMin = 0.001;
+const float denomMin = 0.0f;
 float GeometrySchlickGGX(float NdotV, float k)
 {
 	float nom = NdotV;
@@ -231,8 +231,9 @@ float GeometrySchlickGGX(float NdotV, float k)
 
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
 {
+	k = k + 1;
 	k = k * k;
-	k /= 2;
+	k /= 8.0;
 	float NdotV = max(dot(N, V), denomMin);
 	float NdotL = max(dot(N, L), denomMin);
 	float ggx1 = GeometrySchlickGGX(NdotV, k);
@@ -282,7 +283,7 @@ void main(){
 	vec3 h = halfVector(viewVector, DirectionalLight.Direction);
 	float D = DistributionGGX(normal, h, roughness);
 	float G = GeometrySmith(normal, viewVector, DirectionalLight.Direction, roughness);
-	float denom = 4 * max(dot(normal, DirectionalLight.Direction), denomMin) * max(dot(normal, viewVector), denomMin);
+	float denom = 4 * max(dot(normal, DirectionalLight.Direction), denomMin) * max(dot(normal, viewVector), denomMin) + 0.0001;
 	vec3 fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
 	float reflectanceBRDF = D * G / denom; 
 	vec3 kd = 1 - fresnal;
@@ -317,7 +318,7 @@ void main(){
 		h = halfVector(viewVector, dirFromLight);
 		D = DistributionGGX(normal, h, roughness);
 		G = GeometrySmith(normal, viewVector, dirFromLight, roughness);
-		denom = 4 * max(dot(normal, dirFromLight), denomMin) * max(dot(normal, viewVector), denomMin);
+		denom = 4 * max(dot(normal, dirFromLight), denomMin) * max(dot(normal, viewVector), denomMin) + 0.0001;
 		fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
 		reflectanceBRDF = D * G / denom; 
 		kd = 1 - fresnal;
