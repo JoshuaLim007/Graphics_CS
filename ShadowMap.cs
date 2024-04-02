@@ -190,8 +190,8 @@ namespace JLGraphics
 
             light_aabb.Max.X = MathF.Floor(light_aabb.Max.X / worldUnitPerTexelX) * worldUnitPerTexelX;
             light_aabb.Max.Y = MathF.Floor(light_aabb.Max.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
-            Debug.Log(light_aabb.Min.Z);
-            Debug.Log(light_aabb.Max.Z);
+            //Debug.Log(light_aabb.Min.Z);
+            //Debug.Log(light_aabb.Max.Z);
             var lightProjectionMatrix = Matrix4.CreateOrthographicOffCenter(
                 light_aabb.Min.X,
                 light_aabb.Max.X,
