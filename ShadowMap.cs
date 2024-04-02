@@ -160,6 +160,8 @@ namespace JLGraphics
             light_aabb.Max.X += 1.0f;
             light_aabb.Min.Y -= 1.0f;
             light_aabb.Max.Y += 1.0f;
+            light_aabb.Min.Z += 1.0f;
+            light_aabb.Max.Z += 1.0f;
 
             LightViewMatrix = directionalLightViewMatrix;
             return light_aabb;
@@ -187,14 +189,15 @@ namespace JLGraphics
 
             light_aabb.Max.X = MathF.Floor(light_aabb.Max.X / worldUnitPerTexelX) * worldUnitPerTexelX;
             light_aabb.Max.Y = MathF.Floor(light_aabb.Max.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
-
+            Debug.Log(light_aabb.Min.Z);
+            Debug.Log(light_aabb.Max.Z);
             var lightProjectionMatrix = Matrix4.CreateOrthographicOffCenter(
                 light_aabb.Min.X,
                 light_aabb.Max.X,
                 light_aabb.Min.Y,
                 light_aabb.Max.Y,
-                -500.0f, 
-                500.0f);
+                -500 - light_aabb.Min.Z,
+                500 - light_aabb.Max.Z);
 
             //var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 
