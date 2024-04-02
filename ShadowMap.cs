@@ -64,7 +64,7 @@ namespace JLGraphics
             shader.DepthTestFunction = DepthFunction.Lequal;
             DepthOnlyFramebuffer = new FrameBuffer(resolution, resolution, false, new TFP()
             {
-                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent,
+                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent16,
                 magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 maxMipmap = 0,
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
@@ -151,6 +151,7 @@ namespace JLGraphics
             for (int i = 0; i < aabb_corners.Length; i++)
             {
                 aabb_corners_light[i] = (directionalLightViewMatrix * aabb_corners[i]).Xyz;
+                aabb_corners_light[i].Z *= -1;
             }
 
             var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
@@ -196,8 +197,8 @@ namespace JLGraphics
                 light_aabb.Max.X,
                 light_aabb.Min.Y,
                 light_aabb.Max.Y,
-                -500 - light_aabb.Min.Z,
-                500 - light_aabb.Max.Z);
+                light_aabb.Min.Z - 500,
+                light_aabb.Max.Z + 500);
 
             //var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 

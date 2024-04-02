@@ -103,10 +103,6 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
 
-	if (projCoords.z > 1.0) {
-		return 0;
-	}
-
 	float percentCovered = 0.0f;
 	float currentDepth = projCoords.z;
 
