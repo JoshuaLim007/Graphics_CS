@@ -20,10 +20,11 @@ out VS_OUT{
 uniform mat4 ProjectionViewMatrix;
 uniform mat4 ModelMatrix;
 uniform mat4 DirectionalLightMatrix;
+uniform vec2 UvScale;
 
 void main(){
 	vs_out.Color = aColor;
-	vs_out.TexCoord = aTexCoord;
+	vs_out.TexCoord = aTexCoord * UvScale;
 	vs_out.Normal = normalize((ModelMatrix * vec4(aNormal, 0.0)).xyz);
 	vs_out.Position = (ModelMatrix * vec4(aPosition,1)).xyz;
 	vs_out.PositionLightSpace = DirectionalLightMatrix * vec4(vs_out.Position, 1);

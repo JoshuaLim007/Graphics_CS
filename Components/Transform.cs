@@ -36,6 +36,7 @@ namespace JLGraphics
         static internal void UpdateChildChangeFlag(Transform child, bool value)
         {
             child.hasChanged = value;
+            child.updateInvModelCache = true;
             for (int i = 0; i < child.m_children.Count; i++)
             {
                 UpdateChildChangeFlag(child.m_children[i], value);
@@ -73,21 +74,34 @@ namespace JLGraphics
             return temp1.Normalized();  
         }
 
-        [Gui("World Position", true)]
-        Vector3 worldPos { 
+        [Gui("World Position", false)]
+        public Vector3 WorldPosition { 
             get { 
                 return ModelMatrix.ExtractTranslation();
             }
+            set
+            {
+                if(Parent != null)
+                {
+                    var temp = new Vector4(value, 1);
+                    temp = Parent.InvModelMatrix * temp;
+                    LocalPosition = temp.Xyz;
+                }
+                else
+                {
+                    LocalPosition = value;
+                }
+            }
         }
         [Gui("World Rotation", true)]
-        Quaternion worldRot {
+        public Quaternion WorldRotation {
             get
             {
                 return ModelMatrix.ExtractRotation();
             }
         }
         [Gui("World Scale", true)]
-        Vector3 worldScale
+        public Vector3 WorldScale
         {
             get
             {
@@ -202,7 +216,20 @@ namespace JLGraphics
             PreviousModelMatrix = ModelMatrix;
         }
 
-        public Matrix4 InvModelMatrix => Matrix4.Invert(ModelMatrix);
+        bool updateInvModelCache = true;
+        Matrix4 InvModelCache = Matrix4.Identity;
+        public Matrix4 InvModelMatrix
+        {
+            get
+            {
+                if (updateInvModelCache)
+                {
+                    InvModelCache = ModelMatrix.Inverted();
+                    updateInvModelCache = false;
+                }
+                return InvModelCache;
+            }
+        }
 
         internal Matrix4 PreviousModelMatrix { get; set; }
     }

@@ -244,6 +244,7 @@ namespace JLGraphics
             DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Smoothness), 0.5f);
             DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.Metalness), 0.0f);
             DefaultMaterial.SetFloat(Shader.GetShaderPropertyId(DefaultMaterialUniforms.NormalsStrength), 1.0f);
+            DefaultMaterial.SetVector2(Shader.GetShaderPropertyId(DefaultMaterialUniforms.UvScale), Vector2.One);
             FullScreenQuad = Mesh.CreateQuadMesh();
             BasicCube = Mesh.CreateCubeMesh();
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
