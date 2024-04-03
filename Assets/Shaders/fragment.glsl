@@ -256,7 +256,7 @@ void main(){
 		bump.xyz = vec3(0, 0, 1);
 	}
 	else {
-		bump.xy = bump.xy * 2 - 1;
+		bump.xyz = bump.xyz * 2 - 1;
 	}
 	bump.xyz = TBN * bump.xyz;
 	vec3 normal = mix(normalize(fs_in.Normal), normalize(bump.xyz), NormalStrength);
@@ -271,9 +271,12 @@ void main(){
 
 	vec3 incomingLightDiffuse = sunColor;
 	vec3 diffuse = color.xyz / PI;
+	vec3 maos = texture(MAOSTex, fs_in.TexCoord).xyz;
 
-	float roughness = 1 - Smoothness;
+	float Smoothness = maos.b * Smoothness;
+	float Metalness = maos.r * Metalness;
 	vec3 baseRef = mix(vec3(0.05), diffuse.xyz, Metalness);
+	float roughness = 1 - Smoothness;
 
 	//BRDF
 	vec3 h = halfVector(viewVector, DirectionalLight.Direction);

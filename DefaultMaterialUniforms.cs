@@ -19,5 +19,6 @@ namespace JLGraphics
         public const string Metalness = "Metalness";
         public const string NormalsStrength = "NormalStrength";
         public const string AOStrength = "AoStrength";
+        public const string UvScale = "UvScale";
     }
 }
