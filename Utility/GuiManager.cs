@@ -37,7 +37,7 @@ namespace JLGraphics.Utility
             Window = window;
 
             guiController = new ImGuiController(Window.Size.X, Window.Size.Y);
-            Window.UpdateFrame += Update;
+            Window.RenderFrame += Update;
 
             Window.TextInput += (e) => {
                 guiController.PressChar((char)e.Unicode);

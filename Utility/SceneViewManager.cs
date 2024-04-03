@@ -54,18 +54,26 @@ namespace JLGraphics.Utility
             {
             }
         }
+        bool LeftMousePressed = false;
         public SceneViewManager(GuiManager guiManager, Graphics graphics)
         {
             this.graphics = graphics;
-
+            graphics.Window.MouseDown += (args) =>
+            {
+                if (args.IsPressed && args.Button == MouseButton.Left)
+                {
+                    LeftMousePressed = true;
+                }
+            };
             guiManager.OnSceneViewGui += () =>
             {
                 OnRender();
                 if (ImGui.IsWindowFocused())
                 {
-                    if (graphics.Window.IsMouseButtonPressed(OpenTK.Windowing.GraphicsLibraryFramework.MouseButton.Button1))
+                    if (LeftMousePressed)
                     {
                         SceneObjectSelection();
+                        LeftMousePressed = false;
                     }
 
                     if (graphics.Window.IsKeyDown(Keys.F))
@@ -103,6 +111,12 @@ namespace JLGraphics.Utility
             };
             graphics.EnqueueRenderPass(objectHighlight);
         }
+
+        private void Window_MouseDown(MouseButtonEventArgs obj)
+        {
+            throw new NotImplementedException();
+        }
+
         void OnRender()
         {
             if (ImGui.IsWindowFocused())
