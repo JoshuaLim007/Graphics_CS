@@ -413,7 +413,11 @@ void mainImage(vec3 lightDir, vec3 cameraDirection, out vec4 fragColor) {
 
     // get the camera position, switch based on the defines
 #if CAMERA_MODE==0
-    vec3 camera_position = CameraWorldSpacePos + vec3(0, PLANET_RADIUS + 100.0, 0);// vec3(0.0, PLANET_RADIUS + 100.0, 0.0);
+    vec3 temp = CameraWorldSpacePos;
+    temp.x = 0;
+    temp.z = 0;
+    temp.y = max(temp.y, -90);
+    vec3 camera_position = temp + vec3(0, PLANET_RADIUS + 100.0, 0);// vec3(0.0, PLANET_RADIUS + 100.0, 0.0);
 #endif
 #if CAMERA_MODE==1
     vec3 camera_position = vec3(0.0, ATMOS_RADIUS, ATMOS_RADIUS);
