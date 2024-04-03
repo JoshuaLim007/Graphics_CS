@@ -11,6 +11,7 @@ namespace JLGraphics.Utility
     public class GraphicsSettings
     {
 
+        public GraphicsSettings() { }
         public GraphicsSettings(GuiManager guiManager)
         {
             if(guiManager == null)

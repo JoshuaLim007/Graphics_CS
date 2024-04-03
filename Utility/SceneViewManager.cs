@@ -74,16 +74,18 @@ namespace JLGraphics.Utility
         }
         void OnRender()
         {
-            if (graphics.Window.KeyboardState.IsKeyDown(Keys.Delete))
+            if (ImGui.IsWindowFocused())
             {
-                for (int i = 0; i < ObjectsSelected.Count; i++)
+                if (graphics.Window.KeyboardState.IsKeyDown(Keys.Delete))
                 {
-                    var temp = ObjectsSelected[i];
-                    Entity.Destroy(ref temp);
+                    for (int i = 0; i < ObjectsSelected.Count; i++)
+                    {
+                        var temp = ObjectsSelected[i];
+                        Entity.Destroy(ref temp);
+                    }
+                    ObjectsSelected.Clear();
                 }
-                ObjectsSelected.Clear();
             }
-
         }
         public Entity FindEntityClosestTo(Vector3 position)
         {
