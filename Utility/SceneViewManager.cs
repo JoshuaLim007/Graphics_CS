@@ -67,6 +67,37 @@ namespace JLGraphics.Utility
                     {
                         SceneObjectSelection();
                     }
+
+                    if (graphics.Window.IsKeyDown(Keys.F))
+                    {
+                        if (ObjectsSelected.Count != 0)
+                        {
+                            var renderer = ObjectsSelected[0].GetComponentInChild<Renderer>();
+                            if (renderer)
+                            {
+                                var bounds = renderer.GetWorldBounds();
+                                var targetPos = bounds.Center;
+                                var size = bounds.Extents.Length * 0.75f;
+                                size = MathF.Max(size, 5.0f);
+                                var camera = Camera.Main;
+                                if (camera != null)
+                                {
+                                    camera.Transform.WorldPosition = targetPos - camera.Transform.Forward * size;
+                                }
+                            }
+                            else
+                            {
+                                var targetPos = ObjectsSelected[0].Transform.LocalPosition;
+                                var size = 5.0f;
+                                var camera = Camera.Main;
+                                if (camera != null)
+                                {
+                                    camera.Transform.WorldPosition = targetPos - camera.Transform.Forward * size;
+                                }
+                            }
+                        }
+                    }
+
                 }
                 return typeof(SceneViewManager);
             };
