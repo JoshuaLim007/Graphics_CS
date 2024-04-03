@@ -191,7 +191,14 @@ namespace JLGraphics.Utility
             var target_pos = t.Xyz;
 
             var entity = FindEntityClosestTo(target_pos);
-            if(entity == null)
+            if (ObjectsSelected.Count > 0)
+            {
+                if(ObjectsSelected[0] == entity)
+                {
+                    entity = null;
+                }
+            }
+            if (entity == null)
             {
                 ObjectsSelected.Clear();
                 return;
