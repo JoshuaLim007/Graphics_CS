@@ -121,11 +121,6 @@ namespace JLGraphics.Utility
             graphics.EnqueueRenderPass(objectHighlight);
         }
 
-        private void Window_MouseDown(MouseButtonEventArgs obj)
-        {
-            throw new NotImplementedException();
-        }
-
         void OnRender()
         {
             if (ImGui.IsWindowFocused())
