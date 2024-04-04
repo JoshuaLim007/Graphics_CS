@@ -28,13 +28,12 @@ void main()
                 float d = texture(_CameraDepthTexture, offset0).r;
                 vec3 newNormal = texture(_CameraNormalTexture, offset0).xyz;
                 float oDotn = dot(curNormal, newNormal); 
-                if(oDotn <= 0.5){
-                    float d0 = linear01Depth(d);
-                    float d1 = cR;
-                    float percentDiff = abs(d1 - d0) / ((d1 + d0) / 2);
-                    if(percentDiff > bias){
-                        continue;
-                    }
+
+                float d0 = linear01Depth(d);
+                float d1 = cR;
+                float percentDiff = abs(d1 - d0) / ((d1 + d0) / 2);
+                if((oDotn <= 0.5 && percentDiff > bias) || percentDiff > bias * 10){
+                    continue;
                 }
             }
             samples++;

@@ -36,7 +36,7 @@ namespace JLGraphics.RenderPasses
             shader = new Shader("SSAO", program);
 
             program = new ShaderProgram("SSAO blur",
-                AssetLoader.GetPathToAsset("./Shaders/BoxBlur.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
+                AssetLoader.GetPathToAsset("./Shaders/DepthAwareBoxBlur.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             blur = new Shader("SSAO Blur", program);
 

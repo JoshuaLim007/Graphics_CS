@@ -64,8 +64,8 @@
     <None Remove="Assets\Shaders\Bloom.glsl" />
     <None Remove="Assets\Shaders\BloomComposite.glsl" />
     <None Remove="Assets\Shaders\BloomPrepass.glsl" />
-    <None Remove="Assets\Shaders\BoxBlur.frag" />
     <None Remove="Assets\Shaders\CopyToScreen.frag" />
+    <None Remove="Assets\Shaders\DepthAwareBoxBlur.frag" />
     <None Remove="Assets\Shaders\DepthOnly.frag" />
     <None Remove="Assets\Shaders\fragmentEmpty.glsl" />
     <None Remove="Assets\Shaders\MotionBlur.frag" />
@@ -96,7 +96,7 @@
     <Content Update="Assets\Shaders\BloomPrepass.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\Shaders\BoxBlur.frag">
+    <Content Update="Assets\Shaders\DepthAwareBoxBlur.frag">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="Assets\Shaders\CopyToScreen.frag">
