@@ -43,7 +43,11 @@ void main()
         float r = rand(pos + (i + _Frame) * 0.001) * 2 - 1;
         vec2 offset = stride * r;
         pos += stride;
-        col += max(texture(MainTex, pos + offset), vec4(0));
+        vec2 finalPos = pos + offset;
+        if(finalPos.x < 0 || finalPos.y < 0 || finalPos.x > 1 || finalPos.y > 1){
+            continue;
+        }
+        col += max(texture(MainTex, finalPos), vec4(0));
         sampleCount++;
     }
     col /= sampleCount;

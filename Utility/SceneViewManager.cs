@@ -55,6 +55,7 @@ namespace JLGraphics.Utility
             }
         }
         bool LeftMousePressed = false;
+        bool windowFocused = false;
         public SceneViewManager(GuiManager guiManager, Graphics graphics)
         {
             this.graphics = graphics;
@@ -62,7 +63,10 @@ namespace JLGraphics.Utility
             {
                 if (args.IsPressed && args.Button == MouseButton.Left)
                 {
-                    LeftMousePressed = true;
+                    if (windowFocused)
+                    {
+                        LeftMousePressed = true;
+                    }
                 }
             };
             guiManager.OnSceneViewGui += () =>
@@ -70,6 +74,7 @@ namespace JLGraphics.Utility
                 OnRender();
                 if (ImGui.IsWindowFocused())
                 {
+                    windowFocused = true;
                     if (LeftMousePressed)
                     {
                         SceneObjectSelection();
@@ -106,6 +111,10 @@ namespace JLGraphics.Utility
                         }
                     }
 
+                }
+                else
+                {
+                    windowFocused = false;
                 }
                 return typeof(SceneViewManager);
             };
