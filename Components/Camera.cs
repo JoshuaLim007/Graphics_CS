@@ -146,8 +146,8 @@ namespace JLGraphics
             }
         }
 
-        public int Width => (int)MathF.Ceiling(Graphics.Instance.GetRenderSize().X * Graphics.Instance.RenderScale);
-        public int Height => (int)MathF.Ceiling(Graphics.Instance.GetRenderSize().Y * Graphics.Instance.RenderScale);
+        public int Width => Graphics.Instance.GetRenderSize().X;
+        public int Height => Graphics.Instance.GetRenderSize().Y;
 
         float near = 0.03f;
         [Gui("Near")]

@@ -111,6 +111,9 @@ namespace JLGraphics.Utility
             ImGui.Checkbox("SSAO", ref ssaoV);
             ImGui.Checkbox("Motion Blur", ref motionblurV);
             ImGui.Checkbox("Final Post Process", ref postProcessV);
+            float t = Graphics.Instance.RenderScale;
+            ImGui.SliderFloat("Render Scale", ref t, 0.5f, 2.0f);
+            Graphics.Instance.RenderScale = t;
 
             Bloom(bloomV);
             SSAO(ssaoV);

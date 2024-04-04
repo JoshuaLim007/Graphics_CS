@@ -51,8 +51,8 @@ namespace JLGraphics.RenderPasses
             float haltonY = 2.0f * Halton(index + 1, 3) - 1.0f;
 
             Shader.SetGlobalVector2(propertyId0, new OpenTK.Mathematics.Vector2(jitterX, jitterY));
-            jitterX = (haltonX / camera.Width);
-            jitterY = (haltonY / camera.Height);
+            jitterX = (haltonX / (camera.Width * Graphics.Instance.RenderScale));
+            jitterY = (haltonY / (camera.Height * Graphics.Instance.RenderScale));
             Shader.SetGlobalVector2(propertyId, new OpenTK.Mathematics.Vector2(jitterX, jitterY));
             
             //get default projection matrix
