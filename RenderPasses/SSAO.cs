@@ -114,16 +114,6 @@ namespace JLGraphics.RenderPasses
         }
         public override void Execute(in FrameBuffer frameBuffer)
         {
-#if DEBUG
-            if (Graphics.Instance.Window.KeyboardState.IsKeyDown(OpenTK.Windowing.GraphicsLibraryFramework.Keys.T))
-            {
-                Intensity = 0;
-            }
-            else
-            {
-                Intensity = 1;
-            }
-#endif
             if (Intensity == 0)
             {
                 return;

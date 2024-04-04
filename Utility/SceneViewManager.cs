@@ -172,8 +172,9 @@ namespace JLGraphics.Utility
             var windowPos = ImGui.GetCursorScreenPos();
             Vector2 pos;
             pos = graphics.Window.MousePosition - new Vector2(windowPos.X, windowPos.Y);
-
-            var res = graphics.GetRenderSize();
+            pos *= graphics.RenderScale;
+            var res = (Vector2)graphics.GetRenderSize();
+            res *= graphics.RenderScale;
             pos.Y = res.Y - pos.Y;
 
             var uv = pos / res;
