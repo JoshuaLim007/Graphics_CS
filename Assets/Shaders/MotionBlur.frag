@@ -28,7 +28,10 @@ void main()
     vec4 col = max(texture(MainTex, pos), vec4(0));
 
     vec2 mv = texture(_MotionTexture, pos).rg;
-
+    if(length(mv) == 0){
+        FragColor = vec4(col.xyz, 1.0);
+        return;
+    }
     float scalerx = smoothstep(0, 0.02f, mv.x);
     float scalery = smoothstep(0, 0.02f, mv.y);
     float scaler = max(scalerx, scalery);
