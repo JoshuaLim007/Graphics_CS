@@ -18,7 +18,8 @@ float get_depth(vec2 pos)
 }
 float linearDepth(float depthSample)
 {
-    float zLinear = 2.0 * CameraParams.z * CameraParams.w / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
+    depthSample = depthSample * 0.5 + 0.5;
+    float zLinear = CameraParams.z * CameraParams.w / (CameraParams.w + depthSample * (CameraParams.z - CameraParams.w));
     return zLinear;
 }
 vec3 calcPositionFromDepth(vec2 texCoords, float depth) {

@@ -10,7 +10,8 @@ uniform sampler2D _CameraNormalTexture;
 uniform vec4 CameraParams;
 float linear01Depth(float depthSample)
 {
-    float zLinear = 2.0 * CameraParams.z / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
+    depthSample = depthSample * 0.5 + 0.5;
+    float zLinear = CameraParams.z / (CameraParams.w + depthSample * (CameraParams.z - CameraParams.w));
     return zLinear;
 }
 void main()
@@ -18,14 +19,14 @@ void main()
     int samples = 1;
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
     vec4 color = texture(MainTex, uv);
-    float cR = linear01Depth(texture(_CameraDepthTexture, uv).r);
+    float cR = linear01Depth(texture(_CameraDepthTexture, uv).r * 2 - 1);
     vec3 curNormal = texture(_CameraNormalTexture, uv).xyz;
     float bias = MaxDepthDiff;
     for(int i = 0; i <8; i++){
         for(int j = 0; j < 8; j++){
             vec2 offset0 = uv + vec2(i - 3.5f, j - 3.5f) * MainTex_TexelSize;
             if(DoDepthCheck){
-                float d = texture(_CameraDepthTexture, offset0).r;
+                float d = texture(_CameraDepthTexture, offset0).r * 2 - 1;
                 vec3 newNormal = texture(_CameraNormalTexture, offset0).xyz;
                 float oDotn = dot(curNormal, newNormal); 
 
