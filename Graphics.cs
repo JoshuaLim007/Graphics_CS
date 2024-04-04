@@ -703,7 +703,7 @@ namespace JLGraphics
 
                 for (int i = 0; i < renderPasses.Count; i++)
                 {
-                    renderPasses[i].FrameSetup();
+                    renderPasses[i].FrameSetup(AllCameras[cameraIndex]);
                 }
                 GL.Disable(EnableCap.Blend);
                 //bind Main render texture RT

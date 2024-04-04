@@ -146,8 +146,8 @@ namespace JLGraphics
             }
         }
 
-        public int Width => Graphics.Instance.GetRenderSize().X;
-        public int Height => Graphics.Instance.GetRenderSize().Y;
+        public int Width => (int)MathF.Ceiling(Graphics.Instance.GetRenderSize().X * Graphics.Instance.RenderScale);
+        public int Height => (int)MathF.Ceiling(Graphics.Instance.GetRenderSize().Y * Graphics.Instance.RenderScale);
 
         float near = 0.03f;
         [Gui("Near")]
@@ -214,9 +214,26 @@ namespace JLGraphics
         {
             InternalGlobalScope<Camera>.Values.Remove(this);
         }
+        bool useOverride = false;
+        Matrix4 overrideProjection;
+        public void OverrideProjectionMatrix(Matrix4 projectionMatrix)
+        {
+            overrideProjection = projectionMatrix;
+            useOverride = true;
+        }
+        public void UseDefaultProjectionMatrix()
+        {
+            useOverride = false;
+        }
         private Matrix4 calculateProjectionMatrix()
         {
-            return CameraMode == CameraType.Perspecitve ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
+            if (useOverride)
+            {
+                return overrideProjection;
+            }
+            return CameraMode == CameraType.Perspecitve 
+                ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) 
+                : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
         }
     }
 }

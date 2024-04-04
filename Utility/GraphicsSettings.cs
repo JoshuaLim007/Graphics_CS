@@ -19,9 +19,10 @@ namespace JLGraphics.Utility
                 return;
             }
             guiManager.AddWindow("Graphics Settings", update, typeof(GraphicsSettings));
+            Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
+            Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
 
-        MotionVectorPass motionVector;
         PostProcessPass postProcess;
         MotionblurPass motionblurPass;
         SSAO ssao;
@@ -70,20 +71,15 @@ namespace JLGraphics.Utility
             {
                 if (enable)
                 {
-                    motionVector = new MotionVectorPass();
                     motionblurPass = new MotionblurPass(12);
-                    Graphics.Instance.EnqueueRenderPass(motionVector);
                     Graphics.Instance.EnqueueRenderPass(motionblurPass);
                 }
                 else
                 {
-                    Graphics.Instance.DequeueRenderPass(motionVector);
                     Graphics.Instance.DequeueRenderPass(motionblurPass);
 
-                    motionVector?.Dispose();
                     motionblurPass?.Dispose();
                     motionblurPass = null;
-                    motionVector = null;
                 }
             }
         }

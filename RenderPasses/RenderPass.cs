@@ -27,7 +27,7 @@ namespace JLGraphics.RenderPasses
         public static Camera CurrentCamera => CurrentRenderingCamera;
         internal static Camera CurrentRenderingCamera;
         public int Queue { get; set; }
-        public virtual void FrameSetup() { }
+        public virtual void FrameSetup(Camera camera) { }
         public abstract void Execute(in FrameBuffer frameBuffer);
         public virtual void FrameCleanup() { }
         public int CompareTo(RenderPass other)
