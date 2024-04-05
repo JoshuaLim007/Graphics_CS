@@ -503,7 +503,9 @@ namespace JLGraphics
         void SetShaderCameraData(Camera camera)
         {
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionMatrix"), camera.ProjectionMatrix);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("InvProjectionMatrix"), camera.ProjectionMatrix.Inverted());
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ViewMatrix"), camera.ViewMatrix);
+            Shader.SetGlobalMat4(Shader.GetShaderPropertyId("InvViewMatrix"), camera.ViewMatrix.Inverted());
             var vp = camera.ViewMatrix * camera.ProjectionMatrix;
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("InvProjectionViewMatrix"), vp.Inverted());
             Shader.SetGlobalMat4(Shader.GetShaderPropertyId("ProjectionViewMatrix"), vp);
