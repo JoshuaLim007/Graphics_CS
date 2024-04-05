@@ -106,8 +106,8 @@ namespace JLGraphics.RenderPasses
             {
                 previousWidth = frameBuffer.Width;
                 previousHeight = frameBuffer.Height;
-                var res = GetResolution(frameBuffer, 0.5f);
-                var res2 = GetResolution(frameBuffer, 1.0f);
+                var res = GetScaledResolution(frameBuffer.Width, frameBuffer.Height, 0.5f);
+                var res2 = GetScaledResolution(frameBuffer.Width, frameBuffer.Height, 1.0f);
                 if (prepassFitlerRt != null)
                 {
                     prepassFitlerRt.Dispose();

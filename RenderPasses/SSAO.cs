@@ -128,8 +128,8 @@ namespace JLGraphics.RenderPasses
                     blurRT.Dispose();
                     accumRT.Dispose();
                 }
-                var res = GetResolution(frameBuffer, downSample ? 0.5f : 1.0f);
-                var res1 = GetResolution(frameBuffer, downSample ? 0.5f : 1.0f);
+                var res = GetScaledResolution(frameBuffer.Width, frameBuffer.Height, downSample ? 0.5f : 1.0f);
+                var res1 = GetScaledResolution(frameBuffer.Width, frameBuffer.Height, downSample ? 0.5f : 1.0f);
                 SSAORt = CreateBuffer(res.X, res.Y);
                 blurRT = CreateBuffer(res.X, res.Y);
                 accumRT = CreateBuffer(res1.X, res1.Y);

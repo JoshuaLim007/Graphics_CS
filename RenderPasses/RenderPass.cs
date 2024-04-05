@@ -65,9 +65,9 @@ namespace JLGraphics.RenderPasses
         {
             Graphics.Instance.EndBlitUnsafe(_);
         }
-        public Vector2i GetResolution(FrameBuffer frameBuffer, float scale)
+        public Vector2i GetScaledResolution(int width, int height, float scale)
         {
-            return new Vector2i((int)MathF.Max(MathF.Floor(frameBuffer.Width * scale), 1), (int)MathF.Max(MathF.Floor(frameBuffer.Height * scale), 1));
+            return new Vector2i((int)MathF.Max(MathF.Floor(width * scale), 1), (int)MathF.Max(MathF.Floor(height * scale), 1));
         }
     }
 }

@@ -27,6 +27,25 @@ namespace JLGraphics.Utility
         MotionblurPass motionblurPass;
         SSAO ssao;
         Bloom bloom;
+        SSGI ssgi;
+
+        public void SSGI(bool enable)
+        {
+            if (enable != (ssgi != null))
+            {
+                if (enable)
+                {
+                    ssgi = new SSGI(9);
+                    Graphics.Instance.EnqueueRenderPass(ssgi);
+                }
+                else
+                {
+                    Graphics.Instance.DequeueRenderPass(ssgi);
+                    ssgi?.Dispose();
+                    ssgi = null;
+                }
+            }
+        }
         public void Bloom(bool enable)
         {
             if (enable != (bloom != null))

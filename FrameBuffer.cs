@@ -108,7 +108,7 @@ namespace JLGraphics
 
             if (enableDepthRenderBuffer)
             {
-                RenderbufferStorage renderbufferStorage = RenderbufferStorage.DepthComponent;
+                RenderbufferStorage renderbufferStorage = RenderbufferStorage.DepthComponent24;
                 RenderBufferObject = GL.GenRenderbuffer();
                 GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, RenderBufferObject);
 
@@ -147,7 +147,10 @@ namespace JLGraphics
         public static void BindFramebuffer(FrameBuffer frameBuffer)
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, frameBuffer.FrameBufferObject);
-            GL.DrawBuffers(frameBuffer.ColorAttachmentsEnums.Length, frameBuffer.ColorAttachmentsEnums);
+            if(frameBuffer.ColorAttachmentsEnums != null)
+            {
+                GL.DrawBuffers(frameBuffer.ColorAttachmentsEnums.Length, frameBuffer.ColorAttachmentsEnums);
+            }
             GL.ReadBuffer(ReadBufferMode.None);
             GL.Viewport(0, 0, frameBuffer.Width, frameBuffer.Height);
         }
@@ -161,7 +164,7 @@ namespace JLGraphics
             }
         }
 
-        public static FrameBuffer Copy(FrameBuffer src, float resolutionScale, bool enableDepthRenderBuffer = false)
+        public static FrameBuffer CopyFirstColorAttachment(FrameBuffer src, float resolutionScale, bool enableDepthRenderBuffer = false)
         {
             FrameBuffer frameBuffer1;
             var tfp = TFP.Default;
@@ -177,7 +180,7 @@ namespace JLGraphics
             frameBuffer1 = new FrameBuffer(width, height, enableDepthRenderBuffer, tfp);
             return frameBuffer1;
         }
-        public static bool AlikeResolution(FrameBuffer f1, FrameBuffer f2, float f1_resolutionInvScale = 1.0f)
+        public static bool AlikeResolution(FrameBuffer f1, FrameBuffer f2, float f1_resolutionScale = 1.0f)
         {
             if (f1 == null && f2 != null)
             {
@@ -191,7 +194,7 @@ namespace JLGraphics
             {
                 return true;
             }
-            bool resolutionCheck = f1.Width * f1_resolutionInvScale == f2.Width && f1.Height * f1_resolutionInvScale == f2.Height;
+            bool resolutionCheck = f1.Width / f1_resolutionScale == f2.Width && f1.Height / f1_resolutionScale == f2.Height;
             if (!resolutionCheck)
             {
                 return false;
