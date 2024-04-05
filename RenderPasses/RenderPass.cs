@@ -53,18 +53,6 @@ namespace JLGraphics.RenderPasses
         {
             Graphics.Instance.Blit(src, dst, true, shader);
         }
-        public void StartBlitUnsafe(Shader _)
-        {
-            Graphics.Instance.StartBlitUnsafe(_);
-        }
-        public void BlitUnsafe(FrameBuffer src, FrameBuffer dst, int targetColorAttachment = 0)
-        {
-            Graphics.Instance.BlitUnsafe(src, dst, targetColorAttachment);
-        }
-        public void EndBlitUnsafe(Shader _)
-        {
-            Graphics.Instance.EndBlitUnsafe(_);
-        }
         public Vector2i GetScaledResolution(int width, int height, float scale)
         {
             return new Vector2i((int)MathF.Max(MathF.Floor(width * scale), 1), (int)MathF.Max(MathF.Floor(height * scale), 1));

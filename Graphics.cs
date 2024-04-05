@@ -158,12 +158,20 @@ namespace JLGraphics
                 maxMipmap = 0,
                 minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Linear,
+                internalFormat = PixelInternalFormat.DepthComponent24,
+            };
+            var depthSettingsColor = new TFP()
+            {
+                wrapMode = TextureWrapMode.ClampToEdge,
+                maxMipmap = 0,
+                minFilter = TextureMinFilter.Linear,
+                magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.R32f,
             };
             var windowSize = GetRenderSize();
-            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), true, colorSettings, normalBufferSettings, specularMetal);
+            MainFrameBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, colorSettings, normalBufferSettings, specularMetal, depthSettings);
             MainFrameBuffer.SetName("Main frame buffer");
-            DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettings);
+            DepthTextureBuffer = new FrameBuffer((int)MathF.Ceiling(windowSize.X * scale), (int)MathF.Ceiling(windowSize.Y * scale), false, depthSettingsColor);
             DepthTextureBuffer.SetName("Depth texture buffer");
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraNormalTexture"), MainFrameBuffer.TextureAttachments[1]);
@@ -269,7 +277,6 @@ namespace JLGraphics
             DepthTextureBuffer = null;
             PassthroughShader = null;
             MainFrameBuffer = null;
-            DepthTextureBuffer = null;
             DefaultMaterial = null;
             Window = null;
             fileTracker = null;
@@ -519,10 +526,10 @@ namespace JLGraphics
 
         public FrameBuffer FinalRenderTarget => MainFrameBuffer;
 
-        internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null, int targetColorAttachment = 0)
+        internal void Blit(FrameBuffer src, FrameBuffer dst, bool restoreSrc, Shader shader = null, int srcTextureIndex = 0, int dstTextureIndex = 0)
         {
             StartBlitUnsafe(shader);
-            BlitUnsafe(src, dst, targetColorAttachment);
+            BlitUnsafe(src, dst, srcTextureIndex, dstTextureIndex);
             EndBlitUnsafe(shader);
             if (restoreSrc)
             {
@@ -543,7 +550,7 @@ namespace JLGraphics
             blitShader.DepthTest = false;
             this.unsafeBlitShader = blitShader;
         }
-        internal void BlitUnsafe(FrameBuffer src, FrameBuffer dst, int targetColorAttachment)
+        internal void BlitUnsafe(FrameBuffer src, FrameBuffer dst, int srcTextureIndex, int dstColorAttachIndex)
         {
             if (!blitUnsafeFlag)
             {
@@ -572,7 +579,7 @@ namespace JLGraphics
             }
 
             unsafeBlitShader.SetVector2(Shader.GetShaderPropertyId("MainTex_TexelSize"), new Vector2(1.0f / width, 1.0f / height));
-            unsafeBlitShader.SetTexture(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[0]);
+            unsafeBlitShader.SetTexture(Shader.GetShaderPropertyId("MainTex"), src.TextureAttachments[srcTextureIndex]);
             int results = unsafeBlitShader.AttachShaderForRendering();
             if((results & 0b10) == 0b10)
             {
@@ -592,9 +599,9 @@ namespace JLGraphics
             else
             {
                 //bind custom framebuffer
-                //force to draw only to first color attachment buffer
+                //force to draw only to a specified texture attachment
                 FrameBuffer.BindFramebuffer(dst);
-                GL.DrawBuffers(1, new DrawBuffersEnum[] { DrawBuffersEnum.ColorAttachment0 + targetColorAttachment });
+                GL.DrawBuffers(1, new DrawBuffersEnum[] { DrawBuffersEnum.ColorAttachment0 + dstColorAttachIndex });
             }
 
             GL.BindVertexArray(FullScreenQuad.VAO);
@@ -715,7 +722,7 @@ namespace JLGraphics
                 GL.ClearColor(Color4.Magenta);
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
                 RenderScene(AllCameras[cameraIndex], DepthPrepassShader);
-                Blit(MainFrameBuffer, DepthTextureBuffer, true, null);
+                Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
                 RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
 
                 //copy color texture

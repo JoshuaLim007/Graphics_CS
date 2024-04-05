@@ -124,26 +124,30 @@ void main()
     vec3 WorldPosition = calcPositionFromDepth(uv, d);
     vec3 normal = texture(_CameraNormalTexture, uv).xyz;
     vec3 viewDir = normalize(WorldPosition - CameraWorldSpacePos);
-    int totalSamples = 0;
-    float hit = 0;
-    float rdot;
-    vec3 newUv;
-    vec4 col;
-    int samples = 16;
-    while(samples > 0){
-        vec3 randomDir = normalize(pcg3d(uvec3(gl_FragCoord.x, gl_FragCoord.y, samples + _Frame * 1000)));
-        randomDir = randomDir * 2 - 1;
-        randomDir = randomDir * sign(dot(normalize(randomDir), normal));
+//    int totalSamples = 0;
+//    float hit = 0;
+//    float rdot;
+//    vec3 newUv;
+//    vec4 col;
+//    int samples = 16;
+//    while(samples > 0){
+//        vec3 randomDir = normalize(pcg3d(uvec3(gl_FragCoord.x, gl_FragCoord.y, samples + _Frame * 1000)));
+//        randomDir = randomDir * 2 - 1;
+//        randomDir = randomDir * sign(dot(normalize(randomDir), normal));
+//
+//        vec3 reflection = normalize(reflect(viewDir, normalize(mix(randomDir, normal, 0.5))));
+//        rdot = 1 - max(dot(reflection, viewDir), 0);
+//        newUv = TraceRay(uv, WorldPosition, reflection, 32 / rdot, 128, totalSamples, hit);
+//        float mask = CalculateMask(newUv);
+//        vec4 temp = texture(MainTex, newUv.xy);
+//        col += mix(vec4(0), temp, mask * hit);
+//        samples--;
+//    }
+//    col /= 32;
 
-        vec3 reflection = normalize(reflect(viewDir, normalize(mix(randomDir, normal, 0.5))));
-        rdot = 1 - max(dot(reflection, viewDir), 0);
-        newUv = TraceRay(uv, WorldPosition, reflection, 32 / rdot, 128, totalSamples, hit);
-        float mask = CalculateMask(newUv);
-        vec4 temp = texture(MainTex, newUv.xy);
-        col += mix(vec4(0), temp, mask * hit);
-        samples--;
-    }
-    col /= 32;
+    WorldPosition.x = mod(WorldPosition.x, 1);
+    WorldPosition.y = mod(WorldPosition.y, 1);
+    WorldPosition.z = mod(WorldPosition.z, 1);
 
-    FragColor = vec4(normmainCol + col);
+    FragColor = vec4(WorldPosition, 0);
 }
