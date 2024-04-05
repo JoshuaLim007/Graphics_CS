@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using JLGraphics.RenderPasses;
+using JLUtility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,16 +11,32 @@ namespace JLGraphics.Utility
 {
     public class GraphicsSettings
     {
-
-        public GraphicsSettings() { }
-        public GraphicsSettings(GuiManager guiManager)
+        public static GraphicsSettings Instance { get; private set; }
+        public GraphicsSettings() {
+            if (Instance != null)
+            {
+                Debug.Log("Warning there can be only one instance of GraphicsSettings", Debug.Flag.Warning);
+                return;
+            }
+            Instance = this;
+        }
+        public GraphicsSettings(GuiManager guiManager, bool TAA)
         {
-            if(guiManager == null)
+            if(Instance != null)
+            {
+                Debug.Log("Warning there can be only one instance of GraphicsSettings", Debug.Flag.Warning);
+                return;
+            }
+            Instance = this;
+            if (guiManager == null)
             {
                 return;
             }
             guiManager.AddWindow("Graphics Settings", update, typeof(GraphicsSettings));
-            Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
+            if (TAA)
+            {
+                Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
+            }
             Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
 
