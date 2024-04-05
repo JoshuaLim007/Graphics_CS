@@ -158,7 +158,7 @@ namespace JLGraphics
                 maxMipmap = 0,
                 minFilter = TextureMinFilter.Linear,
                 magFilter = TextureMagFilter.Linear,
-                internalFormat = PixelInternalFormat.DepthComponent24,
+                internalFormat = PixelInternalFormat.DepthComponent32f,
             };
             var depthSettingsColor = new TFP()
             {

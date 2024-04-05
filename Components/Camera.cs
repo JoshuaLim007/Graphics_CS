@@ -149,7 +149,7 @@ namespace JLGraphics
         public int Width => Graphics.Instance.GetRenderSize().X;
         public int Height => Graphics.Instance.GetRenderSize().Y;
 
-        float near = 0.03f;
+        float near = 0.1f;
         [Gui("Near")]
         public float Near {
             get => near;
