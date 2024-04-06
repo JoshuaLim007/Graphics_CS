@@ -47,7 +47,8 @@ namespace JLGraphics.RenderPasses
             program = new ShaderProgram("SSAO accum", AssetLoader.GetPathToAsset("./Shaders/SSAOAccum.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             program.CompileProgram();
             accum = new Shader("SSAO Accum", program);
-
+            accum.SetBool(Shader.GetShaderPropertyId("ClearOnInvalidate"), false);
+            accum.SetVector4(Shader.GetShaderPropertyId("ClearColor"), Vector4.One);
             GenerateNoiseTexture(noiseX, noiseY, noiseZ);
         }
         //64 slices of 8x8 noise texture
@@ -158,7 +159,7 @@ namespace JLGraphics.RenderPasses
             {
                 accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
                 accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
-                accum.SetTexture(Shader.GetShaderPropertyId("AccumAO"), accumRT.TextureAttachments[0]);
+                accum.SetTexture(Shader.GetShaderPropertyId("PrevMainTex"), accumRT.TextureAttachments[0]);
                 Blit(SSAORt, accumRT, accum);
             }
 

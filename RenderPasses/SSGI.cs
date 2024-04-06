@@ -13,6 +13,7 @@ namespace JLGraphics.RenderPasses
     {
         Shader shader;
         Shader accum;
+        Shader denoise;
         public SSGI(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
             var shaderProgram = new ShaderProgram("SSGI",
@@ -23,30 +24,34 @@ namespace JLGraphics.RenderPasses
 
             shaderProgram = new ShaderProgram("SSAO accum", AssetLoader.GetPathToAsset("./Shaders/SSAOAccum.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             shaderProgram.CompileProgram();
-            accum = new Shader("SSAO Accum", shaderProgram);
+            accum = new Shader("SSGI Accum", shaderProgram);
+            accum.SetBool(Shader.GetShaderPropertyId("ClearOnInvalidate"), true);
+            accum.SetVector4(Shader.GetShaderPropertyId("ClearColor"), Vector4.Zero);
+
+            shaderProgram = new ShaderProgram("SSAO accum", AssetLoader.GetPathToAsset("./Shaders/Denoise.frag"), AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
+            shaderProgram.CompileProgram();
+            denoise = new Shader("Denoise", shaderProgram);
         }
 
         public override string Name => "SSGI";
 
-        FrameBuffer initialPass, accumulationPass;
-        int accumulatedFrames = 1;
-        int maxAccum = 128;
+        FrameBuffer initialPass, accumulationPass, denoisePass;
+        int accumulatedFrames = 0;
+        int maxAccum = 64;
         Vector3 lastCamPos;
         Quaternion lastCamRot;
 
-        public int SamplesPerPixel { get; set; } = 2;
+        public int SamplesPerPixel { get; set; } = 1;
         public bool FarRangeSSGI { get; set; } = false;
 
         public override void FrameSetup(Camera camera)
         {
             if(camera.Transform.LocalPosition != lastCamPos)
             {
-                accumulatedFrames = 1;
                 lastCamPos = camera.Transform.LocalPosition;
             }
             if (camera.Transform.LocalRotation != lastCamRot)
             {
-                accumulatedFrames = 1;
                 lastCamRot = camera.Transform.LocalRotation;
             }
         }
@@ -57,8 +62,7 @@ namespace JLGraphics.RenderPasses
             {
                 initialPass?.Dispose();
                 accumulationPass?.Dispose();
-                initialPass = null;
-                accumulationPass = null;
+                denoisePass?.Dispose();
 
                 var res = GetScaledResolution(frameBuffer.Width, frameBuffer.Height, scale);
                 initialPass = new FrameBuffer(res.X, res.Y, false, new TFP
@@ -75,6 +79,13 @@ namespace JLGraphics.RenderPasses
                     magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 });
+                denoisePass = new FrameBuffer(res.X, res.Y, false, new TFP
+                {
+                    internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
+                    maxMipmap = 0,
+                    magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
+                    minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
+                });
             }
             shader.SetInt(Shader.GetShaderPropertyId("SamplesPerPixel"), SamplesPerPixel);
             shader.SetBool(Shader.GetShaderPropertyId("FarRangeSSGI"), FarRangeSSGI);
@@ -82,9 +93,11 @@ namespace JLGraphics.RenderPasses
 
             accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
             accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
-            accum.SetTexture(Shader.GetShaderPropertyId("AccumAO"), accumulationPass.TextureAttachments[0]);
+            accum.SetTexture(Shader.GetShaderPropertyId("PrevMainTex"), accumulationPass.TextureAttachments[0]);
             Blit(initialPass, accumulationPass, accum);
-            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_SSGIColor"), accumulationPass.TextureAttachments[0]);
+            Blit(accumulationPass, denoisePass, denoise);
+
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_SSGIColor"), denoisePass.TextureAttachments[0]);
             FrameBuffer.BindFramebuffer(frameBuffer);
         }
 
@@ -92,10 +105,10 @@ namespace JLGraphics.RenderPasses
         {
             initialPass?.Dispose();
             accumulationPass?.Dispose();
-            initialPass = null;
-            accumulationPass = null;
             shader.Program.Dispose();
             accum.Program.Dispose();
+            denoise.Program.Dispose();
+            denoisePass?.Dispose();
         }
     }
 }

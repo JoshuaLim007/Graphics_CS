@@ -61,7 +61,7 @@ vec3 hash33(vec3 src) {
     return uintBitsToFloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
 }
 vec3 RandomUnitVector(vec2 uv, int index){
-    vec3 randomNormal = normalize(hash33(vec3(uv, _Frame + index)) * 2 - 1);
+    vec3 randomNormal = normalize(hash33(vec3(uv, index)) * 2 - 1);
     return randomNormal;
 }
 vec3 OrientToNormal(vec3 vector, vec3 normal){
@@ -143,7 +143,7 @@ void main()
     int sampleCount = 0;
     
     while(sampleCount < SamplesPerPixel){
-        vec3 random = OrientToNormal(RandomUnitVector(uv, sampleCount * 100), normal);
+        vec3 random = OrientToNormal(RandomUnitVector(uv, _Frame + sampleCount * 1024), normal);
         vec3 reflection = random;
         float rdot = 1 - max(dot(reflection, viewDir), 0);
         float scaler = pow(rdot, 0.5);
@@ -170,3 +170,4 @@ void main()
 
     FragColor = vec4(normmainCol);
 }
+
