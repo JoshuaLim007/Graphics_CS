@@ -145,11 +145,13 @@ namespace JLGraphics.Utility
         {
             bool bloomV = bloom != null;
             bool ssaoV = ssao != null;
+            bool ssgiV = ssgi != null;
             bool motionblurV = motionblurPass != null;
             bool postProcessV = postProcess != null;
 
             ImGui.Checkbox("Bloom", ref bloomV);
             ImGui.Checkbox("SSAO", ref ssaoV);
+            ImGui.Checkbox("SSGI", ref ssgiV);
             ImGui.Checkbox("Motion Blur", ref motionblurV);
             ImGui.Checkbox("Final Post Process", ref postProcessV);
             float t = Graphics.Instance.RenderScale;
@@ -160,6 +162,7 @@ namespace JLGraphics.Utility
             SSAO(ssaoV);
             MotionBlur(motionblurV);
             PostProcess(postProcessV);
+            SSGI(ssgiV);
 
             //Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
             //Graphics.Instance.EnqueueRenderPass(new PostProcessPass(13));

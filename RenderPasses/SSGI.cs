@@ -33,7 +33,10 @@ namespace JLGraphics.RenderPasses
         int maxAccum = 128;
         Vector3 lastCamPos;
         Quaternion lastCamRot;
-        
+
+        public int SamplesPerPixel { get; set; } = 2;
+        public bool FarRangeSSGI { get; set; } = false;
+
         public override void FrameSetup(Camera camera)
         {
             if(camera.Transform.LocalPosition != lastCamPos)
@@ -73,7 +76,8 @@ namespace JLGraphics.RenderPasses
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 });
             }
-
+            shader.SetInt(Shader.GetShaderPropertyId("SamplesPerPixel"), SamplesPerPixel);
+            shader.SetBool(Shader.GetShaderPropertyId("FarRangeSSGI"), FarRangeSSGI);
             Blit(frameBuffer, initialPass, shader);
 
             accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);

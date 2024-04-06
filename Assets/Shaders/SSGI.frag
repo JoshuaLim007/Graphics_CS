@@ -45,28 +45,24 @@ void GetDepthAtViewPosition(vec3 worldPosition, out vec3 uv){
 }
 
 uniform int samples;
+uniform int SamplesPerPixel;
 uniform int _Frame;
 
-uvec3 pcg3d(uvec3 v) {
-
-    v = v * 1664525u + 1013904223u;
-
-    v.x += v.y*v.z;
-    v.y += v.z*v.x;
-    v.z += v.x*v.y;
-
-    v ^= v >> 16u;
-
-    v.x += v.y*v.z;
-    v.y += v.z*v.x;
-    v.z += v.x*v.y;
-
-    return v;
+uvec3 murmurHash33(uvec3 src) {
+    const uint M = 0x5bd1e995u;
+    uvec3 h = uvec3(1190494759u, 2147483647u, 3559788179u);
+    src *= M; src ^= src>>24u; src *= M;
+    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+    h ^= h>>13u; h *= M; h ^= h>>15u;
+    return h;
 }
-vec3 RandomUnitVector(vec2 uv){
-    vec2 screenPos = gl_FragCoord.xy;
-    vec3 randomNormal = normalize(pcg3d(uvec3(screenPos, _Frame)));
-    return randomNormal * 2 - 1;
+vec3 hash33(vec3 src) {
+    uvec3 h = murmurHash33(floatBitsToUint(src));
+    return uintBitsToFloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
+}
+vec3 RandomUnitVector(vec2 uv, int index){
+    vec3 randomNormal = normalize(hash33(vec3(uv, _Frame + index)) * 2 - 1);
+    return randomNormal;
 }
 vec3 OrientToNormal(vec3 vector, vec3 normal){
     float s = sign(dot(vector, normal));
@@ -127,6 +123,7 @@ vec3 TraceRay(
     return retUv;
 }
 
+uniform bool FarRangeSSGI;
 void main()
 {
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
@@ -140,28 +137,36 @@ void main()
     vec3 worldNormal = texture(_CameraNormalTexture, uv).xyz;
     vec3 normal = (ViewMatrix * vec4(worldNormal, 0)).xyz;
     vec3 viewDir = normalize(ViewPos);
-    vec3 random = OrientToNormal(RandomUnitVector(uv), normal);
-    normal = normalize(mix(normal, random, 0.75));
-    vec3 reflection = reflect(viewDir, normal);
 
-    float rdot = 1 - max(dot(reflection, viewDir), 0);
-    float scaler = pow(rdot, 0.5);
-    int totalSamples = 0;
-    float hit = 0;
-    vec3 newUv = TraceRay(
-        ViewPos,        //View position
-        reflection,     //view reflection
-        16 / scaler,      //max ray length
-        64,            //max samples
-        0.002 / scaler,
-        totalSamples,   //samples taken
-        hit);           //intersection hit
+    normmainCol = vec4(0);
+    int SamplesPerPixel = max(SamplesPerPixel, 1);
+    int sampleCount = 0;
+    
+    while(sampleCount < SamplesPerPixel){
+        vec3 random = OrientToNormal(RandomUnitVector(uv, sampleCount * 100), normal);
+        vec3 reflection = random;
+        float rdot = 1 - max(dot(reflection, viewDir), 0);
+        float scaler = pow(rdot, 0.5);
+        int totalSamples = 0;
+        float hit = 0;
+        vec3 newUv = TraceRay(
+            ViewPos,                                        //View position
+            reflection,                                     //view reflection
+            FarRangeSSGI ? 32 / scaler : 8 / scaler,        //max ray length
+            64,                                             //max samples
+            FarRangeSSGI ? .008 / scaler : 0.002 / scaler,  //thickness
+            totalSamples,                                   //samples taken
+            hit);                                           //intersection hit
 
-    vec3 hitNormal = texture(_CameraNormalTexture, newUv.xy).xyz;
-    float backFaceReflect = dot(worldNormal, hitNormal);
-    if(backFaceReflect > 0){
-        hit = 0;
+        vec3 hitNormal = texture(_CameraNormalTexture, newUv.xy).xyz;
+        float backFaceReflect = dot(worldNormal, hitNormal);
+        if(backFaceReflect > 0){
+            hit = 0;
+        }
+        normmainCol += texture(MainTex, newUv.xy) * hit;
+        sampleCount++;
     }
-    normmainCol = texture(MainTex, newUv.xy) * hit;
+    normmainCol /= SamplesPerPixel;
+
     FragColor = vec4(normmainCol);
 }

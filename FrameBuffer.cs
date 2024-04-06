@@ -180,6 +180,10 @@ namespace JLGraphics
             frameBuffer1 = new FrameBuffer(width, height, enableDepthRenderBuffer, tfp);
             return frameBuffer1;
         }
+        public static Vector2i GetScaledResolution(int width, int height, float scale)
+        {
+            return new Vector2i((int)MathF.Max(MathF.Floor(width * scale), 1), (int)MathF.Max(MathF.Floor(height * scale), 1));
+        }
         public static bool AlikeResolution(FrameBuffer f1, FrameBuffer f2, float f1_resolutionScale = 1.0f)
         {
             if (f1 == null && f2 != null)
@@ -194,49 +198,12 @@ namespace JLGraphics
             {
                 return true;
             }
-            bool resolutionCheck = f1.Width / f1_resolutionScale == f2.Width && f1.Height / f1_resolutionScale == f2.Height;
+            var res = GetScaledResolution(f2.Width, f2.Height, f1_resolutionScale);
+            bool resolutionCheck = f1.Width == res.X && f1.Height == res.Y;
             if (!resolutionCheck)
             {
                 return false;
             }
-            return true;
-        }
-        public static bool Alike(FrameBuffer f1, FrameBuffer f2, float f1_resolutionScale = 1.0f)
-        {
-            if(f1 == null && f2 != null)
-            {
-                return false;
-            }
-            if(f2 == null && f1 != null)
-            {
-                return false;
-            }
-            if(f2 == null && f1 == null)
-            {
-                return true;
-            }
-            bool resolutionCheck = f1.Width * f1_resolutionScale == f2.Width && f1.Height * f1_resolutionScale == f2.Height;
-            if (!resolutionCheck)
-            {
-                return false;
-            }
-            bool textureAmountLenghtCheck = f1.TextureAttachments.Length == f2.TextureAttachments.Length;
-            if (textureAmountLenghtCheck)
-            {
-                for (int i = 0; i < f1.TextureAttachments.Length; i++)
-                {
-                    bool textureCheck1 = Texture.Alike(f1.TextureAttachments[i], f2.TextureAttachments[i], f1_resolutionScale);
-                    if(!textureCheck1)
-                    {
-                        return false;
-                    }
-                }
-            }
-            else
-            {
-                return false;
-            }
-
             return true;
         }
     }
