@@ -35,10 +35,10 @@ namespace JLGraphics.RenderPasses
         public override string Name => "Motion Vector pass";
 
         int location;
-        Matrix4 previousViewProj;
+        internal static Matrix4 PreviousViewProjection;
         void OnRenderCallback(Renderer e)
         {
-            var mat = e.Transform.PreviousModelMatrix * previousViewProj;
+            var mat = e.Transform.PreviousModelMatrix * PreviousViewProjection;
             GL.UniformMatrix4(location, false, ref mat);
             e.Transform.PreviousModelMatrix = e.Transform.ModelMatrix;
         }
@@ -77,7 +77,7 @@ namespace JLGraphics.RenderPasses
 
             //render scene
             location = motionVectorShader.Program.GetUniformLocation(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"));
-            previousViewProj = previousViewMatrix * previousProjectionMatrix;
+            PreviousViewProjection = previousViewMatrix * previousProjectionMatrix;
 
             var newViewMat = Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
             var cameraViewProj = newViewMat * previousProjectionMatrix;

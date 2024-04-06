@@ -1,5 +1,4 @@
 ﻿using JLUtility;
-using OpenTK.Compute.OpenCL;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -37,22 +36,33 @@ namespace JLGraphics.RenderPasses
 
         FrameBuffer initialPass, accumulationPass, denoisePass;
         int accumulatedFrames = 0;
-        int maxAccum = 64;
-        Vector3 lastCamPos;
-        Quaternion lastCamRot;
+        int maxAccum = 512;
 
-        public int SamplesPerPixel { get; set; } = 1;
+        public int SamplesPerPixel { get; set; } = 2;
         public bool FarRangeSSGI { get; set; } = false;
 
+        Matrix4 previousViewMatrix;
         public override void FrameSetup(Camera camera)
         {
-            if(camera.Transform.LocalPosition != lastCamPos)
+            var pos = camera.Transform.LocalPosition + camera.Transform.Forward * 1;
+            
+            Vector4 curViewPos = new Vector4(pos, 1) * camera.ViewMatrix;
+            curViewPos.W = 1;
+            var curPos = camera.ProjectionMatrix * curViewPos;
+            curPos /= curPos.W;
+
+            Vector4 preViewPos = new Vector4(pos, 1) * previousViewMatrix;
+            preViewPos.W = 1;
+            var prePos = camera.ProjectionMatrix * preViewPos;
+            prePos /= prePos.W;
+
+            float camDiffSpeed = (prePos - curPos).Length * 2;
+            
+            previousViewMatrix = camera.ViewMatrix;
+            if (camDiffSpeed > 0.05f)
             {
-                lastCamPos = camera.Transform.LocalPosition;
-            }
-            if (camera.Transform.LocalRotation != lastCamRot)
-            {
-                lastCamRot = camera.Transform.LocalRotation;
+                accumulatedFrames = (int)MathHelper.Lerp(33, 8, camDiffSpeed);
+                Debug.Log(accumulatedFrames);
             }
         }
         public override void Execute(in FrameBuffer frameBuffer)
