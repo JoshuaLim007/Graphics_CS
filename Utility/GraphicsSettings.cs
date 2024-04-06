@@ -12,13 +12,18 @@ namespace JLGraphics.Utility
     public class GraphicsSettings
     {
         public static GraphicsSettings Instance { get; private set; }
-        public GraphicsSettings() {
+        public GraphicsSettings(bool TAA) {
             if (Instance != null)
             {
                 Debug.Log("Warning there can be only one instance of GraphicsSettings", Debug.Flag.Warning);
                 return;
             }
             Instance = this;
+            if (TAA)
+            {
+                Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
+            }
+            Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
         public GraphicsSettings(GuiManager guiManager, bool TAA)
         {

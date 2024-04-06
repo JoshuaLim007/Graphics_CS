@@ -39,7 +39,7 @@ void main()
         mixVal = 1;
     }
 
-    float prev = texture(AccumAO, offset).r;
-    float new = texture(MainTex, uv).r;
-    FragColor = vec4(prev * (1.0 - 1.0 / mixVal) + new * (1.0 / mixVal));
+    vec3 prev = texture(AccumAO, offset).xyz;
+    vec3 new = texture(MainTex, uv).xyz;
+    FragColor = vec4(max(prev * (1.0 - 1.0 / mixVal) + new * (1.0 / mixVal), 0), 0);
 }
