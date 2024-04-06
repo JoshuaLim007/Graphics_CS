@@ -29,7 +29,7 @@ void main()
     vec2 velocity = texture(_MotionTexture, uv).rg;
     vec2 offset = uv - velocity;
     float prevDepth = texture(_CameraDepthTexture, offset).r * 2 - 1;
-    const float bias = 0.001;
+    const float bias = 0.005;
 
     if(offset.x < 0 || offset.y < 0 || offset.x > 1 || offset.y > 1){
         if(ClearOnInvalidate){
