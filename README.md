@@ -1,4 +1,5 @@
 
+
 # C# OpenGL Graphics Engine
 
 Made with c# and openTK c# library
@@ -30,25 +31,25 @@ Unity game engine esque mono-behavior system for custom behaviors and scripts.
 	 - Cook-Torrence specular
 - ACES tonemapping
 - Skybox Cubemap
-	
+- SSGI
+- Thin G-Buffer
+- Cache model-matrices on static objects
+- TAA (WIP)
+- Procedural Physical based Sky 
+
 ## Todo
 ### High priority
 - Move over to glMultiDrawElementsIndirect
-- Cache model-matrices on static objects
-- TAA
 - SSR
 - IBL (image based lighting)
 
 ### Medium priority
-
 - Screen space subsurface scattering
 - Order independent transparents
 - Volumetric lighting
 - Physical based procedural sky
 - Volumetric Clouds
 - Water/Ocean rendering
-- SSGI
-- Thin G-Buffer
 
 ### Low priority
 - Software Raytracing (BVH)
@@ -67,5 +68,11 @@ Unity game engine esque mono-behavior system for custom behaviors and scripts.
 	- or use 2d texture arrays
 
 ## Screenshots
-![sc 1](https://i.imgur.com/AKSYnbz.png)
-![sc 2](https://i.imgur.com/ExQGxRk.png)
+
+![enter image description here](https://i.imgur.com/XgwgH5L.png)
+
+![enter image description here](https://i.imgur.com/DnbvUlu.png)
+
+![enter image description here](https://i.imgur.com/s3aBQ4X.png)
+
+![enter image description here](https://i.imgur.com/UENQT54.png)
