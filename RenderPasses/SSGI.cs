@@ -39,7 +39,7 @@ namespace JLGraphics.RenderPasses
         int maxAccum = 512;
 
         public int SamplesPerPixel { get; set; } = 2;
-        public bool FarRangeSSGI { get; set; } = false;
+        public bool FarRangeSSGI { get; set; } = true;
 
         Matrix4 previousViewMatrix;
         public override void FrameSetup(Camera camera)
@@ -62,7 +62,6 @@ namespace JLGraphics.RenderPasses
             if (camDiffSpeed > 0.05f)
             {
                 accumulatedFrames = (int)MathHelper.Lerp(33, 8, camDiffSpeed);
-                Debug.Log(accumulatedFrames);
             }
         }
         public override void Execute(in FrameBuffer frameBuffer)
