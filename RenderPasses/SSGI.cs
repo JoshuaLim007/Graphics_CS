@@ -39,7 +39,7 @@ namespace JLGraphics.RenderPasses
         int maxAccum = 512;
 
         public int SamplesPerPixel { get; set; } = 2;
-        public bool FarRangeSSGI { get; set; } = true;
+        public bool FarRangeSSGI { get; set; } = false;
 
         Matrix4 previousViewMatrix;
         public override void FrameSetup(Camera camera)
