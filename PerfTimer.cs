@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace JLGraphics
 {
-    internal static class PerfTimer
+    public static class PerfTimer
     {
         class Watcher
         {
@@ -52,8 +52,10 @@ namespace JLGraphics
         static Dictionary<string, Watcher> timerDic = new Dictionary<string, Watcher>();
         static List<Watcher> watchers = new List<Watcher>();
         static Stack<Watcher> startedWatcher = new Stack<Watcher>();
+        static public bool Enable { get; set; } = true;
         public static void Start(string name)
         {
+            if (!Enable) return;
             GL.Finish();
             if (timerDic.TryGetValue(name, out var watch))
             {
@@ -84,6 +86,7 @@ namespace JLGraphics
         }
         public static void Stop()
         {
+            if (!Enable) return;
             GL.Finish();
             var startedWatcher = PerfTimer.startedWatcher.Pop();
             //GL.EndQuery(QueryTarget.TimeElapsed);
@@ -109,8 +112,9 @@ namespace JLGraphics
             }
         }
 
-        public static void ResetTimers(bool printResults)
+        internal static void ResetTimers(bool printResults)
         {
+            if (!Enable) return;
             timer++;
             bool skip = true;
             if (timer >= Intervals)
@@ -139,7 +143,7 @@ namespace JLGraphics
                 watchers[i].Reset();
             }
         }
-        public static void Clear()
+        internal static void Clear()
         {
             timerDic.Clear();
             watchers.Clear();

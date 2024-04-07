@@ -37,7 +37,7 @@ namespace JLGraphics.RenderPasses
 
         FrameBuffer initialPass, accumulationPass, denoisePass;
         int accumulatedFrames = 0;
-        int maxAccum = 512;
+        int maxAccum = 64;
 
         public int SamplesPerPixel { get; set; } = 2;
         public bool FarRangeSSGI { get; set; } = false;
@@ -79,6 +79,7 @@ namespace JLGraphics.RenderPasses
                 {
                     internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
                     maxMipmap = 0,
+                    wrapMode = TextureWrapMode.MirroredRepeat,
                     magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 });
@@ -86,6 +87,7 @@ namespace JLGraphics.RenderPasses
                 {
                     internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
                     maxMipmap = 0,
+                    wrapMode = TextureWrapMode.MirroredRepeat,
                     magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 });
@@ -93,6 +95,7 @@ namespace JLGraphics.RenderPasses
                 {
                     internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgb16f,
                     maxMipmap = 0,
+                    wrapMode = TextureWrapMode.MirroredRepeat,
                     magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                     minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
                 });

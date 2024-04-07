@@ -184,6 +184,7 @@ vec4 GetAmbientColor(vec3 normal) {
 
 uniform sampler2D _CameraDepthTexture;
 uniform sampler2D _SSGIColor;
+uniform sampler2D _MotionTexture;
 uniform vec3 FogColor;
 uniform float FogDensity;
 uniform vec4 CameraParams;
@@ -291,8 +292,14 @@ void main(){
 	kd *= (1 - Metalness);
 
 	vec3 brdf = (kd * diffuse + fresnal * vec3(reflectanceBRDF)) * incomingLightDiffuse;
-
-	vec3 ssgi = texture(_SSGIColor, gl_FragCoord.xy / RenderSize.xy).xyz;
+	vec2 screenUV = gl_FragCoord.xy / RenderSize.xy;
+	vec2 mv = texture(_MotionTexture, screenUV).xy;
+	vec2 projectUv = screenUV - mv;
+	projectUv.x = projectUv.x < 0 ? 0 : projectUv.x;
+	projectUv.y = projectUv.y < 0 ? 0 : projectUv.y;
+	projectUv.x = projectUv.y > 1 ? 1 : projectUv.x;
+	projectUv.y = projectUv.y > 1 ? 1 : projectUv.y;
+	vec3 ssgi = texture(_SSGIColor, projectUv).xyz;
 	vec3 diffuseAmbientColor = GetAmbientColor(normal).xyz + ssgi;
 	brdf += (1 - Metalness) * (diffuse * diffuseAmbientColor);
 
