@@ -158,11 +158,11 @@ void main()
             totalSamples,                                   //samples taken
             hit);                                           //intersection hit
 
-        vec3 hitNormal = texture(_CameraNormalTexture, newUv.xy).xyz;
-        float backFaceReflect = dot(worldNormal, hitNormal);
-        if(backFaceReflect > 0){
-            hit = 0;
-        }
+//        vec3 hitNormal = texture(_CameraNormalTexture, newUv.xy).xyz;
+//        float backFaceReflect = dot(worldNormal, hitNormal);
+//        if(backFaceReflect > 0){
+//            hit = 0;
+//        }
         normmainCol += texture(MainTex, newUv.xy) * hit;
         sampleCount++;
     }
