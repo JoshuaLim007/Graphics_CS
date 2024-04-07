@@ -1,4 +1,5 @@
 ﻿using JLUtility;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -98,13 +99,22 @@ namespace JLGraphics.RenderPasses
             }
             shader.SetInt(Shader.GetShaderPropertyId("SamplesPerPixel"), SamplesPerPixel);
             shader.SetBool(Shader.GetShaderPropertyId("FarRangeSSGI"), FarRangeSSGI);
+
+            PerfTimer.Start("SSGI raytrace");
             Blit(frameBuffer, initialPass, shader);
+            PerfTimer.Stop();
 
             accumulatedFrames = (int)MathF.Min(++accumulatedFrames, maxAccum);
             accum.SetInt(Shader.GetShaderPropertyId("AccumCount"), accumulatedFrames);
             accum.SetTexture(Shader.GetShaderPropertyId("PrevMainTex"), accumulationPass.TextureAttachments[0]);
+
+            PerfTimer.Start("SSGI accum");
             Blit(initialPass, accumulationPass, accum);
+            PerfTimer.Stop();
+
+            PerfTimer.Start("SSGI denoise");
             Blit(accumulationPass, denoisePass, denoise);
+            PerfTimer.Stop();
 
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_SSGIColor"), denoisePass.TextureAttachments[0]);
             FrameBuffer.BindFramebuffer(frameBuffer);

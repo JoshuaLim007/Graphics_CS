@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenTK.Graphics.OpenGL4;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -21,11 +22,13 @@ namespace JLGraphics
             public int samples = 0;
             public int calls = 0;
             public bool sampleflag = true;
+            public int QueryID;
             public void Reset()
             {
                 samples = 0;
                 totalMs = 0;
                 calls = 0;
+                QueryID = 0;
                 sampleflag = true;
                 stopwatch.Stop();
                 stopwatch.Reset();
@@ -51,18 +54,28 @@ namespace JLGraphics
         static Stack<Watcher> startedWatcher = new Stack<Watcher>();
         public static void Start(string name)
         {
+            GL.Finish();
             if (timerDic.TryGetValue(name, out var watch))
             {
                 if (watch.stopwatch.IsRunning)
                 {
                     throw new Exception("PerfTimer for: " + name + " is already running");
                 }
+                //var query = GL.GenQuery();
+                //GL.BeginQuery(QueryTarget.TimeElapsed, query);
+                //watch.QueryID = query;
+
                 watch.stopwatch.Start();
                 startedWatcher.Push(watch);
             }
             else
             {
                 var watcher = new Watcher(name);
+
+                //var query = GL.GenQuery();
+                //GL.BeginQuery(QueryTarget.TimeElapsed, query);
+                //watcher.QueryID = query;
+
                 watcher.stopwatch.Start();
                 watchers.Add(watcher);
                 timerDic.Add(name, watcher);
@@ -71,7 +84,19 @@ namespace JLGraphics
         }
         public static void Stop()
         {
+            GL.Finish();
             var startedWatcher = PerfTimer.startedWatcher.Pop();
+            //GL.EndQuery(QueryTarget.TimeElapsed);
+            //bool available = false;
+            //while (!available)
+            //{
+            //    GL.GetQueryObject(startedWatcher.QueryID, GetQueryObjectParam.QueryResultAvailable, out int res);
+            //    available = res == 1;
+            //}
+            //long queryTime = 0;
+            //GL.GetQueryObject(startedWatcher.QueryID, GetQueryObjectParam.QueryResult, out queryTime);
+            //GL.DeleteQuery(startedWatcher.QueryID);
+
             startedWatcher.stopwatch.Stop();
             startedWatcher.totalMs += startedWatcher.stopwatch.Elapsed.TotalMilliseconds;
             startedWatcher.stopwatch.Reset();
