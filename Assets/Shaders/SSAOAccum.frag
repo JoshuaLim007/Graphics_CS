@@ -35,12 +35,13 @@ void main()
         }
         mixVal = 1;
     }
-
+    float speed = length(velocity);
     float prevDepth = texture(_CameraDepthTexture, offset).r * 2 - 1;
-    const float bias = 0.0075;
+    float bias = mix(0.10, 0.75, speed * 50);
     currentDepth = linear01Depth(currentDepth);
     prevDepth = linear01Depth(prevDepth);
-    if(abs(currentDepth - prevDepth) >= bias){
+    float percentDiff = abs(currentDepth - prevDepth) / ((currentDepth + prevDepth) * 0.5);
+    if(percentDiff >= bias){
         if(ClearOnInvalidate){
             FragColor = ClearColor;
             return;
