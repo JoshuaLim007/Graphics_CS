@@ -84,7 +84,7 @@ namespace JLGraphics
                 if(Parent != null)
                 {
                     var temp = new Vector4(value, 1);
-                    temp = Parent.InvModelMatrix * temp;
+                    temp = temp * Parent.InvModelMatrix;
                     LocalPosition = temp.Xyz;
                 }
                 else
