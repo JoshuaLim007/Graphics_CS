@@ -51,7 +51,7 @@ namespace JLGraphics.Utility
         Bloom bloom;
         SSGI ssgi;
 
-        public void SSGI(bool enable)
+        public SSGI SSGI(bool enable)
         {
             if (enable != (ssgi != null))
             {
@@ -67,8 +67,9 @@ namespace JLGraphics.Utility
                     ssgi = null;
                 }
             }
+            return ssgi;
         }
-        public void Bloom(bool enable)
+        public Bloom Bloom(bool enable)
         {
             if (enable != (bloom != null))
             {
@@ -84,8 +85,9 @@ namespace JLGraphics.Utility
                     bloom = null;
                 }
             }
+            return bloom;
         }
-        public void SSAO(bool enable)
+        public SSAO SSAO(bool enable)
         {
             if (enable != (ssao != null))
             {
@@ -105,8 +107,9 @@ namespace JLGraphics.Utility
                     ssao = null;
                 }
             }
+            return ssao;
         }
-        public void MotionBlur(bool enable)
+        public MotionblurPass MotionBlur(bool enable)
         {
             if (enable != (motionblurPass != null))
             {
@@ -123,8 +126,9 @@ namespace JLGraphics.Utility
                     motionblurPass = null;
                 }
             }
+            return motionblurPass;
         }
-        public void PostProcess(bool enable)
+        public PostProcessPass PostProcess(bool enable)
         {
             if (enable != (postProcess != null))
             {
@@ -140,6 +144,7 @@ namespace JLGraphics.Utility
                     postProcess = null;
                 }
             }
+            return postProcess;
         }
         void update()
         {
