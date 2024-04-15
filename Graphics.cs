@@ -105,6 +105,7 @@ namespace JLGraphics
             GL.Enable(EnableCap.CullFace);
             GL.Enable(EnableCap.Dither);
             GL.Enable(EnableCap.Blend);
+            GL.ClipControl(ClipOrigin.LowerLeft, ClipDepthMode.ZeroToOne);
             if (msaaSamples != 0)
             {
                 GL.Enable(EnableCap.Multisample);

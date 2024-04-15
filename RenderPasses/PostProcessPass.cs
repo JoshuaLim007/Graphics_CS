@@ -25,6 +25,7 @@ namespace JLGraphics.RenderPasses
         public float Gamma = 2.4f;
         public bool Vignette = true;
         public float VignetteStrength = 0.5f;
+        public float Exposure = 1.0f;
 
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
@@ -66,6 +67,7 @@ namespace JLGraphics.RenderPasses
             shader.SetFloat(Shader.GetShaderPropertyId("Gamma"), Gamma);
             shader.SetBool(Shader.GetShaderPropertyId("Vignette"), Vignette);
             shader.SetFloat(Shader.GetShaderPropertyId("VignetteStrength"), VignetteStrength);
+            shader.SetFloat(Shader.GetShaderPropertyId("Exposure"), Exposure);
 
             if (!FrameBuffer.AlikeResolution(frameBuffer, postProcessTexture))
             {

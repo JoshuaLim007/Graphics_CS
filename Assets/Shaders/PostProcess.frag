@@ -10,6 +10,7 @@ uniform vec4 CameraParams;
 uniform int Tonemapping;
 uniform int GammaCorrection;
 uniform float Gamma;
+uniform float Exposure;
 uniform int Srgb;
 uniform int Vignette;
 uniform float VignetteStrength;
@@ -117,6 +118,8 @@ void main()
     float depth = get_depth(pos);
     vec3 position = calcPositionFromDepth(pos, depth);
     vec3 normal = calcNormalFromPosition(pos);
+    
+    col.rgb *= Exposure;
 
     //aces tonemapping
     if(Tonemapping == 1){
