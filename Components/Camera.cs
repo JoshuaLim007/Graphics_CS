@@ -231,9 +231,13 @@ namespace JLGraphics
             {
                 return overrideProjection;
             }
-            return CameraMode == CameraType.Perspecitve 
-                ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) 
-                : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
+            //return CameraMode == CameraType.Perspecitve 
+            //    ? Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far) 
+            //    : Matrix4.CreateOrthographicOffCenter(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
+
+            return CameraMode == CameraType.Perspecitve
+                ? Extensions.CreatePerspectiveProjectionMatrix01Depth(MathHelper.DegreesToRadians(Fov), (float)Width / (float)Height, Near, Far)
+                : Extensions.CreateOrthographicOffCenter01Depth(-Size, Size, -Size * Height / Width, Size * Height / Width, Near, Far);
         }
     }
 }

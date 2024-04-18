@@ -107,7 +107,7 @@ namespace JLGraphics
 
         AABB CalculateShadowFrustum(Transform lightTransform, Quaternion CameraRotation, Vector3 CameraPosition, float CameraFOV, float aspect, out Matrix4 LightViewMatrix)
         {
-            var proj = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(CameraFOV), aspect, 0.1f, shadowRange);
+            var proj = Extensions.CreatePerspectiveProjectionMatrix01Depth(MathHelper.DegreesToRadians(CameraFOV), aspect, 0.1f, shadowRange);
             var invView = (Matrix4.CreateTranslation(-CameraPosition) * Matrix4.CreateFromQuaternion(CameraRotation)).Inverted();
 
             //get frustum corners in world space
@@ -193,13 +193,22 @@ namespace JLGraphics
             light_aabb.Max.Y = MathF.Floor(light_aabb.Max.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
             //Debug.Log(light_aabb.Min.Z);
             //Debug.Log(light_aabb.Max.Z);
-            var lightProjectionMatrix = Matrix4.CreateOrthographicOffCenter(
+            //var lightProjectionMatrix = Matrix4.CreateOrthographicOffCenter(
+            //    light_aabb.Min.X,
+            //    light_aabb.Max.X,
+            //    light_aabb.Min.Y,
+            //    light_aabb.Max.Y,
+            //    light_aabb.Min.Z - 500,
+            //    light_aabb.Max.Z + 500);
+
+
+            var lightProjectionMatrix = Extensions.CreateOrthographicOffCenter01Depth(
                 light_aabb.Min.X,
                 light_aabb.Max.X,
                 light_aabb.Min.Y,
                 light_aabb.Max.Y,
-                light_aabb.Min.Z - 750,
-                light_aabb.Max.Z + 250);
+                light_aabb.Min.Z - 500,
+                light_aabb.Max.Z + 500);
 
             //var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 

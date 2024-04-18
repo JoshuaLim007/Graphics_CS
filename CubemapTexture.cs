@@ -157,7 +157,7 @@ namespace JLGraphics
                 return;
             }
 
-            Matrix4 captureProjection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(90), 1.0f, 0.1f, 10.0f);
+            Matrix4 captureProjection = Extensions.CreatePerspectiveProjectionMatrix01Depth(MathHelper.DegreesToRadians(90), 1.0f, 0.1f, 10.0f);
             Matrix4[] captureViews =
             {
                 Matrix4.LookAt(Vector3.Zero, new Vector3(1.0f, 0.0f, 0.0f), new Vector3(0.0f, -1.0f, 0.0f)),
