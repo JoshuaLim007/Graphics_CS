@@ -33,10 +33,10 @@ namespace JLGraphics
                 new Vector3(1, -1, 1),
 
                 //near corners
-                new Vector3(-1, 1, -1),
-                new Vector3(1, 1, -1),
-                new Vector3(-1, -1, -1),
-                new Vector3(1, -1, -1),
+                new Vector3(-1, 1, 0),
+                new Vector3(1, 1, 0),
+                new Vector3(-1, -1, 0),
+                new Vector3(1, -1, 0),
 
             };
 
