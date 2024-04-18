@@ -182,7 +182,7 @@ namespace JLGraphics
                 new Color4(0,0,1,0),
                 new Color4(1,0,1,0),
             };
-
+            float clearDepthColor = Graphics.Instance.ReverseDepth ? 0 : 1;
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo);
             GL.Disable(EnableCap.CullFace);
             GL.Disable(EnableCap.Blend);
@@ -201,7 +201,7 @@ namespace JLGraphics
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, cubeMesh.EBO);
 
                 GL.ClearColor(clearColors[i]);
-                GL.ClearDepth(1.0f);
+                GL.ClearDepth(clearDepthColor);
                 GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
                 GL.DrawElements(PrimitiveType.Triangles, cubeMesh.IndiciesCount, DrawElementsType.UnsignedInt, 0);

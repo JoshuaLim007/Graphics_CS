@@ -120,6 +120,7 @@ namespace JLGraphics
         ShaderProgram DepthPrepassShaderProgram;
         float previousRenderScale = 1.0f;
         public GraphicsDebug GraphicsDebug;
+        public bool ReverseDepth { get; set; } = false;
         public float RenderScale { get; set; } = 1.0f;
         void InitFramebuffers() {
 
@@ -229,12 +230,17 @@ namespace JLGraphics
             depthOnlyShader.CompileProgram();
             skyboxDepthPrepassProgram.CompileProgram();
 
+            if (ReverseDepth)
+            {
+                Extensions.ReverseDepthBuffer = true;
+            }
+
             DefaultShaderProgram = defaultShader;
             PassthroughShaderProgram = passThroughShader;
             DepthPrepassShaderProgram = depthOnlyShader;
             SkyboxShader = new Shader("Skybox material", skyBoxShaderProrgam);
             SkyboxDepthPrepassShader = new Shader("Skybox depth prepass material", skyboxDepthPrepassProgram);
-            SkyboxDepthPrepassShader.DepthTestFunction = DepthFunction.Less;
+            SkyboxDepthPrepassShader.DepthTestFunction = ReverseDepth ? DepthFunction.Greater : DepthFunction.Less;
 
             DefaultMaterial = new Shader("Default Material", DefaultShaderProgram);
             DefaultMaterial.DepthMask = false;
@@ -242,7 +248,7 @@ namespace JLGraphics
             DefaultMaterial.DepthTestFunction = DepthFunction.Equal;
 
             DepthPrepassShader = new Shader("Default depth only", DepthPrepassShaderProgram);
-            DepthPrepassShader.DepthTestFunction = DepthFunction.Less;
+            DepthPrepassShader.DepthTestFunction = ReverseDepth ? DepthFunction.Greater : DepthFunction.Less;
             DepthPrepassShader.DepthMask = true;
             DepthPrepassShader.DepthTest = true;
             DepthPrepassShader.ColorMask[0] = true;
@@ -701,7 +707,7 @@ namespace JLGraphics
         {
 
             renderPasses.Sort();
-
+            float depthClearColor = ReverseDepth ? 0 : 1;
             for (int cameraIndex = 0; cameraIndex < AllCameras.Count; cameraIndex++)
             {
                 if (!AllCameras[cameraIndex].IsActiveAndEnabled)
@@ -721,7 +727,8 @@ namespace JLGraphics
                 GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
 
                 //render depth prepass
-                GL.ClearDepth(1);
+                GL.ClearDepth(depthClearColor);
+
                 GL.ClearColor(Color4.Magenta);
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
                 RenderScene(AllCameras[cameraIndex], DepthPrepassShader);

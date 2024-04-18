@@ -62,7 +62,7 @@ namespace JLGraphics
             shaderProgram.CompileProgram();
             shader = new Shader("Directional Shadow Material", shaderProgram, true);
             shader.DepthTest = true;
-            shader.DepthTestFunction = DepthFunction.Lequal;
+            shader.DepthTestFunction = Graphics.Instance.ReverseDepth ? DepthFunction.Gequal : DepthFunction.Lequal;
             DepthOnlyFramebuffer = new FrameBuffer(resolution, resolution, false, new TFP()
             {
                 internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent16,
@@ -269,7 +269,7 @@ namespace JLGraphics
                     AssetLoader.GetPathToAsset("./Shaders/PointLightShadowsGeo.glsl"));
                 program.CompileProgram();
                 shadowShader = new Shader("point light shadow", program);
-                shadowShader.DepthTestFunction = DepthFunction.Lequal;
+                shadowShader.DepthTestFunction = Graphics.Instance.ReverseDepth ? DepthFunction.Gequal : DepthFunction.Lequal;
                 shadowShader.DepthTest = true;
             }
 

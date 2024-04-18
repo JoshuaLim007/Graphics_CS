@@ -10,9 +10,17 @@ namespace JLGraphics
 {
     public static class Extensions
     {
+        public static bool ReverseDepthBuffer { get; internal set; } = false;
         //https://www.gamedev.net/forums/topic/699724-reversed-depth-matrices-ortho-and-perspective/5394444/
         public static Matrix4 CreatePerspectiveProjectionMatrix01Depth(float fovy_rads, float s, float near, float far)
         {
+            if (ReverseDepthBuffer)
+            {
+                var t = near;
+                near = far;
+                far = t;
+            }
+
             float g = 1.0f / MathF.Tan(fovy_rads * 0.5f);
 
             return new Matrix4(
@@ -24,6 +32,13 @@ namespace JLGraphics
         //https://github.com/PacktPublishing/Vulkan-Cookbook/blob/master/Library/Source%20Files/10%20Helper%20Recipes/05%20Preparing%20an%20orthographic%20projection%20matrix.cpp
         public static Matrix4 CreateOrthographicOffCenter01Depth(float left, float right, float bottom, float top, float depthNear, float depthFar)
         {
+            if (ReverseDepthBuffer)
+            {
+                var t = depthNear;
+                depthNear = depthFar;
+                depthFar = t;
+            }
+
             var result = Matrix4.Identity;
             float num = 1f / (right - left);
             float num2 = 1f / (top - bottom);

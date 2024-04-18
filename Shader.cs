@@ -169,6 +169,13 @@ namespace JLGraphics
         }
         public Shader(Shader shader)
         {
+            DepthTest = shader.DepthTest;
+            DepthMask = shader.DepthMask;
+            DepthTestFunction = shader.DepthTestFunction;
+            ColorMask = shader.ColorMask;
+            IsTransparent = shader.IsTransparent;
+            BlendingFactor = shader.BlendingFactor;
+
             dontFetchGlobals = shader.dontFetchGlobals;
             Name = shader.Name + "_clone";
             Program = shader.Program;
