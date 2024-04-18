@@ -187,7 +187,7 @@ namespace JLGraphics.Utility
                 return;
             }
             float depth = graphics.GetDepthAt((int)pos.X, (int)pos.Y);
-            Vector4 t = new Vector4(uv.X * 2 - 1, uv.Y * 2 - 1, depth * 2 - 1, 1);
+            Vector4 t = new Vector4(uv.X * 2 - 1, uv.Y * 2 - 1, depth, 1);
             var vp = Camera.Main.ViewMatrix * Camera.Main.ProjectionMatrix;
 
             t = t * vp.Inverted();

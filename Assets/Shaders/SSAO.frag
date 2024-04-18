@@ -13,12 +13,11 @@ uniform float Radius;
 
 float get_depth(vec2 pos)
 {
-    float d = texture(_CameraDepthTexture, pos).r * 2 - 1;
+    float d = texture(_CameraDepthTexture, pos).r;
     return d;
 }
 float linearDepth(float depthSample)
 {
-    depthSample = depthSample * 0.5 + 0.5;
     float zLinear = CameraParams.z * CameraParams.w / (CameraParams.w + depthSample * (CameraParams.z - CameraParams.w));
     return zLinear;
 }

@@ -101,7 +101,7 @@ float GetDirectionalShadow(vec4 lightSpacePos, vec3 normal, vec3 worldPosition) 
 		return 0;
 	}
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
-	projCoords.xyz = projCoords.xyz * 0.5 + 0.5;
+	projCoords.xy = projCoords.xy * 0.5 + 0.5;
 
 	float percentCovered = 0.0f;
 	float currentDepth = projCoords.z;
@@ -191,12 +191,11 @@ uniform vec4 CameraParams;
 uniform vec2 RenderSize;
 float get_depth(vec2 pos)
 {
-	float d = texture(_CameraDepthTexture, pos).r * 2 - 1;
+	float d = texture(_CameraDepthTexture, pos).r;
 	return d;
 }
 float linearDepth(float depthSample)
 {
-	depthSample = depthSample * 0.5 + 0.5;
 	float zLinear = CameraParams.z * CameraParams.w / (CameraParams.w + depthSample * (CameraParams.z - CameraParams.w));
 	return zLinear;
 }

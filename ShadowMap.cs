@@ -198,8 +198,8 @@ namespace JLGraphics
                 light_aabb.Max.X,
                 light_aabb.Min.Y,
                 light_aabb.Max.Y,
-                light_aabb.Min.Z - 500,
-                light_aabb.Max.Z + 500);
+                light_aabb.Min.Z - 750,
+                light_aabb.Max.Z + 250);
 
             //var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 
