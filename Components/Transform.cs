@@ -213,7 +213,12 @@ namespace JLGraphics
 
         public void Start()
         {
-            PreviousModelMatrix = ModelMatrix;
+            if (Parent != null)
+                bakedMatrix = Matrix4.CreateScale(LocalScale) * Matrix4.CreateFromQuaternion(LocalRotation) * Matrix4.CreateTranslation(LocalPosition) * Parent.ModelMatrix;
+            else
+                bakedMatrix = Matrix4.CreateScale(LocalScale) * Matrix4.CreateFromQuaternion(LocalRotation) * Matrix4.CreateTranslation(LocalPosition);
+            
+            PreviousModelMatrix = bakedMatrix;
         }
 
         bool updateInvModelCache = true;
