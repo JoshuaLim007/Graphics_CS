@@ -22,70 +22,49 @@ float lum(vec3 color) {
 	return (0.299 * color.x + 0.587 * color.y + 0.114 * color.z);
 }
 
-float w0(float a)
-{
-	return (1.0 / 6.0) * (a * (a * (-a + 3.0) - 3.0) + 1.0);
+// from http://www.java-gaming.org/index.php?topic=35123.0
+vec4 cubic(float v) {
+	vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;
+	vec4 s = n * n * n;
+	float x = s.x;
+	float y = s.y - 4.0 * s.x;
+	float z = s.z - 4.0 * s.y + 6.0 * s.x;
+	float w = 6.0 - x - y - z;
+	return vec4(x, y, z, w) * (1.0 / 6.0);
 }
 
-float w1(float a)
-{
-	return (1.0 / 6.0) * (a * a * (3.0 * a - 6.0) + 4.0);
-}
+vec4 textureBicubic(sampler2D sampler, vec2 texCoords) {
 
-float w2(float a)
-{
-	return (1.0 / 6.0) * (a * (a * (-3.0 * a + 3.0) + 3.0) + 1.0);
-}
+	vec2 texSize = textureSize(sampler, 0);
+	vec2 invTexSize = 1.0 / texSize;
 
-float w3(float a)
-{
-	return (1.0 / 6.0) * (a * a * a);
-}
+	texCoords = texCoords * texSize - 0.5;
 
-// g0 and g1 are the two amplitude functions
-float g0(float a)
-{
-	return w0(a) + w1(a);
-}
 
-float g1(float a)
-{
-	return w2(a) + w3(a);
-}
+	vec2 fxy = fract(texCoords);
+	texCoords -= fxy;
 
-// h0 and h1 are the two offset functions
-float h0(float a)
-{
-	return -1.0 + w1(a) / (w0(a) + w1(a));
-}
+	vec4 xcubic = cubic(fxy.x);
+	vec4 ycubic = cubic(fxy.y);
 
-float h1(float a)
-{
-	return 1.0 + w3(a) / (w2(a) + w3(a));
-}
+	vec4 c = texCoords.xxyy + vec2(-0.5, +1.5).xyxy;
 
-vec4 texture2D_bicubic(sampler2D tex, vec2 uv, vec2 res)
-{
-	uv = uv * res + 0.5;
-	vec2 iuv = floor(uv);
-	vec2 fuv = fract(uv);
+	vec4 s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw);
+	vec4 offset = c + vec4(xcubic.yw, ycubic.yw) / s;
 
-	float g0x = g0(fuv.x);
-	float g1x = g1(fuv.x);
-	float h0x = h0(fuv.x);
-	float h1x = h1(fuv.x);
-	float h0y = h0(fuv.y);
-	float h1y = h1(fuv.y);
+	offset *= invTexSize.xxyy;
 
-	vec2 p0 = (vec2(iuv.x + h0x, iuv.y + h0y) - 0.5) / res;
-	vec2 p1 = (vec2(iuv.x + h1x, iuv.y + h0y) - 0.5) / res;
-	vec2 p2 = (vec2(iuv.x + h0x, iuv.y + h1y) - 0.5) / res;
-	vec2 p3 = (vec2(iuv.x + h1x, iuv.y + h1y) - 0.5) / res;
+	vec4 sample0 = texture(sampler, offset.xz);
+	vec4 sample1 = texture(sampler, offset.yz);
+	vec4 sample2 = texture(sampler, offset.xw);
+	vec4 sample3 = texture(sampler, offset.yw);
 
-	return g0(fuv.y) * (g0x * texture2D(tex, p0) +
-		g1x * texture2D(tex, p1)) +
-		g1(fuv.y) * (g0x * texture2D(tex, p2) +
-			g1x * texture2D(tex, p3));
+	float sx = s.x / (s.x + s.y);
+	float sy = s.z / (s.z + s.w);
+
+	return mix(
+		mix(sample3, sample2, sx), mix(sample1, sample0, sx)
+		, sy);
 }
 
 void main()
@@ -93,8 +72,7 @@ void main()
 	vec2 texelSize = MainTex_TexelSize.xy;
 	vec2 pos = gl_FragCoord.xy * texelSize;
 	
-	//vec3 low = texture(MainTex, pos).xyz;
-	vec3 low = texture2D_bicubic(MainTex, pos, vec2(1.0f / texelSize.x, 1.0f / texelSize.y)).xyz;
+	vec3 low = textureBicubic(MainTex, pos).xyz;
 	vec3 high = texture(HighResTex, pos).xyz;
 
 	if (doNormalize == 0) {
