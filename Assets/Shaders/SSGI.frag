@@ -152,7 +152,7 @@ void main()
             reflection,                                     //view reflection
             FarRangeSSGI ? 32 / scaler : 8 / scaler,        //max ray length
             64,                                             //max samples
-            FarRangeSSGI ? .008 / scaler : 0.002 / scaler,  //thickness
+            FarRangeSSGI ? .0004 / scaler : 0.0001 / scaler,  //thickness
             totalSamples,                                   //samples taken
             hit);                                           //intersection hit
 
