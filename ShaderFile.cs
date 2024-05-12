@@ -35,6 +35,7 @@ namespace JLGraphics
         internal bool CompileShader() {
             if(compiledShader != 0)
             {
+                Debug.Log("Shader file cache found!", Debug.Flag.Warning);
                 return false;
             }
 
