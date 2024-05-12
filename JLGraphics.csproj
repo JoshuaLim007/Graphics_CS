@@ -64,6 +64,7 @@
     <None Remove="Assets\Shaders\Bloom.glsl" />
     <None Remove="Assets\Shaders\BloomComposite.glsl" />
     <None Remove="Assets\Shaders\BloomPrepass.glsl" />
+    <None Remove="Assets\Shaders\common.glsl" />
     <None Remove="Assets\Shaders\CopyToScreen.frag" />
     <None Remove="Assets\Shaders\Denoise.frag" />
     <None Remove="Assets\Shaders\DepthAwareBoxBlur.frag" />

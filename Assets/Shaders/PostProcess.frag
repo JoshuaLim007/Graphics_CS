@@ -1,12 +1,12 @@
 ﻿#version 410
+#include "common.glsl"
+
 out vec4 FragColor;
 
 uniform sampler2D MainTex;
-uniform sampler2D _CameraDepthTexture;
 uniform vec3 FogColor;
 uniform float FogDensity;
 uniform vec2 MainTex_TexelSize;
-uniform vec4 CameraParams;
 uniform int Tonemapping;
 uniform int GammaCorrection;
 uniform float Gamma;
@@ -34,16 +34,7 @@ vec3 aces_tonemap(vec3 color){
 	vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
 	return m2 * (a / b);
 }
-float get_depth(vec2 pos)
-{
-    float d = texture(_CameraDepthTexture, pos).r * 2 - 1;
-    return d;
-}
-float linearDepth(float depthSample)
-{
-    float zLinear = 2.0 * CameraParams.z * CameraParams.w / (CameraParams.w + CameraParams.z - depthSample * (CameraParams.w - CameraParams.z));
-    return zLinear;
-}
+
 vec3 calcPositionFromDepth(vec2 texCoords, float depth) {
     vec4 clipSpacePosition = vec4(texCoords * 2.0 - 1.0, depth, 1.0);
     vec4 viewSpacePosition = InvProjectionViewMatrix * clipSpacePosition;
@@ -115,9 +106,9 @@ void main()
     }
 
     vec4 col = texture(MainTex, pos);
-    float depth = get_depth(pos);
-    vec3 position = calcPositionFromDepth(pos, depth);
-    vec3 normal = calcNormalFromPosition(pos);
+//    float depth = get_depth(pos);
+//    vec3 position = calcPositionFromDepth(pos, depth);
+//    vec3 normal = calcNormalFromPosition(pos);
     
     col.rgb *= Exposure;
 
@@ -151,6 +142,12 @@ void main()
 //        return;
 //    }
 
+//    float d = get_depth(pos);
+//    float led = linearEyeDepth(d);
+//    float ld = linear01Depth(d);
+
+//    ld = ld / (ld + 1);
+//    FragColor = vec4(ld);
     FragColor = vec4(col.xyz, 1.0);
 //    FragColor = vec4(normal, 0);
     //FragColor = vec4(pos, 0, 0);

@@ -26,51 +26,27 @@ namespace JLGraphics
                 return;
             }
         }
-
-        bool useShaderParser = false;
-        string shaderToUse = "";
-        int passToUse = 0;
-        internal ShaderFile(string path, string targetShaderName, int targetShaderPass)
+        string GetShaderString()
         {
-            useShaderParser = true;
-            this.shaderToUse = targetShaderName;
-            this.passToUse = targetShaderPass;
-            FilePath = path;
-            if (!File.Exists(path))
-            {
-                Debug.Log("Shader not found: " + path, Debug.Flag.Error);
-                return;
-            }
+            var data = File.ReadAllText(FilePath);
+            data = ShaderParser.ParseShaderPreDefines(data, FilePath);
+            return data;
         }
-        internal void CompileShader() {
+        internal bool CompileShader() {
+            if(compiledShader != 0)
+            {
+                return false;
+            }
+
             Debug.Log("Compiling Shader: " + FilePath);
-            string data;
-            if (useShaderParser)
-            {
-                Debug.Log("Compiling Shader name: " + shaderToUse);
-                Debug.Log("Compiling Shader pass: " + passToUse);
-                var shaders = ShaderParser.ParseShader(FilePath, shaderToUse, passToUse);
-                if(shaders != null)
-                {
-                    data = shaders.Value.ShaderCode;
-                    ShaderType = shaders.Value.ShaderType;
-                }
-                else
-                {
-                    Debug.Log("Cannot find shader within parsed shader " + FilePath + ". Are your shader name and pass correct?", Debug.Flag.Warning);
-                    data = "";
-                    ShaderType = ShaderType.FragmentShader;
-                }
-            }
-            else
-            {
-                data = File.ReadAllText(FilePath);
-            }
+            string data = GetShaderString();
+
 
             if (!addedCallback)
             {
                 FileChangeCallback.Add(() => {
                     GL.DeleteShader(compiledShader);
+                    compiledShader = 0;
                     compiledShader = GL.CreateShader(ShaderType);
                     CompileShader();
                 });
@@ -88,8 +64,10 @@ namespace JLGraphics
             if (d != "")
             {
                 Debug.Log(d);
-                return;
+                return false;
             }
+
+            return true;
         }
         protected override void OnDispose()
         {

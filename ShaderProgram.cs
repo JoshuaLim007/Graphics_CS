@@ -18,6 +18,22 @@ namespace JLGraphics
         public int Id { get; private set; } = 0;
         public static implicit operator int(ShaderProgram d) => d.Id;
         internal static List<ShaderProgram> AllShaderPrograms { get; private set; } = new List<ShaderProgram>();
+
+        struct ShaderFileReferences
+        {
+            public ShaderFile shaderFile;
+            public int referenceCount;
+            public ShaderFileReferences(ShaderFile shaderFile)
+            {
+                this.shaderFile = shaderFile;
+                referenceCount = 1;
+            }
+        }
+
+        readonly static Dictionary<string, ShaderFileReferences> ExistingFragFiles = new Dictionary<string, ShaderFileReferences>();
+        readonly static Dictionary<string, ShaderFileReferences> ExistingVertFiles = new Dictionary<string, ShaderFileReferences>();
+        readonly static Dictionary<string, ShaderFileReferences> ExistingGeoFiles = new Dictionary<string, ShaderFileReferences>();
+
         internal Action OnShaderReload { get; set; } = null;
         internal Action OnDispose { get; set; } = null;
         void OnFragFileChangeShaderRecompile()
@@ -53,49 +69,62 @@ namespace JLGraphics
         public ShaderProgram(string name, string fragPath, string vertPath, string geometryPath = "")
         {
             Name = name;
-            Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
-            Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
-            if(geometryPath.Trim() != "")
+
+            if (ExistingFragFiles.ContainsKey(fragPath))
             {
-                Geo = new ShaderFile(geometryPath, ShaderType.GeometryShader);
+                var temp = ExistingFragFiles[fragPath];
+                temp.referenceCount++;
+                Frag = temp.shaderFile;
+                ExistingFragFiles[fragPath] = temp;
             }
+            else
+            {
+                Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
+                ExistingFragFiles.Add(fragPath, new ShaderFileReferences(Frag));
+            }
+            if (ExistingVertFiles.ContainsKey(vertPath))
+            {
+                var temp = ExistingVertFiles[vertPath];
+                temp.referenceCount++;
+                Vert = temp.shaderFile;
+                ExistingVertFiles[vertPath] = temp;
+            }
+            else
+            {
+                Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
+                ExistingVertFiles.Add(vertPath, new ShaderFileReferences(Vert));
+            }
+            if (geometryPath.Trim() != "")
+            {
+
+                if (ExistingGeoFiles.ContainsKey(geometryPath))
+                {
+                    var temp = ExistingGeoFiles[geometryPath];
+                    temp.referenceCount++;
+                    Geo = temp.shaderFile;
+                    ExistingGeoFiles[geometryPath] = temp;
+                }
+                else
+                {
+                    Geo = new ShaderFile(geometryPath, ShaderType.GeometryShader);
+                    ExistingGeoFiles.Add(geometryPath, new ShaderFileReferences(Geo));
+                }
+            }
+
             Id = GL.CreateProgram();
             AllShaderPrograms.Add(this);
         }
-        public ShaderProgram(string name, string fragPath, string targetFragShaderName, int targetFragPass, string vertPath, string targetVertShaderName, int targetVertPass)
+        public static ShaderProgram CopyProgram(ShaderProgram shaderProgram)
         {
-            Name = name;
-            Vert = new ShaderFile(vertPath, targetVertShaderName, targetVertPass);
-            Frag = new ShaderFile(fragPath, targetFragShaderName, targetFragPass);
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
+            if(shaderProgram == null)
+            {
+                throw new ArgumentNullException();
+            }
+            return new ShaderProgram(shaderProgram);
         }
-        public ShaderProgram(string name, string fragPath, string vertPath, string targetVertShaderName, int targetVertPass)
+        private ShaderProgram(ShaderProgram shaderProgram) : this(shaderProgram.Name + "_Clone", shaderProgram.FragFile.FilePath, shaderProgram.VertFile.FilePath, shaderProgram.Geo.FilePath)
         {
-            Name = name;
-            Vert = new ShaderFile(vertPath, targetVertShaderName, targetVertPass);
-            Frag = new ShaderFile(fragPath, ShaderType.FragmentShader);
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public ShaderProgram(string name, string fragPath, string targetFragShaderName, int targetFragPass, string vertPath)
-        {
-            Name = name;
-            Vert = new ShaderFile(vertPath, ShaderType.VertexShader);
-            Frag = new ShaderFile(fragPath, targetFragShaderName, targetFragPass);
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
-        }
-        public ShaderProgram(ShaderProgram shaderProgram)
-        {
-            Name = shaderProgram.Name;
-            Vert = new ShaderFile(shaderProgram.VertFile.FilePath, ShaderType.VertexShader);
-            Frag = new ShaderFile(shaderProgram.FragFile.FilePath, ShaderType.FragmentShader);
-            if(shaderProgram.Geo != null)
-                Geo = new ShaderFile(shaderProgram.GeoFile.FilePath, ShaderType.GeometryShader);
-            
-            Id = GL.CreateProgram();
-            AllShaderPrograms.Add(this);
+
         }
         public static ShaderProgram FindShaderProgram(string name)
         {
@@ -115,9 +144,20 @@ namespace JLGraphics
                 Debug.Log("Program has been disposed!", Debug.Flag.Error);
             }
             isCompiled = true;
-            Frag.CompileShader();
-            Vert.CompileShader();
-            Geo?.CompileShader();
+            if (!Frag.CompileShader())
+            {
+                Debug.Log("Frag shader compile aborted", Debug.Flag.Warning);
+            }
+            if (!Vert.CompileShader())
+            {
+                Debug.Log("Vert shader compile aborted", Debug.Flag.Warning);
+            }
+            var geoRet = Geo?.CompileShader();
+            if (geoRet.HasValue && geoRet.Value == false)
+            {
+                Debug.Log("Geo shader compile aborted", Debug.Flag.Warning);
+            }
+
             Vert.FileChangeCallback.Add(OnVertFileChangeShaderRecompile);
             Frag.FileChangeCallback.Add(OnFragFileChangeShaderRecompile);
             Geo?.FileChangeCallback.Add(OnGeoFileChangeShaderRecompile);
@@ -174,9 +214,38 @@ namespace JLGraphics
             isCompiled = false;
             OnDispose?.Invoke();
             Disposed = true;
-            Frag.Dispose();
-            Vert.Dispose();
-            Geo?.Dispose();
+
+            var temp = ExistingFragFiles[Frag.FilePath];
+            temp.referenceCount--;
+            ExistingFragFiles[Frag.FilePath] = temp;
+            if (temp.referenceCount == 0)
+            {
+                ExistingFragFiles.Remove(Frag.FilePath);
+                Frag.Dispose();
+            }
+
+            temp = ExistingVertFiles[Vert.FilePath];
+            temp.referenceCount--;
+            ExistingVertFiles[Vert.FilePath] = temp;
+            if (temp.referenceCount == 0)
+            {
+                ExistingVertFiles.Remove(Vert.FilePath);
+                Vert.Dispose();
+            }
+
+            if (Geo != null)
+            {
+                temp = ExistingGeoFiles[Geo.FilePath];
+                temp.referenceCount--;
+                ExistingGeoFiles[Geo.FilePath] = temp;
+
+                if(temp.referenceCount == 0)
+                {
+                    ExistingGeoFiles.Remove(Geo.FilePath);
+                    Geo.Dispose();
+                }
+            }
+
             GL.DeleteProgram(Id);
             AllShaderPrograms.Remove(this);
             Vert.FileChangeCallback.Remove(OnVertFileChangeShaderRecompile);
