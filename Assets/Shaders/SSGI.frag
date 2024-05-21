@@ -307,6 +307,6 @@ void main()
     }
     normmainCol /= SamplesPerPixel;
 
-    FragColor = vec4(normmainCol) * 8.;
+    FragColor = vec4(normmainCol);
 }
 
