@@ -1,12 +1,11 @@
 ﻿#version 410
-#include "common.glsl"
+#include "common.frag"
 
 out vec4 FragColor;
 
-uniform sampler2D MainTex;
+
 uniform vec3 FogColor;
 uniform float FogDensity;
-uniform vec2 MainTex_TexelSize;
 uniform int Tonemapping;
 uniform int GammaCorrection;
 uniform float Gamma;
@@ -15,8 +14,9 @@ uniform int Srgb;
 uniform int Vignette;
 uniform float VignetteStrength;
 uniform sampler2D DirectionalShadowDepthMap;
-uniform mat4 InvProjectionViewMatrix;
+
 uniform int AmbientOcclusion;
+uniform vec3 CameraWorldSpacePos;
 
 vec3 aces_tonemap(vec3 color){	
 	mat3 m1 = mat3(
@@ -35,62 +35,14 @@ vec3 aces_tonemap(vec3 color){
 	return m2 * (a / b);
 }
 
-vec3 calcPositionFromDepth(vec2 texCoords, float depth) {
-    vec4 clipSpacePosition = vec4(texCoords * 2.0 - 1.0, depth, 1.0);
-    vec4 viewSpacePosition = InvProjectionViewMatrix * clipSpacePosition;
-    viewSpacePosition.xyz = viewSpacePosition.xyz / viewSpacePosition.w;
-    return viewSpacePosition.xyz;
-}
-
-vec3 calcNormalFromPosition(vec2 texCoords) {
-    vec2 offset1 = texCoords + vec2(0, 1) * MainTex_TexelSize;
-    vec2 offset2 = texCoords + vec2(1, 0) * MainTex_TexelSize;
-    vec2 offset3 = texCoords + vec2(0, -1) * MainTex_TexelSize;
-    vec2 offset4 = texCoords + vec2(-1, 0) * MainTex_TexelSize;
-
-    vec3 pos0 = calcPositionFromDepth(texCoords, get_depth(texCoords));
-
-    //up
-    vec3 pos1 = calcPositionFromDepth(offset1, get_depth(offset1));
-    //right
-    vec3 pos2 = calcPositionFromDepth(offset2, get_depth(offset2));
-    //down
-    vec3 pos3 = calcPositionFromDepth(offset3, get_depth(offset3));
-    //left
-    vec3 pos4 = calcPositionFromDepth(offset4, get_depth(offset4));
-
-    vec3 dx;
-    vec3 dy;
-
-    if(abs(dot(pos1, pos0)) < abs(dot(pos3, pos0))){
-        dy = pos1 - pos0;
-    }
-    else{
-        dy = pos0 - pos3;
-    }
-    if(abs(dot(pos2, pos0)) < abs(dot(pos4, pos0))){
-        dx = pos2 - pos0;
-    }
-    else{
-        dx = pos0 - pos4;
-    }
-    dy *= 0.5f;
-    dx *= 0.5f;
-    return normalize(cross(dx, dy));
-}
-
-vec3 calcNormalFromPosition_fast(vec2 texCoords) {
-    vec3 pos0 = calcPositionFromDepth(texCoords, get_depth(texCoords));
-    vec3 dx = dFdx(pos0);
-    vec3 dy = dFdy(pos0);
-    return normalize(cross(dx, dy));
-}
 vec3 linear_srgb(vec3 x) {
     return mix(1.055*pow(x, vec3(1./Gamma)) - 0.055, 12.92*x, step(x,vec3(0.0031308)));
 }
+
 void main()
 { 
     vec2 pos = gl_FragCoord.xy * MainTex_TexelSize;
+    vec2 resolution = vec2(1. / MainTex_TexelSize.x, 1. / MainTex_TexelSize.y);
     vec2 normCoord = pos * 2.0 - 1.0;
     
     // Apply Panini projection
@@ -110,6 +62,23 @@ void main()
 //    vec3 position = calcPositionFromDepth(pos, depth);
 //    vec3 normal = calcNormalFromPosition(pos);
     
+
+    vec4 worldPos = vec4(calcPositionFromDepth(pos, get_depth(pos)).xyz, 1);
+    vec3 worldDir = (worldPos.xyz - CameraWorldSpacePos);
+
+    vec4 viewPos = ViewMatrix * worldPos;
+    vec3 viewDir = (ViewMatrix * vec4(worldDir, 0)).xyz;
+
+    vec4 viewNormal = ViewMatrix * vec4(texture(_CameraNormalTexture, pos).xyz, 0);
+    vec3 viewReflection = normalize(reflect(viewDir, viewNormal.xyz));
+
+//    if(pos.x > 0.0){
+//        vec4 hitPoint = traceScreenSpaceRay(viewPos, viewNormal.xyz, viewReflection, 64.0f, 0.1, 128, 16, 2.5);
+//        col.rgb = vec3(hitPoint.xyz) * hitPoint.w;
+//        FragColor = vec4(col.xyz, 1.0);
+//        return;
+//    }
+
     col.rgb *= Exposure;
 
     //aces tonemapping
@@ -148,7 +117,11 @@ void main()
 
 //    ld = ld / (ld + 1);
 //    FragColor = vec4(ld);
+
+
     FragColor = vec4(col.xyz, 1.0);
+
+    //FragColor = vec4(viewReflection.xyz, 1.0);
 //    FragColor = vec4(normal, 0);
     //FragColor = vec4(pos, 0, 0);
 //    if(gl_FragCoord.x >= 512 || gl_FragCoord.y >= 512){

@@ -1,9 +1,7 @@
 ﻿#version 410
+#include "common.frag"
 
 layout(location = 0) out vec3 OutColor;
-
-uniform sampler2D MainTex;
-uniform vec2 MainTex_TexelSize;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //  Copyright (c) 2018-2019 Michele Morrone
@@ -41,11 +39,12 @@ vec4 smartDeNoise(sampler2D tex, vec2 texelSize, vec2 uv, float sigma, float kSi
     float invSigmaQx2 = .5 / (sigma * sigma);      // 1.0 / (sigma^2 * 2.0)
     float invSigmaQx2PI = INV_PI * invSigmaQx2;    // 1.0 / (sqrt(PI) * sigma)
     
-    float invThresholdSqx2 = .5 / (threshold * threshold);     // 1.0 / (sigma^2 * 2.0)
-    float invThresholdSqrt2PI = INV_SQRT_OF_2PI / threshold;   // 1.0 / (sqrt(2*PI) * sigma)
+//    float invThresholdSqx2 = .5 / (threshold * threshold);     // 1.0 / (sigma^2 * 2.0)
+//    float invThresholdSqrt2PI = INV_SQRT_OF_2PI / threshold;   // 1.0 / (sqrt(2*PI) * sigma)
     
     vec4 centrPx = texture(tex,uv);
-    
+    float centrPx_depth = linearEyeDepth(get_depth(uv));
+
     float zBuff = 0.0;
     vec4 aBuff = vec4(0.0);
     
@@ -55,11 +54,18 @@ vec4 smartDeNoise(sampler2D tex, vec2 texelSize, vec2 uv, float sigma, float kSi
             vec2 d = vec2(x,y);
 
             float blurFactor = exp( -dot(d , d) * invSigmaQx2 ) * invSigmaQx2PI; 
-            
             vec4 walkPx =  texture(tex,uv+d * texelSize);
+            float walkPx_depth = linearEyeDepth(get_depth(uv+d * texelSize));
 
-            vec4 dC = walkPx-centrPx;
-            float deltaFactor = exp( -dot(dC, dC) * invThresholdSqx2) * invThresholdSqrt2PI * blurFactor;
+            float dC = abs(walkPx_depth - centrPx_depth);
+
+            float percentDiff = abs(walkPx_depth - centrPx_depth) / ((centrPx_depth + walkPx_depth) / 2);
+            if(percentDiff > threshold){
+                continue;
+            }
+
+//            float deltaFactor = exp( -dot(dC, dC) * invThresholdSqx2) * invThresholdSqrt2PI * blurFactor;
+            float deltaFactor = blurFactor;
                                  
             zBuff += deltaFactor;
             aBuff += deltaFactor*walkPx;
@@ -68,11 +74,12 @@ vec4 smartDeNoise(sampler2D tex, vec2 texelSize, vec2 uv, float sigma, float kSi
     return aBuff/zBuff;
 }
 
+uniform float color_intensity;
 void main()
 {
 	vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
     vec4 color;
-    color = smartDeNoise(MainTex, MainTex_TexelSize, uv, 5.0, 2.0, 5.0);
-	OutColor = color.xyz;
+    color = smartDeNoise(MainTex, MainTex_TexelSize, uv, 8.0, 2.0, 0.1);
+	OutColor = color.xyz * color_intensity;
 }
 
