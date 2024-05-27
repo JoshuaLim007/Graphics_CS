@@ -72,7 +72,7 @@ void main()
 {
 	vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
     vec4 color;
-    color = smartDeNoise(MainTex, MainTex_TexelSize, uv, 5.0, 2.0, 5.0);
-	OutColor = color.xyz;
+    color = smartDeNoise(MainTex, MainTex_TexelSize, uv, 8.0, 2.0, 100.0);
+	OutColor = color.xyz * 8;
 }
 

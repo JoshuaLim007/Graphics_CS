@@ -124,7 +124,10 @@ void main()
         }
 
         vec3 reflection = normalize((ViewMatrix * vec4(random, 0)).xyz);
-        vec4 hitPoint = traceScreenSpaceRay(viewPos, normal.xyz, reflection, 64.0f, 0.1, 128, 16, 2.5);
+        vec4 hitPoint = traceScreenSpaceRay(viewPos, normal.xyz, reflection, 
+                (FarRangeSSGI ? 64 : 8), 
+                (FarRangeSSGI ? 0.1 : 0.5), 
+                128, 16, 2.5);
 
         normmainCol += texture(MainTex, hitPoint.xy) * hitPoint.w;
         sampleCount++;
