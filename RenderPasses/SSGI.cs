@@ -41,6 +41,7 @@ namespace JLGraphics.RenderPasses
 
         public int SamplesPerPixel { get; set; } = 2;
         public bool FarRangeSSGI { get; set; } = false;
+        public float Intensity { get; set; } = 3.5f;
 
         Matrix4 previousViewMatrix;
         public override void FrameSetup(Camera camera)
@@ -116,6 +117,7 @@ namespace JLGraphics.RenderPasses
             PerfTimer.Stop();
 
             PerfTimer.Start("SSGI denoise");
+            denoise.SetFloat(Shader.GetShaderPropertyId("color_intensity"), Intensity);
             Blit(accumulationPass, denoisePass, denoise);
             PerfTimer.Stop();
 
