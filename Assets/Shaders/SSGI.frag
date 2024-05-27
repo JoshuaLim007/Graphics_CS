@@ -1,38 +1,7 @@
 ﻿#version 420
+#include "common.frag"
 
 layout(location = 0) out vec4 FragColor;
-uniform sampler2D MainTex;
-uniform vec2 MainTex_TexelSize;
-
-uniform sampler2D _CameraDepthTexture;
-uniform sampler2D _CameraNormalTexture;
-uniform vec3 CameraWorldSpacePos;
-uniform vec4 CameraParams;
-uniform mat4 InvProjectionMatrix;
-uniform mat4 ViewMatrix;
-uniform mat4 ProjectionMatrix;
-
-float get_depth(vec2 pos)
-{
-    float d = texture(_CameraDepthTexture, pos).r;
-    return d;
-}
-float linear01Depth(float depthSample)
-{
-    float zLinear = CameraParams.z / (CameraParams.w + depthSample * (CameraParams.z - CameraParams.w));
-    return zLinear;
-}
-float linearEyeDepth(float depthSample)
-{
-    float zLinear = CameraParams.z * CameraParams.w / (CameraParams.w + depthSample * (CameraParams.z - CameraParams.w));
-    return zLinear;
-}
-vec3 calcViewPositionFromDepth(vec2 texCoords, float depth) {
-    vec4 clipSpacePosition = vec4(texCoords * 2.0 - 1.0, depth, 1.0);
-    vec4 viewSpacePosition = InvProjectionMatrix * clipSpacePosition;
-    viewSpacePosition.xyz = viewSpacePosition.xyz / viewSpacePosition.w;
-    return viewSpacePosition.xyz;
-}
 
 void GetDepthAtViewPosition(vec3 worldPosition, out vec3 uv){
     vec4 p = vec4(worldPosition, 1);
@@ -123,6 +92,13 @@ vec3 TraceRay(
 
 uniform bool FarRangeSSGI;
 
+vec4 calcViewPositionFromDepth(vec2 texCoords, float depth) {
+    vec4 clipSpacePosition = vec4(texCoords * 2.0 - 1.0, depth, 1.0);
+    vec4 viewSpacePosition = InvProjectionMatrix * clipSpacePosition;
+    viewSpacePosition.xyz = viewSpacePosition.xyz / viewSpacePosition.w;
+    return viewSpacePosition;
+}
+
 void main()
 {
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
@@ -132,41 +108,29 @@ void main()
         FragColor = normmainCol;
         return;
     }
-    vec3 ViewPos = calcViewPositionFromDepth(uv, d);
+    vec4 viewPos = calcViewPositionFromDepth(uv, d);
     vec3 worldNormal = texture(_CameraNormalTexture, uv).xyz;
     vec3 normal = (ViewMatrix * vec4(worldNormal, 0)).xyz;
-    vec3 viewDir = normalize(ViewPos);
 
     normmainCol = vec4(0);
     int SamplesPerPixel = max(SamplesPerPixel, 1);
     int sampleCount = 0;
     
     while(sampleCount < SamplesPerPixel){
-        vec3 random = OrientToNormal(RandomUnitVector(uv, _Frame + sampleCount * 1024), normal);
-        vec3 reflection = random;
-        float rdot = 1 - max(dot(reflection, viewDir), 0);
-        float scaler = pow(rdot, 0.5);
-        int totalSamples = 0;
-        float hit = 0;
-        vec3 newUv = TraceRay(
-            ViewPos,                                        //View position
-            reflection,                                     //view reflection
-            FarRangeSSGI ? 32 / scaler : 8 / scaler,        //max ray length
-            64,                                             //max samples
-            FarRangeSSGI ? .0001 / scaler : 0.000025 / scaler,  //thickness
-            totalSamples,                                   //samples taken
-            hit);                                           //intersection hit
+        vec3 random = RandomUnitVector(uv, _Frame + sampleCount * 1024);
+        if(dot(random, worldNormal) < 0){
+            sampleCount++;
+            continue;
+        }
 
-//        vec3 hitNormal = texture(_CameraNormalTexture, newUv.xy).xyz;
-//        float backFaceReflect = dot(worldNormal, hitNormal);
-//        if(backFaceReflect > 0){
-//            hit = 0;
-//        }
-        normmainCol += texture(MainTex, newUv.xy) * hit;
+        vec3 reflection = normalize((ViewMatrix * vec4(random, 0)).xyz);
+        vec4 hitPoint = traceScreenSpaceRay(viewPos, normal.xyz, reflection, 64.0f, 0.1, 128, 16, 2.5);
+
+        normmainCol += texture(MainTex, hitPoint.xy) * hitPoint.w;
         sampleCount++;
     }
+    
     normmainCol /= SamplesPerPixel;
-
-    FragColor = vec4(normmainCol) * 8.;
+    FragColor = vec4(normmainCol);
 }
 
