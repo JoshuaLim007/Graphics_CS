@@ -68,7 +68,7 @@ namespace JLGraphics.RenderPasses
         }
         public override void Execute(in FrameBuffer frameBuffer)
         {
-            float scale = 1.0f;
+            float scale = 0.25f;
             if(!FrameBuffer.AlikeResolution(initialPass, frameBuffer, scale))
             {
                 initialPass?.Dispose();
