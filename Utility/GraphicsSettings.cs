@@ -169,6 +169,15 @@ namespace JLGraphics.Utility
                 t = postProcess.Exposure;
                 ImGui.SliderFloat("Exposure", ref t, 0.01f, 4.0f);
                 postProcess.Exposure = t;
+
+
+                t = postProcess.BrightnessClamp;
+                ImGui.InputFloat("Brightness Clamp", ref t);
+                postProcess.BrightnessClamp = t;
+
+                t = postProcess.Mosaic;
+                ImGui.InputFloat("Mosaic", ref t);
+                postProcess.Mosaic = t;
             }
 
             Bloom(bloomV);

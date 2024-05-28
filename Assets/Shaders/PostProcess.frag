@@ -14,6 +14,7 @@ uniform int Srgb;
 uniform int Vignette;
 uniform float VignetteStrength;
 uniform sampler2D DirectionalShadowDepthMap;
+uniform float Mosaic;
 
 uniform int AmbientOcclusion;
 uniform vec3 CameraWorldSpacePos;
@@ -39,9 +40,16 @@ vec3 linear_srgb(vec3 x) {
     return mix(1.055*pow(x, vec3(1./Gamma)) - 0.055, 12.92*x, step(x,vec3(0.0031308)));
 }
 
+uniform float BrightnessClamp;
+
 void main()
 { 
-    vec2 pos = gl_FragCoord.xy * MainTex_TexelSize;
+    vec2 pos = gl_FragCoord.xy * Mosaic;
+    pos.xy = ceil(pos.xy);
+    pos.xy /= Mosaic;
+
+    pos *= MainTex_TexelSize;
+
     vec2 resolution = vec2(1. / MainTex_TexelSize.x, 1. / MainTex_TexelSize.y);
     vec2 normCoord = pos * 2.0 - 1.0;
     
@@ -80,6 +88,10 @@ void main()
 //    }
 
     col.rgb *= Exposure;
+
+    col.r = min(col.r, BrightnessClamp);
+    col.g = min(col.g, BrightnessClamp);
+    col.b = min(col.b, BrightnessClamp);
 
     //aces tonemapping
     if(Tonemapping == 1){

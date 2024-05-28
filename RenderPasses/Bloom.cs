@@ -155,10 +155,15 @@ namespace JLGraphics.RenderPasses
             bloomPrepassShader.SetFloat(Shader.GetShaderPropertyId("ClampValue"), ClampValue);
             Blit(frameBuffer, prepassFitlerRt, bloomPrepassShader);
 
+            //bloom blur iter 0
+            bloomShader.SetInt(Shader.GetShaderPropertyId("UseAntiFlicker"), 1);
             bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 0);
             Blit(prepassFitlerRt, temporaryRt[0], bloomShader);
             bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 1);
             Blit(temporaryRt[0], blurTexture[0], bloomShader);
+
+            //bloom blur iter 1 -> n
+            bloomShader.SetInt(Shader.GetShaderPropertyId("UseAntiFlicker"), 0);
             for (int i = 1; i < blurIterations; i++)
             {
                 bloomShader.SetInt(Shader.GetShaderPropertyId("Horizontal"), 0);

@@ -26,6 +26,8 @@ namespace JLGraphics.RenderPasses
         public bool Vignette = true;
         public float VignetteStrength = 0.5f;
         public float Exposure = 1.0f;
+        public float BrightnessClamp = 0xffff;
+        public float Mosaic = 1.0f;
 
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
@@ -68,6 +70,8 @@ namespace JLGraphics.RenderPasses
             shader.SetBool(Shader.GetShaderPropertyId("Vignette"), Vignette);
             shader.SetFloat(Shader.GetShaderPropertyId("VignetteStrength"), VignetteStrength);
             shader.SetFloat(Shader.GetShaderPropertyId("Exposure"), Exposure);
+            shader.SetFloat(Shader.GetShaderPropertyId("BrightnessClamp"), BrightnessClamp);
+            shader.SetFloat(Shader.GetShaderPropertyId("Mosaic"), Mosaic);
 
             if (!FrameBuffer.AlikeResolution(frameBuffer, postProcessTexture))
             {

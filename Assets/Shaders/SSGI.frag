@@ -112,6 +112,8 @@ void main()
     vec3 worldNormal = texture(_CameraNormalTexture, uv).xyz;
     vec3 normal = (ViewMatrix * vec4(worldNormal, 0)).xyz;
 
+    vec3 viewDir = normalize(viewPos.xyz);
+    vec3 view_reflect = reflect(viewDir, normal);
     normmainCol = vec4(0);
     int SamplesPerPixel = max(SamplesPerPixel, 1);
     int sampleCount = 0;

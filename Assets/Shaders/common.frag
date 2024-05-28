@@ -10,6 +10,9 @@ uniform mat4 InvViewMatrix;
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
 
+float lum(vec3 color) {
+	return (0.299 * color.x + 0.587 * color.y + 0.114 * color.z);
+}
 //returns raw depth value at uv
 float get_depth(vec2 pos)
 {
@@ -205,10 +208,12 @@ vec4 traceScreenSpaceRay(
         }
     }
 
-    viewReflection.z *= -1;
     float visibility = hit1 
             * (uv.x < 0 || uv.x > 1 ? 0 : 1)
             * (uv.y < 0 || uv.y > 1 ? 0 : 1);
+//            * (1 - clamp(depth/thickness, 0, 1))
+//            * (1 - clamp(length(positionTo - startView) / maxDistance, 0, 1))
+//            * (1 - clamp(dot(-unitPositionFrom, viewReflection), 0, 1));
 
     visibility = clamp(visibility, 0, 1);
     return vec4(uv, 0, visibility);
