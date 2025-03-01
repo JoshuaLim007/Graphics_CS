@@ -98,6 +98,11 @@ namespace JLGraphics.RenderPasses
             Blit(accumulationPass, denoisePass, denoise);
             PerfTimer.Stop();
 
+            PerfTimer.Start("SSGI AA");
+            var temp = AntiAliasing.ApplyEdgeBlur(denoisePass);
+            Blit(temp, denoisePass);
+            PerfTimer.Stop();
+
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_SSGIColor"), denoisePass.TextureAttachments[0]);
             FrameBuffer.BindFramebuffer(frameBuffer);
         }

@@ -70,6 +70,7 @@
     <None Remove="Assets\Shaders\DepthAwareBoxBlur.frag" />
     <None Remove="Assets\Shaders\DepthOnly.frag" />
     <None Remove="Assets\Shaders\fragmentEmpty.glsl" />
+    <None Remove="Assets\Shaders\fxaa.frag" />
     <None Remove="Assets\Shaders\MotionBlur.frag" />
     <None Remove="Assets\Shaders\MotionVector.frag" />
     <None Remove="Assets\Shaders\MotionVector.vert" />

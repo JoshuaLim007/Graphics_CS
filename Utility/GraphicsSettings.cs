@@ -188,6 +188,10 @@ namespace JLGraphics.Utility
 
             if (postProcess != null)
             {
+                bool fxaa = postProcess.FXAA;
+                ImGui.Checkbox("FXAA", ref fxaa);
+                postProcess.FXAA = fxaa;
+
                 t = postProcess.Exposure;
                 ImGui.SliderFloat("Exposure", ref t, 0.01f, 4.0f);
                 postProcess.Exposure = t;

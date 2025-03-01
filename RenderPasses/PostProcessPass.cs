@@ -28,6 +28,7 @@ namespace JLGraphics.RenderPasses
         public float Exposure = 1.0f;
         public float BrightnessClamp = 0xffff;
         public float Mosaic = 1.0f;
+        public bool FXAA = false;
 
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
@@ -78,7 +79,14 @@ namespace JLGraphics.RenderPasses
                 postProcessTexture.Dispose();
                 postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP { internalFormat = PixelInternalFormat.Rgb8 });
             }
-            Blit(frameBuffer, postProcessTexture, shader);
+
+            PerfTimer.Start("FXAA");
+            var temp = frameBuffer;
+            if (FXAA)
+                temp = AntiAliasing.ApplyFXAA(frameBuffer);
+            PerfTimer.Stop();
+
+            Blit(temp, postProcessTexture, shader);
             Blit(postProcessTexture, frameBuffer);
         }
 
