@@ -86,6 +86,7 @@
     <None Remove="Assets\Shaders\SSAOAccum.frag" />
     <None Remove="Assets\Shaders\SSAOComp.frag" />
     <None Remove="Assets\Shaders\SSGI.frag" />
+    <None Remove="Assets\Shaders\SSR.frag" />
     <None Remove="Assets\Shaders\vertexSimple.glsl" />
   </ItemGroup>
 

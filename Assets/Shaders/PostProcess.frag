@@ -14,6 +14,7 @@ uniform int Srgb;
 uniform int Vignette;
 uniform float VignetteStrength;
 uniform sampler2D DirectionalShadowDepthMap;
+uniform sampler2D _MotionTexture;
 uniform float Mosaic;
 
 uniform int AmbientOcclusion;
@@ -129,9 +130,9 @@ void main()
 
 //    ld = ld / (ld + 1);
 //    FragColor = vec4(ld);
+//    vec4 mv = texture(_MotionTexture, pos);
 
-
-    FragColor = vec4(col.xyz, 1.0);
+    FragColor = col;
 
     //FragColor = vec4(viewReflection.xyz, 1.0);
 //    FragColor = vec4(normal, 0);

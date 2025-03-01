@@ -50,6 +50,7 @@ namespace JLGraphics.Utility
         SSAO ssao;
         Bloom bloom;
         SSGI ssgi;
+        SSR ssr;
 
         public SSGI SSGI(bool enable)
         {
@@ -58,6 +59,7 @@ namespace JLGraphics.Utility
                 if (enable)
                 {
                     ssgi = new SSGI(9);
+                    ssgi.FarRangeSSGI = false;
                     Graphics.Instance.EnqueueRenderPass(ssgi);
                 }
                 else
@@ -68,6 +70,24 @@ namespace JLGraphics.Utility
                 }
             }
             return ssgi;
+        }
+        public SSR SSR(bool enable)
+        {
+            if (enable != (ssr != null))
+            {
+                if (enable)
+                {
+                    ssr = new SSR(10);
+                    Graphics.Instance.EnqueueRenderPass(ssr);
+                }
+                else
+                {
+                    Graphics.Instance.DequeueRenderPass(ssr);
+                    ssr?.Dispose();
+                    ssr = null;
+                }
+            }
+            return ssr;
         }
         public Bloom Bloom(bool enable)
         {
@@ -151,12 +171,14 @@ namespace JLGraphics.Utility
             bool bloomV = bloom != null;
             bool ssaoV = ssao != null;
             bool ssgiV = ssgi != null;
+            bool ssrV = ssr != null;
             bool motionblurV = motionblurPass != null;
             bool postProcessV = postProcess != null;
 
             ImGui.Checkbox("Bloom", ref bloomV);
             ImGui.Checkbox("SSAO", ref ssaoV);
             ImGui.Checkbox("SSGI", ref ssgiV);
+            ImGui.Checkbox("SSR", ref ssrV);
             ImGui.Checkbox("Motion Blur", ref motionblurV);
             ImGui.Checkbox("Final Post Process", ref postProcessV);
 
@@ -169,7 +191,6 @@ namespace JLGraphics.Utility
                 t = postProcess.Exposure;
                 ImGui.SliderFloat("Exposure", ref t, 0.01f, 4.0f);
                 postProcess.Exposure = t;
-
 
                 t = postProcess.BrightnessClamp;
                 ImGui.InputFloat("Brightness Clamp", ref t);
@@ -185,24 +206,7 @@ namespace JLGraphics.Utility
             MotionBlur(motionblurV);
             PostProcess(postProcessV);
             SSGI(ssgiV);
-
-            //Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
-            //Graphics.Instance.EnqueueRenderPass(new PostProcessPass(13));
-            //var bloom = new Bloom(11);
-            //bloom.Iterations = 8;
-            //bloom.Intensity = 0.75f;
-            //Graphics.Instance.EnqueueRenderPass(bloom);
-            //Graphics.Instance.EnqueueRenderPass(new MotionblurPass(12));
-            //var ssao = new SSAO(true, 10);
-            //ssao.Radius = 5.0f;
-            //ssao.DepthRange = 10.0f;
-            //ssao.Samples = 16;
-            //ssao.Intensity = 1.0f;
-            //Graphics.Instance.EnqueueRenderPass(ssao);
-
-
+            SSR(ssrV);
         }
-
-
     }
 }

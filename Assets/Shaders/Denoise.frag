@@ -42,7 +42,7 @@ vec4 smartDeNoise(sampler2D tex, vec2 texelSize, vec2 uv, float sigma, float kSi
 //    float invThresholdSqx2 = .5 / (threshold * threshold);     // 1.0 / (sigma^2 * 2.0)
 //    float invThresholdSqrt2PI = INV_SQRT_OF_2PI / threshold;   // 1.0 / (sqrt(2*PI) * sigma)
     
-    vec4 centrPx = texture(tex,uv);
+    vec4 centrPx = texture(tex,uv).rgba;
     float centrPx_depth = linearEyeDepth(get_depth(uv));
 
     float zBuff = 0.0;
@@ -54,7 +54,7 @@ vec4 smartDeNoise(sampler2D tex, vec2 texelSize, vec2 uv, float sigma, float kSi
             vec2 d = vec2(x,y);
 
             float blurFactor = exp( -dot(d , d) * invSigmaQx2 ) * invSigmaQx2PI; 
-            vec4 walkPx =  texture(tex,uv+d * texelSize);
+            vec4 walkPx =  texture(tex,uv+d * texelSize).rgba;
             float walkPx_depth = linearEyeDepth(get_depth(uv+d * texelSize));
 
             float dC = abs(walkPx_depth - centrPx_depth);
@@ -71,6 +71,9 @@ vec4 smartDeNoise(sampler2D tex, vec2 texelSize, vec2 uv, float sigma, float kSi
             aBuff += deltaFactor*walkPx;
         }
     }
+    if(zBuff == 0){
+        return centrPx;
+    }
     return aBuff/zBuff;
 }
 
@@ -84,7 +87,7 @@ void main()
         OutColor = vec3(0);
         return;
     }
-    color = smartDeNoise(MainTex, MainTex_TexelSize, uv, 6.0, 2.0, 0.1);
+    color = smartDeNoise(MainTex, MainTex_TexelSize, uv, 6.0, 2.0, 0.01);
 	OutColor = color.xyz * color_intensity;
 }
 

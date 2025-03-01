@@ -134,8 +134,8 @@ namespace JLGraphics
             var colorSettings = new TFP()
             {
                 wrapMode = TextureWrapMode.MirroredRepeat,
-                maxMipmap = 0,
-                minFilter = TextureMinFilter.Linear,
+                maxMipmap = 11,
+                minFilter = TextureMinFilter.LinearMipmapNearest,
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.Rgb32f,
             };
@@ -150,8 +150,8 @@ namespace JLGraphics
             var specularMetal = new TFP()
             {
                 wrapMode = TextureWrapMode.MirroredRepeat,
-                maxMipmap = 0,
-                minFilter = TextureMinFilter.Linear,
+                maxMipmap = 11,
+                minFilter = TextureMinFilter.LinearMipmapNearest,
                 magFilter = TextureMagFilter.Linear,
                 internalFormat = PixelInternalFormat.Rgba8,
             };
@@ -540,6 +540,16 @@ namespace JLGraphics
             StartBlitUnsafe(shader);
             BlitUnsafe(src, dst, srcTextureIndex, dstTextureIndex);
             EndBlitUnsafe(shader);
+            if (dst != null)
+            {
+                for (int i = 0; i < dst.TextureAttachments.Length; i++)
+                {
+                    if (dst.TextureAttachments[i].generateMipMaps)
+                    {
+                        GL.GenerateTextureMipmap(dst.TextureAttachments[i].GlTextureID);
+                    }
+                }
+            }
             if (restoreSrc)
             {
                 FrameBuffer.BindFramebuffer(src);
@@ -666,6 +676,13 @@ namespace JLGraphics
         int ExecuteRenderPasses(int startingIndex, int renderQueueEnd)
         {
             int renderPassIndex;
+            for (int i = 0; i < MainFrameBuffer.TextureAttachments.Length; i++)
+            {
+                if (MainFrameBuffer.TextureAttachments[i].generateMipMaps)
+                {
+                    GL.GenerateTextureMipmap(MainFrameBuffer.TextureAttachments[i].GlTextureID);
+                }
+            }
             for (renderPassIndex = startingIndex; renderPassIndex < renderPasses.Count; renderPassIndex++)
             {
                 if (renderPasses[renderPassIndex].Queue > (renderQueueEnd - 1))

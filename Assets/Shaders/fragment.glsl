@@ -246,6 +246,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 vec3 halfVector(vec3 viewVector, vec3 lightDir){
 	return normalize(vec3(viewVector + lightDir));
 }
+uniform sampler2D _SSRColor;
 void main(){
 
 	vec3 viewVector = normalize(CameraWorldSpacePos.xyz - fs_in.Position.xyz);
@@ -289,18 +290,20 @@ void main(){
 	float reflectanceBRDF = D * G / denom; 
 	vec3 kd = 1 - fresnal;
 	kd *= (1 - Metalness);
-
 	vec3 brdf = (kd * diffuse + fresnal * vec3(reflectanceBRDF)) * incomingLightDiffuse;
 	vec2 screenUV = gl_FragCoord.xy / RenderSize.xy;
 	vec2 mv = texture(_MotionTexture, screenUV).xy;
 	vec2 projectUv = screenUV - mv;
 	projectUv.x = projectUv.x < 0 ? 0 : projectUv.x;
 	projectUv.y = projectUv.y < 0 ? 0 : projectUv.y;
-	projectUv.x = projectUv.y > 1 ? 1 : projectUv.x;
+	projectUv.x = projectUv.x > 1 ? 1 : projectUv.x;
 	projectUv.y = projectUv.y > 1 ? 1 : projectUv.y;
+	vec3 ssr = texture(_SSRColor, projectUv).xyz;
 	vec3 ssgi = texture(_SSGIColor, projectUv).xyz;
+	ssgi = min(ssgi.xyz, 65536);
+	ssr = min(ssr.xyz, 65536);
 	vec3 diffuseAmbientColor = GetAmbientColor(normal).xyz + ssgi;
-	brdf += (1 - Metalness) * (diffuse * diffuseAmbientColor);
+	brdf += (1 - Metalness) * (diffuse * diffuseAmbientColor) + mix(vec3(1), diffuse, (1 - Metalness)) * (ssr * (1 - roughness));
 
 	//point light
 	for (int i = 0; i < PointLightCount; i++)

@@ -55,7 +55,7 @@ namespace JLGraphics.RenderPasses
                 tfp.internalFormat = PixelInternalFormat.Rg16f;
                 tfp.minFilter = TextureMinFilter.Linear;
                 tfp.magFilter = TextureMagFilter.Linear;
-
+                tfp.wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.ClampToEdge;
                 if (motionVectorTex != null)
                 {
                     motionVectorTex.Dispose();
@@ -79,8 +79,8 @@ namespace JLGraphics.RenderPasses
             location = motionVectorShader.Program.GetUniformLocation(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"));
             PreviousViewProjection = previousViewMatrix * previousProjectionMatrix;
 
-            var newViewMat = Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
-            var cameraViewProj = newViewMat * previousProjectionMatrix;
+            var prevViewMat = Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
+            var cameraViewProj = prevViewMat * previousProjectionMatrix;
 
             motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), cameraViewProj);
             motionVectorShader.DepthTest = false;

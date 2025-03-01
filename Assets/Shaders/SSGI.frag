@@ -15,22 +15,6 @@ uniform int samples;
 uniform int SamplesPerPixel;             
 uniform int _Frame;
 
-uvec3 murmurHash33(uvec3 src) {
-    const uint M = 0x5bd1e995u;
-    uvec3 h = uvec3(1190494759u, 2147483647u, 3559788179u);
-    src *= M; src ^= src>>24u; src *= M;
-    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
-    h ^= h>>13u; h *= M; h ^= h>>15u;
-    return h;
-}
-vec3 hash33(vec3 src) {
-    uvec3 h = murmurHash33(floatBitsToUint(src));
-    return uintBitsToFloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
-}
-vec3 RandomUnitVector(vec2 uv, int index){
-    vec3 randomNormal = normalize(hash33(vec3(uv, index)) * 2 - 1);
-    return randomNormal;
-}
 vec3 OrientToNormal(vec3 vector, vec3 normal){
     float s = sign(dot(vector, normal));
     return vector * s;
@@ -92,13 +76,6 @@ vec3 TraceRay(
 
 uniform bool FarRangeSSGI;
 
-vec4 calcViewPositionFromDepth(vec2 texCoords, float depth) {
-    vec4 clipSpacePosition = vec4(texCoords * 2.0 - 1.0, depth, 1.0);
-    vec4 viewSpacePosition = InvProjectionMatrix * clipSpacePosition;
-    viewSpacePosition.xyz = viewSpacePosition.xyz / viewSpacePosition.w;
-    return viewSpacePosition;
-}
-
 void main()
 {
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
@@ -118,24 +95,27 @@ void main()
     int SamplesPerPixel = max(SamplesPerPixel, 1);
     int sampleCount = 0;
     
+    float rd = linearEyeDepth(d);
+    float scaledH = 1024 / rd;   //scaled steps at rd meters
+    scaledH *= 2;
+    scaledH = min(256, scaledH);
+
     while(sampleCount < SamplesPerPixel){
-        vec3 random = RandomUnitVector(uv, _Frame + sampleCount * 1024);
+        vec3 random = RandomUnitVector(uv, _Frame + sampleCount * 64);
         if(dot(random, worldNormal) < 0){
             sampleCount++;
             continue;
         }
-
         vec3 reflection = normalize((ViewMatrix * vec4(random, 0)).xyz);
-        vec4 hitPoint = traceScreenSpaceRay(viewPos, normal.xyz, reflection, 
-                (FarRangeSSGI ? 64 : 8), 
-                (FarRangeSSGI ? 0.1 : 0.5), 
-                128, 16, 2.5);
-
-        normmainCol += texture(MainTex, hitPoint.xy) * hitPoint.w;
+        vec4 hitPoint = DDARayTrace(viewPos, reflection, int(scaledH), 0.004, 4.0);
+        if(hitPoint.w == 1){
+            normmainCol += texture(MainTex, hitPoint.xy);
+        }
         sampleCount++;
     }
-    
     normmainCol /= SamplesPerPixel;
+    normmainCol = max(normmainCol, vec4(0));
+    normmainCol = min(normmainCol, vec4(65536));
     FragColor = vec4(normmainCol);
 }
 
