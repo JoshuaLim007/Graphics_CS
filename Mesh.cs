@@ -150,14 +150,101 @@ namespace JLGraphics
         public int VertexArrayObject { get; private set; }
         public int VertexCount { get; private set; }
         public AABB BoundingBox { get; private set; }
-
+        public MeshVerticesData RawMeshData { get; private set; }
         public List<Action> FileChangeCallback => new List<Action>();
         public string FilePath { get; }
 
         public override string Name => "Mesh: " + ElementArrayBuffer;
 
+        public static void CombineMesh(
+            MeshVerticesData[] meshVerticesDatas,
+            out int VAO,
+            out int EBO,
+            out IntPtr[] EBO_Offsets,
+            out int[] Indices_Counts,
+            out int VertexCount)
+        {
+
+            int totalVertData = 0;
+            int totalIndData = 0;
+            EBO_Offsets = new IntPtr[meshVerticesDatas.Length];
+            Indices_Counts = new int[meshVerticesDatas.Length];
+
+            for (int i = 0; i < meshVerticesDatas.Length; i++)
+            {
+                EBO_Offsets[i] = (IntPtr)(totalIndData * sizeof(int));
+                Indices_Counts[i] = meshVerticesDatas[i].indices.Length;
+                totalIndData += meshVerticesDatas[i].indices.Length;
+                totalVertData += meshVerticesDatas[i].vertexData.Length;
+            }
+
+            int vertIndex = 0;
+            int indIndex = 0;
+            float[] vertices = new float[totalVertData];
+            int[] indices = new int[totalIndData];
+
+            MeshVerticesData initialData = meshVerticesDatas[0];
+
+            for (int i = 0; i < meshVerticesDatas.Length; i++)
+            {
+                int vertexCount = meshVerticesDatas[i].vertexData.Length / meshVerticesDatas[i].elementsPerVertex;
+
+                var curVertexBuffer = meshVerticesDatas[i].vertexData;
+                var curIndicesBuffer = meshVerticesDatas[i].indices;
+
+                for (int j = 0; j < curIndicesBuffer.Length; j++)
+                {
+                    curIndicesBuffer[j] += vertexCount;
+                }
+
+                Array.Copy(curVertexBuffer, 0, vertices, vertIndex, curVertexBuffer.Length);
+                Array.Copy(curIndicesBuffer, 0, indices, indIndex, curIndicesBuffer.Length);
+
+                for (int j = 0; j < curIndicesBuffer.Length; j++)
+                {
+                    curIndicesBuffer[j] -= vertexCount;
+                }
+
+                vertIndex += meshVerticesDatas[i].vertexData.Length;
+                indIndex += meshVerticesDatas[i].indices.Length;
+            }
+
+            int VertexArrayObject = GL.GenVertexArray();
+            int ElementArrayBuffer = GL.GenBuffer();
+            int vertexBuffer = GL.GenBuffer();
+
+            GL.BindVertexArray(VertexArrayObject);
+
+            // Upload Vertex
+            GL.BindBuffer(BufferTarget.ArrayBuffer, vertexBuffer);
+            GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
+
+            // Upload index data
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementArrayBuffer);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(int), indices, BufferUsageHint.StaticDraw);
+
+            //Enable vertex attributes
+            GL.EnableVertexAttribArray(0);
+            GL.VertexAttribPointer(0, initialData.positionSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.positionOffset * sizeof(float));
+            GL.EnableVertexAttribArray(1);
+            GL.VertexAttribPointer(1, initialData.colorSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.colorOffset * sizeof(float));
+            GL.EnableVertexAttribArray(2);
+            GL.VertexAttribPointer(2, initialData.texCoordSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.texCoordOffset * sizeof(float));
+            GL.EnableVertexAttribArray(3);
+            GL.VertexAttribPointer(3, initialData.normalSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.normalOffset * sizeof(float));
+            GL.EnableVertexAttribArray(4);
+            GL.VertexAttribPointer(4, initialData.tangentSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.tangentOffset * sizeof(float));
+
+            GL.BindVertexArray(0);
+            GL.DeleteBuffer(vertexBuffer);
+
+            VAO = VertexArrayObject;
+            EBO = ElementArrayBuffer;
+            VertexCount = totalVertData / initialData.elementsPerVertex;
+        }
         public void ApplyMesh(MeshVerticesData Data)
         {
+            RawMeshData = Data;
             Vector3 minPoint = Vector3.PositiveInfinity;
             Vector3 maxPoint = Vector3.NegativeInfinity;
 
@@ -234,7 +321,6 @@ namespace JLGraphics
 
             VertexCount = (int)(Data.vertexData.Count() / (float)Data.elementsPerVertex);
         }
-
         protected override void OnDispose()
         {
             DestructorCommands.Instance.QueueAction(() => GL.DeleteBuffer(ElementArrayBuffer));
