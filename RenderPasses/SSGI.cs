@@ -99,7 +99,7 @@ namespace JLGraphics.RenderPasses
             PerfTimer.Stop();
 
             PerfTimer.Start("SSGI AA");
-            var temp = AntiAliasing.ApplyEdgeBlur(denoisePass);
+            var temp = AntiAliasing.ApplyFXAA(denoisePass);
             Blit(temp, denoisePass);
             PerfTimer.Stop();
 

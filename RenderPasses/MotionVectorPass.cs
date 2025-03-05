@@ -26,6 +26,9 @@ namespace JLGraphics.RenderPasses
                 AssetLoader.GetPathToAsset("./Shaders/MotionVector.vert"));
             program.CompileProgram();
             motionVectorShader = new Shader("Motion Vector Shader", program);
+            motionVectorShader.DepthMask = true;
+            motionVectorShader.DepthTest = true;
+            motionVectorShader.DepthTestFunction = DepthFunction.Lequal;
             motionVectorShader.ColorMask[0] = true;
             motionVectorShader.ColorMask[1] = true;
             motionVectorShader.ColorMask[2] = false;
@@ -83,11 +86,8 @@ namespace JLGraphics.RenderPasses
             var cameraViewProj = prevViewMat * previousProjectionMatrix;
 
             motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), cameraViewProj);
-            motionVectorShader.DepthTest = false;
-            Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
-
-            motionVectorShader.DepthTest = true;
             Graphics.Instance.RenderScene(Camera.Main, motionVectorShader, OnRenderCallback);
+            Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
 
             //copy motion vector data to motion vector texture
             BlitThenRestore(frameBuffer, motionVectorTex);

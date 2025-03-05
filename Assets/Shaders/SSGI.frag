@@ -80,6 +80,10 @@ void main()
 {
     vec2 uv = gl_FragCoord.xy * MainTex_TexelSize;
     float d = get_depth(uv);
+    if(d == 1){
+        FragColor = vec4(0);
+        return;
+    }
     vec4 normmainCol = texture(MainTex, uv);
     if(d == 1){
         FragColor = normmainCol;

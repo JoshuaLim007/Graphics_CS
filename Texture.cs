@@ -84,7 +84,7 @@ namespace JLGraphics
         public static explicit operator Texture(int textureId) => new Texture() {GlTextureID = textureId};
 
         public static explicit operator int(Texture texture) => texture.GlTextureID;
-        static bool IsDepthComponent(PixelInternalFormat internalPixelFormat)
+        public static bool IsDepthComponent(PixelInternalFormat internalPixelFormat)
         {
             return
                 internalPixelFormat == PixelInternalFormat.DepthComponent

@@ -12,7 +12,7 @@ namespace JLGraphics.Utility
     public class GraphicsSettings
     {
         public static GraphicsSettings Instance { get; private set; }
-        public GraphicsSettings(bool TAA) {
+        public GraphicsSettings(bool TAA, bool MotionVectors = true) {
             if (Instance != null)
             {
                 Debug.Log("Warning there can be only one instance of GraphicsSettings", Debug.Flag.Warning);
@@ -23,9 +23,10 @@ namespace JLGraphics.Utility
             {
                 Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
             }
-            Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
+            if(MotionVectors)
+                Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
-        public GraphicsSettings(GuiManager guiManager, bool TAA)
+        public GraphicsSettings(GuiManager guiManager, bool TAA, bool MotionVectors = true)
         {
             if(Instance != null)
             {
@@ -42,7 +43,8 @@ namespace JLGraphics.Utility
             {
                 Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
             }
-            Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
+            if (MotionVectors)
+                Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
 
         PostProcessPass postProcess;
@@ -174,6 +176,10 @@ namespace JLGraphics.Utility
             bool ssrV = ssr != null;
             bool motionblurV = motionblurPass != null;
             bool postProcessV = postProcess != null;
+
+            bool depthPrepass = Graphics.Instance.DepthPrepass;
+            ImGui.Checkbox("Early Depth Test", ref depthPrepass);
+            Graphics.Instance.DepthPrepass = depthPrepass;
 
             ImGui.Checkbox("Bloom", ref bloomV);
             ImGui.Checkbox("SSAO", ref ssaoV);

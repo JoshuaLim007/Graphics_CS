@@ -1,4 +1,4 @@
-﻿#version 430
+﻿#version 430 core
 #define MAX_POINT_LIGHTS 128
 #define MAX_POINT_SHADOWS 8
 
@@ -17,6 +17,22 @@ layout(std140, binding = 3) uniform PointLightBuffer
 {
 	PointLight[MAX_POINT_LIGHTS] PointLightData;
 } PL;
+
+struct BatchedMaterialData {
+	vec3 bColor;
+	vec3 bEmissiveColor;
+	float bSmoothness;
+	float bMetalness;
+	float bNormalStrength;
+	float bAoStrength;
+};
+
+uniform int IsBatched;
+layout(std430, binding = 5) readonly buffer BatchFragmentMeshUniformBuffer
+{
+	BatchedMaterialData bMatData[];
+};
+
 uniform samplerCubeShadow PointLightShadowMap[MAX_POINT_SHADOWS];
 uniform int PointLightCount;
 
@@ -268,8 +284,10 @@ void main(){
 
 	//Lambertian BRDF
 	//directional light
+	vec3 directionalLightDir = DirectionalLight.Direction;
+	vec3 directionalLightColor = DirectionalLight.Color;
 	float sunShadow = GetDirectionalShadow(fs_in.PositionLightSpace, normalize(fs_in.Normal), fs_in.Position);
-	vec3 sunColor = max(dot(normal, DirectionalLight.Direction), 0) * (1 - sunShadow) * DirectionalLight.Color;
+	vec3 sunColor = max(dot(normal, directionalLightDir), 0) * (1 - sunShadow) * directionalLightColor;
 	color.xyz *= AlbedoColor;
 
 	vec3 incomingLightDiffuse = sunColor;
@@ -282,10 +300,10 @@ void main(){
 	float roughness = 1 - Smoothness;
 
 	//BRDF
-	vec3 h = halfVector(viewVector, DirectionalLight.Direction);
+	vec3 h = halfVector(viewVector, directionalLightDir);
 	float D = DistributionGGX(normal, h, roughness);
-	float G = GeometrySmith(normal, viewVector, DirectionalLight.Direction, roughness);
-	float denom = 4 * max(dot(normal, DirectionalLight.Direction), denomMin) * max(dot(normal, viewVector), denomMin);
+	float G = GeometrySmith(normal, viewVector, directionalLightDir, roughness);
+	float denom = 4 * max(dot(normal, directionalLightDir), denomMin) * max(dot(normal, viewVector), denomMin);
 	vec3 fresnal = fresnelSchlick(max(dot(viewVector, h), 0), baseRef);
 	float reflectanceBRDF = D * G / denom; 
 	vec3 kd = 1 - fresnal;
@@ -298,7 +316,7 @@ void main(){
 	projectUv.y = projectUv.y < 0 ? 0 : projectUv.y;
 	projectUv.x = projectUv.x > 1 ? 1 : projectUv.x;
 	projectUv.y = projectUv.y > 1 ? 1 : projectUv.y;
-	vec3 ssr = texture(_SSRColor, projectUv).xyz;
+	vec3 ssr = texture(_SSRColor, screenUV).xyz;
 	vec3 ssgi = texture(_SSGIColor, projectUv).xyz;
 	ssgi = min(ssgi.xyz, 65536);
 	ssr = min(ssr.xyz, 65536);
@@ -343,6 +361,9 @@ void main(){
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));
 	c = mix(vec4(c), vec4(FogColor, 1), 1 - density);
+
+	//fixes any NaN issues caused by undefined uniforms
+	c = max(c, vec4(0));
 
 	norm = vec4(normal, 0);
 	specmet = vec4(roughness, baseRef.xyz);

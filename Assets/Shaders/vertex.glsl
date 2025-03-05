@@ -1,4 +1,4 @@
-﻿#version 410
+﻿#version 430 core
 
 //in from program
 layout(location=0) in vec3 aPosition;
@@ -16,6 +16,12 @@ out VS_OUT{
 	vec3 Tangent;
 	vec4 PositionLightSpace;
 } vs_out;
+
+uniform int IsBatched;
+layout(std430, binding = 4) readonly buffer BatchVertexMeshUniformBuffer
+{
+	mat4 modelMatrices[];
+};
 
 uniform mat4 ProjectionViewMatrix;
 uniform mat4 ModelMatrix;

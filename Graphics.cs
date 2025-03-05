@@ -121,6 +121,33 @@ namespace JLGraphics
         float previousRenderScale = 1.0f;
         public GraphicsDebug GraphicsDebug;
         public bool ReverseDepth { get; set; } = false;
+        private bool enable_depthPrePass = false;
+        public bool DepthPrepass {
+            get
+            {
+                return enable_depthPrePass;
+            }
+            set
+            {
+                enable_depthPrePass = value;
+                if (!value)
+                {
+                    DefaultMaterial.DepthMask = true;
+                    DefaultMaterial.DepthTestFunction = DepthFunction.Lequal;
+
+                    SkyboxShader.DepthMask = true;
+                    SkyboxShader.DepthTestFunction = DepthFunction.Lequal;
+                }
+                else
+                {
+                    DefaultMaterial.DepthMask = false;
+                    DefaultMaterial.DepthTestFunction = DepthFunction.Equal;
+
+                    SkyboxShader.DepthMask = false;
+                    SkyboxShader.DepthTestFunction = DepthFunction.Equal;
+                }
+            } 
+        }
         public float RenderScale { get; set; } = 1.0f;
         void InitFramebuffers() {
 
@@ -241,6 +268,12 @@ namespace JLGraphics
             SkyboxShader = new Shader("Skybox material", skyBoxShaderProrgam);
             SkyboxDepthPrepassShader = new Shader("Skybox depth prepass material", skyboxDepthPrepassProgram);
             SkyboxDepthPrepassShader.DepthTestFunction = ReverseDepth ? DepthFunction.Greater : DepthFunction.Less;
+            SkyboxDepthPrepassShader.DepthMask = true;
+            SkyboxDepthPrepassShader.DepthTest = true;
+            SkyboxDepthPrepassShader.ColorMask[1] = true;
+            SkyboxDepthPrepassShader.ColorMask[2] = false;
+            SkyboxDepthPrepassShader.ColorMask[2] = false;
+            SkyboxDepthPrepassShader.ColorMask[3] = false;
 
             DefaultMaterial = new Shader("Default Material", DefaultShaderProgram);
             DefaultMaterial.DepthMask = false;
@@ -265,6 +298,7 @@ namespace JLGraphics
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
             InitFramebuffers();
 
+            DepthPrepass = true;
             SkyboxController.Init(SkyboxShader);
         }
         public void Dispose()
@@ -712,6 +746,7 @@ namespace JLGraphics
             GL.CullFace(CullFaceMode.Front);
             GL.DrawElements(PrimitiveType.Triangles, BasicCube.IndiciesCount, DrawElementsType.UnsignedInt, 0);
             GL.CullFace(CullFaceMode.Back);
+            GL.DepthMask(true);
 
             GraphicsDebug.DrawCount++;
             GraphicsDebug.TotalVertices += BasicCube.VertexCount;
@@ -741,19 +776,33 @@ namespace JLGraphics
                 GL.Disable(EnableCap.Blend);
                 //bind Main render texture RT
                 GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
+                DrawBuffersEnum[] drawBuffers = new DrawBuffersEnum[MainFrameBuffer.TextureAttachments.Length];
+                int drawBufferCount = 0;
+                for (int i = 0; i < MainFrameBuffer.TextureAttachments.Length; i++)
+                {
+                    if (Texture.IsDepthComponent(MainFrameBuffer.TextureAttachments[i].internalPixelFormat))
+                    {
+                        continue;
+                    }
+                    drawBuffers[i] = DrawBuffersEnum.ColorAttachment0 + drawBufferCount;
+                    drawBufferCount++;
+                }
+                GL.DrawBuffers(drawBufferCount, drawBuffers);
                 GL.Viewport(0, 0, MainFrameBuffer.Width, MainFrameBuffer.Height);
-
-                //render depth prepass
                 GL.ClearDepth(depthClearColor);
 
                 GL.ClearColor(Color4.Magenta);
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
-                RenderScene(AllCameras[cameraIndex], DepthPrepassShader);
-                Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
-                RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
 
-                //copy color texture
-                GL.Clear(ClearBufferMask.ColorBufferBit);
+                if (DepthPrepass)
+                {
+                    //render depth prepass
+                    RenderScene(AllCameras[cameraIndex], DepthPrepassShader);
+                    Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
+                    RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
+                    //copy color texture
+                    GL.Clear(ClearBufferMask.ColorBufferBit);
+                }
 
                 //prepass (Prepass -> Opaque - 1)
                 int renderPassIndex = ExecuteRenderPasses(0, (int)RenderQueue.AfterOpaques);
@@ -763,6 +812,11 @@ namespace JLGraphics
                 RenderScene(AllCameras[cameraIndex]);
                 RenderSkyBox(AllCameras[cameraIndex]);
 
+                if (!DepthPrepass)
+                {
+                    Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
+                }
+
                 //Post opaque pass (Opaque -> Transparent - 1)
                 renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterTransparents);
                 //render Transparents
@@ -770,7 +824,7 @@ namespace JLGraphics
                 //Post transparent render pass (Transparent -> PostProcess - 1)
                 renderPassIndex = ExecuteRenderPasses(renderPassIndex, (int)RenderQueue.AfterPostProcessing);
 
-                //Post post processing (Transparent -> End)
+                //Post post processing (PostProcess -> End)
                 ExecuteRenderPasses(renderPassIndex, int.MaxValue);
 
                 if (GraphicsDebug.DrawAABB)
@@ -781,7 +835,7 @@ namespace JLGraphics
                 if (BlitFinalResultsToScreen)
                 {
                     //blit render buffer to screen
-                    Blit(MainFrameBuffer, null, false, null);
+                    Blit(MainFrameBuffer, null, true, null);
                 }
 
                 //frame cleanup
@@ -806,6 +860,7 @@ namespace JLGraphics
             var lights = InternalGlobalScope<Light>.Values;
             int pointLightShadowCount = 0;
             bool didRenderDirectionalShadow = false;
+            bool noDirectionalLight = true;
             for (int i = 0; i < lights.Count; i++)
             {
                 switch (lights[i])
@@ -821,6 +876,7 @@ namespace JLGraphics
                             t0.RenderShadowMap(camera);
                             didRenderDirectionalShadow = true;
                         }
+                        noDirectionalLight = false;
                         Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Color"), t0.Color);
                         Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Direction"), t0.Transform.Forward);
                         break;
@@ -840,6 +896,11 @@ namespace JLGraphics
                 }
             }
 
+            if (noDirectionalLight)
+            {
+                Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Color"), Vector3.Zero);
+                Shader.SetGlobalVector3(Shader.GetShaderPropertyId("DirectionalLight.Direction"), Vector3.UnitZ);
+            }
             if (!didRenderDirectionalShadow)
             {
                 DirectionalShadowMap.SetShadowMapToWhite();
@@ -1076,11 +1137,11 @@ namespace JLGraphics
         }
 
         CameraFrustum cameraFrustum = new();
-        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null, in CameraFrustum? viewFrustum = null)
+        public void RenderScene(Camera camera, Shader overrideShader = null, Action<Renderer> OnRender = null)
         {
             PerfTimer.Start("RenderScene");
-            Mesh? previousMesh = null;
-            Shader? previousMaterial = null;
+            Mesh previousMesh = null;
+            Shader previousMaterial = null;
             bool doOnRenderFunc = OnRender != null;
             int modelMatrixPropertyId = Shader.GetShaderPropertyId("ModelMatrix");
 
@@ -1116,11 +1177,6 @@ namespace JLGraphics
                     doFrustumCulling = true;
                     this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : this.cameraFrustum;
                 }
-            }
-            if(viewFrustum != null)
-            {
-                doFrustumCulling = true;
-                this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? viewFrustum.Value : this.cameraFrustum;
             }
 
             for (int i = 0; i < renderers.Length; i++)
@@ -1189,7 +1245,6 @@ namespace JLGraphics
                 }
                 //render object
                 GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
-
                 GraphicsDebug.DrawCount++;
             }
 
