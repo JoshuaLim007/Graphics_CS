@@ -45,7 +45,14 @@ namespace JLGraphics.RenderPasses
             GL.UniformMatrix4(location, false, ref mat);
             e.Transform.PreviousModelMatrix = e.Transform.ModelMatrix;
         }
-
+        public override void FrameSetup(Camera camera)
+        {
+            //motion vectors can double as depth prepass
+            if(Graphics.Instance.DepthPrepass != DepthPrePassMode.MotionVectors)
+            {
+                Graphics.Instance.DepthPrepass = DepthPrePassMode.MotionVectors;
+            }
+        }
         public override void Execute(in FrameBuffer frameBuffer)
         {
             if (!FrameBuffer.AlikeResolution(motionVectorTex, frameBuffer))
@@ -59,6 +66,7 @@ namespace JLGraphics.RenderPasses
                 tfp.minFilter = TextureMinFilter.Linear;
                 tfp.magFilter = TextureMagFilter.Linear;
                 tfp.wrapMode = OpenTK.Graphics.OpenGL4.TextureWrapMode.ClampToEdge;
+
                 if (motionVectorTex != null)
                 {
                     motionVectorTex.Dispose();
@@ -101,7 +109,9 @@ namespace JLGraphics.RenderPasses
         protected override void OnDispose()
         {
             motionVectorShader.Program.Dispose();
-            motionVectorTex.Dispose();
+            motionVectorTex?.Dispose();
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_MotionTexture"), null);
+
         }
     }
 }

@@ -47,6 +47,12 @@ namespace JLGraphics
         public bool DrawAABB;
         public bool PauseFrustumCulling;
     }
+    public enum DepthPrePassMode
+    {
+        None = 0,
+        DepthOnly = 1,
+        MotionVectors = 2
+    }
     public sealed class Graphics : IDisposable
     {
         static Lazy<Graphics> m_lazyGraphics = new Lazy<Graphics>(() => new Graphics());
@@ -121,16 +127,16 @@ namespace JLGraphics
         float previousRenderScale = 1.0f;
         public GraphicsDebug GraphicsDebug;
         public bool ReverseDepth { get; set; } = false;
-        private bool enable_depthPrePass = false;
-        public bool DepthPrepass {
+        private DepthPrePassMode depthPrePassMode = DepthPrePassMode.None;
+        public DepthPrePassMode DepthPrepass {
             get
             {
-                return enable_depthPrePass;
+                return depthPrePassMode;
             }
             set
             {
-                enable_depthPrePass = value;
-                if (!value)
+                depthPrePassMode = value;
+                if (value == DepthPrePassMode.None)
                 {
                     DefaultMaterial.DepthMask = true;
                     DefaultMaterial.DepthTestFunction = DepthFunction.Lequal;
@@ -298,7 +304,7 @@ namespace JLGraphics
             PassthroughShader = new Shader("Default Passthrough", PassthroughShaderProgram);
             InitFramebuffers();
 
-            DepthPrepass = true;
+            DepthPrepass = DepthPrePassMode.None;
             SkyboxController.Init(SkyboxShader);
         }
         public void Dispose()
@@ -794,25 +800,32 @@ namespace JLGraphics
                 GL.ClearColor(Color4.Magenta);
                 GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);
 
-                if (DepthPrepass)
+                if (DepthPrepass == DepthPrePassMode.DepthOnly)
                 {
                     //render depth prepass
                     RenderScene(AllCameras[cameraIndex], DepthPrepassShader);
                     Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
                     RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
-                    //copy color texture
                     GL.Clear(ClearBufferMask.ColorBufferBit);
                 }
 
                 //prepass (Prepass -> Opaque - 1)
                 int renderPassIndex = ExecuteRenderPasses(0, (int)RenderQueue.AfterOpaques);
 
+                if (DepthPrepass == DepthPrePassMode.MotionVectors)
+                {
+                    //Ensure motion vector render pass is enqueued!
+                    Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
+                    GL.Clear(ClearBufferMask.ColorBufferBit);
+                }
+
                 //render Opaques
                 //TODO: move to render pass class
                 RenderScene(AllCameras[cameraIndex]);
                 RenderSkyBox(AllCameras[cameraIndex]);
 
-                if (!DepthPrepass)
+                //if no depth prepass, copy depth after running forward pass
+                if (DepthPrepass == DepthPrePassMode.None)
                 {
                     Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
                 }

@@ -12,7 +12,7 @@ namespace JLGraphics.Utility
     public class GraphicsSettings
     {
         public static GraphicsSettings Instance { get; private set; }
-        public GraphicsSettings(bool TAA, bool MotionVectors = true) {
+        public GraphicsSettings(bool TAA) {
             if (Instance != null)
             {
                 Debug.Log("Warning there can be only one instance of GraphicsSettings", Debug.Flag.Warning);
@@ -23,10 +23,8 @@ namespace JLGraphics.Utility
             {
                 Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
             }
-            if(MotionVectors)
-                Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
-        public GraphicsSettings(GuiManager guiManager, bool TAA, bool MotionVectors = true)
+        public GraphicsSettings(GuiManager guiManager, bool TAA)
         {
             if(Instance != null)
             {
@@ -43,8 +41,6 @@ namespace JLGraphics.Utility
             {
                 Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
             }
-            if (MotionVectors)
-                Graphics.Instance.EnqueueRenderPass(new MotionVectorPass());
         }
 
         PostProcessPass postProcess;
@@ -53,7 +49,26 @@ namespace JLGraphics.Utility
         Bloom bloom;
         SSGI ssgi;
         SSR ssr;
+        MotionVectorPass motionVector;
 
+        public MotionVectorPass MV(bool enable)
+        {
+            if (enable != (motionVector != null))
+            {
+                if (enable)
+                {
+                    motionVector = new MotionVectorPass();
+                    Graphics.Instance.EnqueueRenderPass(motionVector);
+                }
+                else
+                {
+                    Graphics.Instance.DequeueRenderPass(motionVector);
+                    motionVector?.Dispose();
+                    motionVector = null;
+                }
+            }
+            return motionVector;
+        }
         public SSGI SSGI(bool enable)
         {
             if (enable != (ssgi != null))
@@ -168,18 +183,38 @@ namespace JLGraphics.Utility
             }
             return postProcess;
         }
+        
         void update()
         {
             bool bloomV = bloom != null;
             bool ssaoV = ssao != null;
             bool ssgiV = ssgi != null;
             bool ssrV = ssr != null;
+            bool mv;
             bool motionblurV = motionblurPass != null;
             bool postProcessV = postProcess != null;
 
-            bool depthPrepass = Graphics.Instance.DepthPrepass;
-            ImGui.Checkbox("Early Depth Test", ref depthPrepass);
+            var depthPrepass = Graphics.Instance.DepthPrepass;
+            if (motionblurV || ssgiV)
+            {
+                depthPrepass = DepthPrePassMode.MotionVectors;
+            }
+
+            int currentIndex = (int)depthPrepass;
+            string[] enumNames = Enum.GetNames(typeof(DepthPrePassMode));
+            if (ImGui.Combo("Select Option", ref currentIndex, enumNames, enumNames.Length))
+            {
+                depthPrepass = (DepthPrePassMode)currentIndex;
+            }
             Graphics.Instance.DepthPrepass = depthPrepass;
+            if (depthPrepass == DepthPrePassMode.MotionVectors)
+            {
+                mv = true;
+            }
+            else
+            {
+                mv = false;
+            }
 
             ImGui.Checkbox("Bloom", ref bloomV);
             ImGui.Checkbox("SSAO", ref ssaoV);
@@ -216,6 +251,7 @@ namespace JLGraphics.Utility
             MotionBlur(motionblurV);
             PostProcess(postProcessV);
             SSGI(ssgiV);
+            MV(mv);
             SSR(ssrV);
         }
     }
