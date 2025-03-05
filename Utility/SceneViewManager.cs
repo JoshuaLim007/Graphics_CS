@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using Assimp;
+using ImGuiNET;
 using JLGraphics.Input;
 using JLGraphics.RenderPasses;
 using JLUtility;
@@ -8,6 +9,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +25,12 @@ namespace JLGraphics.Utility
         {
             ObjectsSelected.Clear();
             ObjectsSelected.Add(entity);
+            objectHighlight.ToHighlight = ObjectsSelected;
+        }
+        public void OverrideSelection(List<Entity> entities)
+        {
+            ObjectsSelected.Clear();
+            ObjectsSelected.AddRange(entities);
             objectHighlight.ToHighlight = ObjectsSelected;
         }
         public class ObjectHighlight : RenderPass
@@ -85,28 +93,33 @@ namespace JLGraphics.Utility
                     {
                         if (ObjectsSelected.Count != 0)
                         {
-                            var renderer = ObjectsSelected[0].GetComponentInChild<Renderer>();
-                            if (renderer)
+                            float maxSize = 0;
+                            Vector3 avgPos = Vector3.Zero;
+                            var camera = Camera.Main;
+                            for (int i = 0; i < ObjectsSelected.Count; i++)
                             {
-                                var bounds = renderer.GetWorldBounds();
-                                var targetPos = bounds.Center;
-                                var size = bounds.Extents.Length * 0.75f;
-                                size = MathF.Max(size, 5.0f);
-                                var camera = Camera.Main;
-                                if (camera != null)
+                                var renderer = ObjectsSelected[i].GetComponentInChild<Renderer>();
+                                if (renderer)
                                 {
-                                    camera.Transform.WorldPosition = targetPos - camera.Transform.Forward * size;
+                                    var bounds = renderer.GetWorldBounds();
+                                    var targetPos = bounds.Center;
+                                    var size = bounds.Extents.Length * 0.75f;
+                                    size = MathF.Max(size, 5.0f);
+                                    avgPos += targetPos;
+                                    maxSize = MathF.Max(size, maxSize);
+                                }
+                                else
+                                {
+                                    var targetPos = ObjectsSelected[i].Transform.LocalPosition;
+                                    var size = 5.0f;
+                                    avgPos += targetPos;
+                                    maxSize = MathF.Max(size, maxSize);
                                 }
                             }
-                            else
+                            if (camera != null)
                             {
-                                var targetPos = ObjectsSelected[0].Transform.LocalPosition;
-                                var size = 5.0f;
-                                var camera = Camera.Main;
-                                if (camera != null)
-                                {
-                                    camera.Transform.WorldPosition = targetPos - camera.Transform.Forward * size;
-                                }
+                                avgPos /= ObjectsSelected.Count;
+                                camera.Transform.WorldPosition = avgPos - camera.Transform.Forward * maxSize;
                             }
                         }
                     }
@@ -136,36 +149,70 @@ namespace JLGraphics.Utility
                 }
             }
         }
-        public Entity FindEntityClosestTo(Vector3 position)
+
+        public Entity FindEntityClosestTo(Vector3 position, int place)
         {
             var renderers = InternalGlobalScope<Renderer>.Values;
-            Entity entity = null;
-            float shortestDist = float.MaxValue;
-
-            for (int i = 0; i < renderers.Count; i++)
+            renderers.Sort((e, d) =>
             {
-                var renderer = renderers[i];
-                if(!renderer.Enabled)
+                if(e.Enabled && !d.Enabled)
                 {
-                    continue;
+                    return 1;
                 }
+                if(d.Enabled && !e.Enabled)
+                {
+                    return -1;
+                }
+                if(!e.Enabled && !d.Enabled)
+                {
+                    return 0;
+                }
+                float eDist = 0;
+                float dDist = 0;
 
-                var bounds = renderer.Mesh.BoundingBox;
-                var worldBounds = AABB.ApplyTransformation(bounds, renderer.Transform.ModelMatrix);
-
-                if(AABB.Contains(worldBounds, position, 0.1f))
+                var bounds = e.Mesh.BoundingBox;
+                var worldBounds = AABB.ApplyTransformation(bounds, e.Transform.ModelMatrix);
+                if (AABB.Contains(worldBounds, position, 0.1f))
                 {
                     var closestCorner = AABB.ClosestCorner(worldBounds, position);
-                    float dist = (closestCorner - position).LengthSquared;
-                    if(dist < shortestDist)
-                    {
-                        entity = renderer.Entity;
-                        shortestDist = dist;
-                    }
+                    eDist = Math.Min((closestCorner - position).LengthSquared, (e.Transform.WorldPosition - position).LengthSquared);
                 }
-            }
-            return entity;
+                else
+                {
+                    eDist = float.PositiveInfinity;
+                }
+
+                bounds = d.Mesh.BoundingBox;
+                worldBounds = AABB.ApplyTransformation(bounds, d.Transform.ModelMatrix);
+                if (AABB.Contains(worldBounds, position, 0.1f))
+                {
+                    var closestCorner = AABB.ClosestCorner(worldBounds, position);
+                    dDist = Math.Min((closestCorner - position).LengthSquared, (d.Transform.WorldPosition - position).LengthSquared);
+                }
+                else
+                {
+                    dDist = float.PositiveInfinity;
+                }
+
+                if(eDist < dDist)
+                {
+                    return 1;
+                }
+                else if(eDist == dDist)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return -1;
+                }
+
+            });
+
+            return renderers[Math.Max(renderers.Count - (place + 1),0)].Entity;
         }
+        Vector3 previousHitPosition = Vector3.PositiveInfinity;
+        int place = 0;
         void SceneObjectSelection()
         {
             if(Camera.Main == null)
@@ -187,6 +234,13 @@ namespace JLGraphics.Utility
                 return;
             }
             float depth = graphics.GetDepthAt((int)pos.X, (int)pos.Y);
+            
+            if(depth == 1)
+            {
+                ObjectsSelected.Clear();
+                return;
+            }
+
             Vector4 t = new Vector4(uv.X * 2 - 1, uv.Y * 2 - 1, depth, 1);
             var vp = Camera.Main.ViewMatrix * Camera.Main.ProjectionMatrix;
 
@@ -194,8 +248,24 @@ namespace JLGraphics.Utility
             t /= t.W;
 
             var target_pos = t.Xyz;
+            if(Vector3.DistanceSquared(previousHitPosition, target_pos) > 1)
+            {
+                if(ObjectsSelected.Count > 0)
+                {
+                    ObjectsSelected.Clear();
+                    objectHighlight.ToHighlight = ObjectsSelected;
+                    return;
+                }
+                place = 0;
+            }
+            else
+            {
+                ObjectsSelected.Clear();
+                place = ++place % 3;
+            }
+            previousHitPosition = target_pos;
 
-            var entity = FindEntityClosestTo(target_pos);
+            var entity = FindEntityClosestTo(target_pos, place);
             if (ObjectsSelected.Count > 0)
             {
                 if(ObjectsSelected[0] == entity)

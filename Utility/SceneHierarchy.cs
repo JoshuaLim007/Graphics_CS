@@ -52,6 +52,20 @@ namespace JLGraphics.Utility
                 return sceneViewManager1.ObjectsSelected[0];
             }
         }
+        List<Entity> GetAllChildren(Entity entity)
+        {
+            var list = new List<Entity>();
+            list.Add(entity);
+            if (entity.Children == null)
+            {
+                return list;
+            }
+            for (int i = 0; i < entity.Children.Count(); i++)
+            {
+                list.AddRange(GetAllChildren(entity.Children[i]));
+            }
+            return list;
+        }
         Stack<Entity> SelectedEntityParents = new Stack<Entity>();
         void RenderEntity(Entity entity)  
         {
@@ -81,7 +95,9 @@ namespace JLGraphics.Utility
             {
                 if (ImGui.IsItemFocused())
                 {
-                    sceneViewManager1.OverrideSelection(entity);
+                    //get all children
+                    var entities = GetAllChildren(entity);
+                    sceneViewManager1.OverrideSelection(entities);
                 }
                 var children = entity.Children;
                 if (children != null)
