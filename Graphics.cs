@@ -148,9 +148,8 @@ namespace JLGraphics
                 {
                     DefaultMaterial.DepthMask = false;
                     DefaultMaterial.DepthTestFunction = DepthFunction.Equal;
-
                     SkyboxShader.DepthMask = false;
-                    SkyboxShader.DepthTestFunction = DepthFunction.Equal;
+                    SkyboxShader.DepthTestFunction = DepthFunction.Lequal;
                 }
             } 
         }
@@ -804,8 +803,8 @@ namespace JLGraphics
                 {
                     //render depth prepass
                     RenderScene(AllCameras[cameraIndex], DepthPrepassShader);
-                    Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
                     RenderSkyBox(AllCameras[cameraIndex], SkyboxDepthPrepassShader);
+                    Blit(MainFrameBuffer, DepthTextureBuffer, true, null, 3, 0);
                     GL.Clear(ClearBufferMask.ColorBufferBit);
                 }
 

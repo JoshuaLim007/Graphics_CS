@@ -93,8 +93,11 @@ namespace JLGraphics.RenderPasses
             var prevViewMat = Matrix4.CreateFromQuaternion(previousViewMatrix.ExtractRotation());
             var cameraViewProj = prevViewMat * previousProjectionMatrix;
 
-            motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), cameraViewProj);
+
+            motionVectorShader.DepthTest = true;
             Graphics.Instance.RenderScene(Camera.Main, motionVectorShader, OnRenderCallback);
+            motionVectorShader.SetMat4(Shader.GetShaderPropertyId("prevProjectionViewModelMatrix"), cameraViewProj);
+            motionVectorShader.DepthTest = false;
             Graphics.Instance.RenderSkyBox(Camera.Main, motionVectorShader);
 
             //copy motion vector data to motion vector texture

@@ -8,10 +8,12 @@ uniform mat4 prevProjectionViewModelMatrix;
 
 smooth out vec4 vPosition;
 smooth out vec4 vPrevPosition;
+uniform int SkyBox;
 
 void main()
 {
-    vPosition = ProjectionViewMatrix * ModelMatrix * vec4(aPos, 1.0);
+    vec4 temp = ProjectionViewMatrix * ModelMatrix * vec4(aPos, 1.0);
     vPrevPosition = prevProjectionViewModelMatrix * vec4(aPos, 1.0);
-    gl_Position = vPosition;
+    vPosition = temp;
+    gl_Position = temp;
 }
