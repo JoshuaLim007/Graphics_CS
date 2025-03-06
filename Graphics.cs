@@ -1,4 +1,5 @@
 ﻿using JLGraphics.Input;
+using JLGraphics.Rendering;
 using JLGraphics.RenderPasses;
 using JLUtility;
 using OpenTK.Graphics.OpenGL4;
@@ -1190,10 +1191,10 @@ namespace JLGraphics
                     this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : this.cameraFrustum;
                 }
             }
-
-            for (int i = 0; i < renderers.Length; i++)
+#if true
+            for (int d = 0; d < renderers.Length; d++)
             {
-                var current = renderers[i];
+                var current = renderers[d];
                 if (doFrustumCulling)
                 {
                     var correctedAABB = current.GetWorldBounds();
@@ -1215,20 +1216,17 @@ namespace JLGraphics
                     continue;
                 }
                 Mesh meshData = current.Mesh;
-                //bind shader and mesh
-                //don't bind if the previous mesh and previous material are the same
                 if (meshData != previousMesh)
                 {
                     GraphicsDebug.MeshBindCount++;
                     GL.BindVertexArray(meshData.VertexArrayObject);
-                    //GL.BindBuffer(BufferTarget.ElementArrayBuffer, meshData.ElementArrayBuffer);
                     previousMesh = meshData;
                 }
 
                 if (material != previousMaterial)
                 {
                     int updateFlags = material.AttachShaderForRendering();
-                    if((updateFlags & 0b10) == 0b10)
+                    if ((updateFlags & 0b10) == 0b10)
                     {
                         GraphicsDebug.MaterialUpdateCount++;
                     }
@@ -1255,11 +1253,93 @@ namespace JLGraphics
                 {
                     OnRender.Invoke(current);
                 }
+
                 //render object
                 GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
                 GraphicsDebug.DrawCount++;
             }
+#else
+            for (int i = 0; i < renderers.Length; i += Batching.MAXBATCH_SIZE)
+            {
+                bool pass = Batching.BatchRender(
+                    renderers,
+                    i,
+                    overrideShader, 
+                    overrideShader != null && overrideShader == MotionVectorPass.instance?.motionVectorShader
+                    );
 
+                //render this batch individually
+                if (!pass)
+                {
+                    for (int d = i; d < Math.Min(Batching.MAXBATCH_SIZE + i, renderers.Length); d++)
+                    {
+                        var current = renderers[d];
+                        if (doFrustumCulling)
+                        {
+                            var correctedAABB = current.GetWorldBounds();
+                            var skip = AABB.IsOutsideOfFrustum(cameraFrustum, correctedAABB);
+                            if (skip)
+                            {
+                                GraphicsDebug.FrustumCulledEntitiesCount++;
+                                continue;
+                            }
+                        }
+
+                        if (current == null || !current.IsActiveAndEnabled)
+                        {
+                            continue;
+                        }
+                        Shader? material = useOverride ? overrideShader : current.Material;
+                        if (material == null)
+                        {
+                            continue;
+                        }
+                        Mesh meshData = current.Mesh;
+                        if (meshData != previousMesh)
+                        {
+                            GraphicsDebug.MeshBindCount++;
+                            GL.BindVertexArray(meshData.VertexArrayObject);
+                            previousMesh = meshData;
+                        }
+
+                        if (material != previousMaterial)
+                        {
+                            int updateFlags = material.AttachShaderForRendering();
+                            if ((updateFlags & 0b10) == 0b10)
+                            {
+                                GraphicsDebug.MaterialUpdateCount++;
+                            }
+                            if ((updateFlags & 0b01) == 0b01)
+                            {
+                                GraphicsDebug.UseProgramCount++;
+                            }
+                            previousMaterial = material;
+                        }
+                        var transform = current.Entity.Transform;
+                        var worlToLocalMatrix = transform.ModelMatrix;
+                        if (useOverride)
+                        {
+                            //apply model matrix
+                            GL.UniformMatrix4(overrideModelLoc, false, ref worlToLocalMatrix);
+                        }
+                        else
+                        {
+                            GL.UniformMatrix4(current.Material.GetUniformLocation(modelMatrixPropertyId), false, ref worlToLocalMatrix);
+                        }
+
+                        GraphicsDebug.TotalVertices += meshData.VertexCount;
+                        if (doOnRenderFunc)
+                        {
+                            OnRender.Invoke(current);
+                        }
+
+                        //render object
+                        GL.DrawElements(PrimitiveType.Triangles, meshData.ElementCount, DrawElementsType.UnsignedInt, 0);
+                        GraphicsDebug.DrawCount++;
+                    }
+                }
+            }
+#endif
             //unbind
             GL.BindVertexArray(0);
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);

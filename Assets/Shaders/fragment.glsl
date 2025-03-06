@@ -1,4 +1,4 @@
-﻿#version 430 core
+﻿#version 460 core
 #define MAX_POINT_LIGHTS 128
 #define MAX_POINT_SHADOWS 8
 
@@ -19,20 +19,22 @@ layout(std140, binding = 3) uniform PointLightBuffer
 } PL;
 
 struct BatchedMaterialData {
-	vec3 bColor;
-	vec3 bEmissiveColor;
 	float bSmoothness;
 	float bMetalness;
 	float bNormalStrength;
 	float bAoStrength;
+	vec3 bColor;
+	vec3 bEmissiveColor;
 };
 
+//local
 uniform int IsBatched;
 layout(std430, binding = 5) readonly buffer BatchFragmentMeshUniformBuffer
 {
 	BatchedMaterialData bMatData[];
-};
+} BatchedData;
 
+//global
 uniform samplerCubeShadow PointLightShadowMap[MAX_POINT_SHADOWS];
 uniform int PointLightCount;
 
@@ -44,7 +46,9 @@ in VS_OUT{
 	vec3 Tangent;
 	vec4 PositionLightSpace;
 } fs_in;
+in flat int DrawID;
 
+//global
 uniform struct DIRECT_LIGHT {
 	vec3 Direction;
 	vec3 Color;
@@ -61,6 +65,7 @@ layout(location = 1) out vec4 norm;
 layout(location = 2) out vec4 specmet;
 
 //textures
+//local
 uniform sampler2D AlbedoTex;	//rgba texture
 uniform sampler2D NormalTex;	//normal map in tangent space
 uniform sampler2D MAOSTex;		//r = metallicness, g = ambient occlusion, b = smoothness
@@ -68,22 +73,26 @@ uniform sampler2D EmissionTex;	//r = metallicness, g = ambient occlusion, b = sm
 uniform int textureMask;		//texture masks
 
 //environment
+//global
 uniform vec3 SkyColor;
 uniform vec3 HorizonColor;
 uniform vec3 GroundColor;
 uniform samplerCube EnvironmentMap;
 
 //scalars
+//local
 uniform float Smoothness;
 uniform float Metalness;
 uniform float NormalStrength;
 uniform float AoStrength;
 
 //colors
+//local
 uniform vec3 AlbedoColor;
 uniform vec3 EmissiveColor;
 
 //misc
+//global
 uniform vec3 CameraWorldSpacePos;
 uniform vec3 CameraDirection;
 uniform int _Frame;
@@ -264,6 +273,8 @@ vec3 halfVector(vec3 viewVector, vec3 lightDir){
 }
 uniform sampler2D _SSRColor;
 void main(){
+	int drawId = DrawID;
+	BatchedMaterialData material = BatchedData.bMatData[drawId];
 
 	vec3 viewVector = normalize(CameraWorldSpacePos.xyz - fs_in.Position.xyz);
 	vec4 color = vec4(1,1,1,1);
@@ -278,7 +289,7 @@ void main(){
 		bump.xyz = bump.xyz * 2 - 1;
 	}
 	bump.xyz = TBN * bump.xyz;
-	vec3 normal = mix(normalize(fs_in.Normal), normalize(bump.xyz), NormalStrength);
+	vec3 normal = mix(normalize(fs_in.Normal), normalize(bump.xyz), (IsBatched != 1 ? NormalStrength : material.bNormalStrength));
 	normal = normalize(normal);
 	vec3 reflectedVector = reflect(-viewVector, normal);
 
@@ -288,14 +299,14 @@ void main(){
 	vec3 directionalLightColor = DirectionalLight.Color;
 	float sunShadow = GetDirectionalShadow(fs_in.PositionLightSpace, normalize(fs_in.Normal), fs_in.Position);
 	vec3 sunColor = max(dot(normal, directionalLightDir), 0) * (1 - sunShadow) * directionalLightColor;
-	color.xyz *= AlbedoColor;
+	color.xyz *= (IsBatched != 1 ? AlbedoColor : material.bColor);
 
 	vec3 incomingLightDiffuse = sunColor;
 	vec3 diffuse = color.xyz / PI;
 	vec3 maos = texture(MAOSTex, fs_in.TexCoord).xyz;
 
-	float Smoothness = maos.b * Smoothness;
-	float Metalness = maos.r * Metalness;
+	float Smoothness = maos.b * (IsBatched != 1 ? Smoothness : material.bSmoothness);
+	float Metalness = maos.r * (IsBatched != 1 ? Metalness : material.bMetalness);
 	vec3 baseRef = mix(vec3(0.05), diffuse.xyz, Metalness);
 	float roughness = 1 - Smoothness;
 
@@ -356,7 +367,7 @@ void main(){
 		brdf += (kd * diffuse + fresnal * vec3(reflectanceBRDF)) * incomingLightDiffuse;
 	}
 
-	vec4 c = vec4(brdf + EmissiveColor, 0);
+	vec4 c = vec4(brdf + (IsBatched != 1 ? EmissiveColor : material.bEmissiveColor), 0);
 
 	float depth = linearDepth(get_depth(gl_FragCoord.xy / RenderSize));
 	float density = 1.0 / exp(pow(depth * FogDensity, 2));

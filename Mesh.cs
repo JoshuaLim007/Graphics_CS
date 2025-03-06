@@ -184,7 +184,7 @@ namespace JLGraphics
             int[] indices = new int[totalIndData];
 
             MeshVerticesData initialData = meshVerticesDatas[0];
-
+            int vertexCounter = 0;
             for (int i = 0; i < meshVerticesDatas.Length; i++)
             {
                 int vertexCount = meshVerticesDatas[i].vertexData.Length / meshVerticesDatas[i].elementsPerVertex;
@@ -194,7 +194,7 @@ namespace JLGraphics
 
                 for (int j = 0; j < curIndicesBuffer.Length; j++)
                 {
-                    curIndicesBuffer[j] += vertexCount;
+                    curIndicesBuffer[j] += vertexCounter;
                 }
 
                 Array.Copy(curVertexBuffer, 0, vertices, vertIndex, curVertexBuffer.Length);
@@ -202,11 +202,12 @@ namespace JLGraphics
 
                 for (int j = 0; j < curIndicesBuffer.Length; j++)
                 {
-                    curIndicesBuffer[j] -= vertexCount;
+                    curIndicesBuffer[j] -= vertexCounter;
                 }
 
-                vertIndex += meshVerticesDatas[i].vertexData.Length;
-                indIndex += meshVerticesDatas[i].indices.Length;
+                vertexCounter += vertexCount;
+                vertIndex += curVertexBuffer.Length;
+                indIndex += curIndicesBuffer.Length;
             }
 
             int VertexArrayObject = GL.GenVertexArray();
@@ -218,11 +219,6 @@ namespace JLGraphics
             // Upload Vertex
             GL.BindBuffer(BufferTarget.ArrayBuffer, vertexBuffer);
             GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
-
-            // Upload index data
-            GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementArrayBuffer);
-            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(int), indices, BufferUsageHint.StaticDraw);
-
             //Enable vertex attributes
             GL.EnableVertexAttribArray(0);
             GL.VertexAttribPointer(0, initialData.positionSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.positionOffset * sizeof(float));
@@ -235,6 +231,11 @@ namespace JLGraphics
             GL.EnableVertexAttribArray(4);
             GL.VertexAttribPointer(4, initialData.tangentSize, VertexAttribPointerType.Float, false, initialData.elementsPerVertex * sizeof(float), initialData.tangentOffset * sizeof(float));
 
+            // Upload index data
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, ElementArrayBuffer);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(int), indices, BufferUsageHint.StaticDraw);
+
+            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
             GL.BindVertexArray(0);
             GL.DeleteBuffer(vertexBuffer);
 

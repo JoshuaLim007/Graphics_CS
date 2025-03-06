@@ -1,4 +1,4 @@
-﻿#version 430 core
+﻿#version 460 core
 
 //in from program
 layout(location=0) in vec3 aPosition;
@@ -16,12 +16,13 @@ out VS_OUT{
 	vec3 Tangent;
 	vec4 PositionLightSpace;
 } vs_out;
+out flat int DrawID;
 
 uniform int IsBatched;
 layout(std430, binding = 4) readonly buffer BatchVertexMeshUniformBuffer
 {
 	mat4 modelMatrices[];
-};
+} BatchData;
 
 uniform mat4 ProjectionViewMatrix;
 uniform mat4 ModelMatrix;
@@ -29,11 +30,16 @@ uniform mat4 DirectionalLightMatrix;
 uniform vec2 UvScale;
 
 void main(){
+	mat4 modelMatrix = ModelMatrix;
+	if (IsBatched == 1) {
+		modelMatrix = BatchData.modelMatrices[gl_DrawID];
+		DrawID = gl_DrawID;
+	}
 	vs_out.Color = aColor;
 	vs_out.TexCoord = aTexCoord * UvScale;
-	vs_out.Normal = normalize((ModelMatrix * vec4(aNormal, 0.0)).xyz);
-	vs_out.Position = (ModelMatrix * vec4(aPosition,1)).xyz;
+	vs_out.Normal = normalize((modelMatrix * vec4(aNormal, 0.0)).xyz);
+	vs_out.Position = (modelMatrix * vec4(aPosition,1)).xyz;
 	vs_out.PositionLightSpace = DirectionalLightMatrix * vec4(vs_out.Position, 1);
-	vs_out.Tangent = normalize((ModelMatrix * vec4(atangent, 0.0)).xyz);
+	vs_out.Tangent = normalize((modelMatrix * vec4(atangent, 0.0)).xyz);
 	gl_Position = ProjectionViewMatrix * vec4(vs_out.Position, 1);
 }

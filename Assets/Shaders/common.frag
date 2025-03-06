@@ -158,6 +158,7 @@ vec4 DDARayTrace(vec4 viewPos, vec3 view_rayDir, int steps, float maxThickness, 
 
     if(hit == 1 && pxStepUnscaled != pxStep){
         //linear refinement
+        //we don't do binary refinement because the step size will be generally small
         int i2 = 0;
         while(i2 < ceil(scale)){
             i2++;

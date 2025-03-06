@@ -145,7 +145,7 @@ namespace JLGraphics
                 fov = MathHelper.Clamp(value, 1.0f, 179.0f);
             }
         }
-
+        public Matrix4 PreviousViewProjection { get; set; }
         public int Width => Graphics.Instance.GetRenderSize().X;
         public int Height => Graphics.Instance.GetRenderSize().Y;
 
