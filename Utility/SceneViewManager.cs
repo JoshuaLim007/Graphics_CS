@@ -143,7 +143,10 @@ namespace JLGraphics.Utility
                     for (int i = 0; i < ObjectsSelected.Count; i++)
                     {
                         var temp = ObjectsSelected[i];
-                        Entity.Destroy(ref temp);
+                        if (temp != null)
+                        {
+                            Entity.Destroy(ref temp);
+                        }
                     }
                     ObjectsSelected.Clear();
                 }
