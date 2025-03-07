@@ -30,17 +30,20 @@ namespace JLGraphics.Utility
         }
         public void Update()
         {
-            var objects = sceneViewManager.ObjectsSelected;
-
-            for (int i = 0; i < objects.Count; i++)
+            if (sceneViewManager.ObjectsSelected.Count > 0)
             {
-                RenderEntity(entity: objects[i]);
-                ImGui.Separator();
+                var objects = sceneViewManager.ObjectsSelected.GetRange(0, 1);
 
-                var components = objects[i].GetAllComponents();
-                for (int j = 0; j < components.Length; j++)
+                for (int i = 0; i < objects.Count; i++)
                 {
-                    RenderComponent(components[j]);
+                    RenderEntity(entity: objects[i]);
+                    ImGui.Separator();
+
+                    var components = objects[i].GetAllComponents();
+                    for (int j = 0; j < components.Length; j++)
+                    {
+                        RenderComponent(components[j]);
+                    }
                 }
             }
             ImGui.Separator();
