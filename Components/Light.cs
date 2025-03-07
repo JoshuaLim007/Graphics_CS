@@ -95,9 +95,7 @@ namespace JLGraphics
                 p1 = value;
                 if (enableShadows)
                 {
-                    RemoveShadows();
-                    AddShadows(p1, p2);
-                    ShadowMapper.filterMode = p0;
+                    GetShadowMapper().UpdateRange(value);
                 }
             }
         }
@@ -116,9 +114,7 @@ namespace JLGraphics
                 p2 = MathHelper.Clamp(value, 256, 8192);
                 if (enableShadows)
                 {
-                    RemoveShadows();
-                    AddShadows(p1, p2);
-                    ShadowMapper.filterMode = p0;
+                    GetShadowMapper().ResizeResolution(value);
                 }
             }
         }

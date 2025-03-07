@@ -32,7 +32,7 @@ namespace JLGraphics
             PCSS = 2,
         }
         public FrameBuffer DepthOnlyFramebuffer { get; private set; }
-        public float shadowRange { get; }
+        public float shadowRange { get; private set; }
         DirectionalLight DirectionalLight;
         Vector2 texelSize;
         
@@ -81,6 +81,10 @@ namespace JLGraphics
 
             Shader.SetGlobalInt(Shader.GetShaderPropertyId("DirectionalFilterRadius"), FilterRadius);
         }
+        public void UpdateRange(float ShadowRange)
+        {
+            this.shadowRange = ShadowRange > 1000.0f ? 1000.0f : (ShadowRange < 16 ? 16 : ShadowRange);
+        }
         public void ResizeResolution(int resolution)
         {
             Resolution = resolution;
@@ -88,10 +92,10 @@ namespace JLGraphics
             {
                 return;
             }
-            DepthOnlyFramebuffer.Dispose();
+            var temp = DepthOnlyFramebuffer;
             DepthOnlyFramebuffer = new FrameBuffer(resolution, resolution, false, new TFP()
             {
-                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent,
+                internalFormat = OpenTK.Graphics.OpenGL4.PixelInternalFormat.DepthComponent16,
                 magFilter = OpenTK.Graphics.OpenGL4.TextureMagFilter.Linear,
                 maxMipmap = 0,
                 minFilter = OpenTK.Graphics.OpenGL4.TextureMinFilter.Linear,
@@ -103,6 +107,7 @@ namespace JLGraphics
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("DirectionalShadowDepthMap_Smooth"), DepthOnlyFramebuffer.TextureAttachments[0]);
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
+            temp.Dispose();
         }
         public static Vector3[] shadowCorners = new Vector3[8];
 
