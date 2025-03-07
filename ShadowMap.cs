@@ -170,8 +170,6 @@ namespace JLGraphics
                 light_aabb.Min.Z - 500,
                 light_aabb.Max.Z + 500);
 
-            var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
-
             var ShadowMatrix =
                 directionalLightViewMatrix
                 * lightProjectionMatrix;
