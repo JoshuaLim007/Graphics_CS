@@ -95,9 +95,9 @@ namespace JLGraphics.RenderPasses
         }
 
         public float TargetExposure = 1.0f;
-        public float AdjustmentSpeed = 4.0f;
+        public float AdjustmentSpeed = 8.0f;
 
-        float CurrentAvgExposure = 0.0f;
+        float CurrentAvgExposure = 1.0f;
         float CurrentExposureScaler = 1.0f;
 
         Task previousTask = null;
@@ -117,21 +117,51 @@ namespace JLGraphics.RenderPasses
                 {
                     float* data = (float*)ptr; // Cast the pointer to a float array
                     float sum = 0.0f;
-                    for (int i = 0; i < width * height; i++)
+                    float weightSum = 0.0f; // To normalize the weighted sum
+
+                    int centerX = width / 2;
+                    int centerY = height / 2;
+                    float maxDistance = MathF.Sqrt(centerX * centerX + centerY * centerY); // Maximum possible distance
+                    maxDistance *= 0.25f;
+
+                    for (int y = 0; y < height; y++)
                     {
-                        if (abort)
+                        for (int x = 0; x < width; x++)
                         {
-                            break;
+                            if (abort)
+                            {
+                                break;
+                            }
+
+                            int i = y * width + x;
+                            float r = data[i * 3];
+                            float g = data[i * 3 + 1];
+                            float b = data[i * 3 + 2];
+                            float max = MathF.Max(MathF.Max(r, g), b);
+
+                            // Compute distance from center and apply a weight
+                            float dx = x - centerX;
+                            float dy = y - centerY;
+                            float distance = MathF.Sqrt(dx * dx + dy * dy);
+                            float weight = MathF.Exp(-4.0f * (distance / maxDistance) * (distance / maxDistance)); // Gaussian-like
+
+                            sum += max * weight;
+                            weightSum += weight;
                         }
-                        float r = data[i * 3];
-                        float g = data[i * 3 + 1];
-                        float b = data[i * 3 + 2];
-                        float max = Math.Max(Math.Max(r, b), g);
-                        sum += max;
                     }
-                    CurrentAvgExposure = sum / (width * height);
+
+                    if(weightSum == 0.0f)
+                    {
+                        abort = false;
+                        doneCalculating = true;
+                        return;
+                    }
+
+                    // Normalize by weight sum to avoid biasing exposure
+                    CurrentAvgExposure = sum / weightSum;
                     abort = false;
                     doneCalculating = true;
+
                 }
             });
         }
