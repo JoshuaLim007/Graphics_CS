@@ -2,8 +2,10 @@
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using StbImageSharp;
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace JLGraphics
 {
@@ -82,7 +84,19 @@ namespace JLGraphics
 
         [System.Obsolete("Use CreateTextureObjectFromID", true)]
         public static explicit operator Texture(int textureId) => new Texture() {GlTextureID = textureId};
-
+        public static int GetNumChannels(PixelInternalFormat format)
+        {
+            return format switch
+            {
+                PixelInternalFormat.R8 or PixelInternalFormat.R16 or PixelInternalFormat.R16f or PixelInternalFormat.R32f => 1,
+                PixelInternalFormat.Rg8 or PixelInternalFormat.Rg16 or PixelInternalFormat.Rg16f or PixelInternalFormat.Rg32f => 2,
+                PixelInternalFormat.Rgb8 or PixelInternalFormat.Rgb16 or PixelInternalFormat.Rgb16f or PixelInternalFormat.Rgb32f or PixelInternalFormat.Rgb => 3,
+                PixelInternalFormat.Rgba8 or PixelInternalFormat.Rgba16 or PixelInternalFormat.Rgba16f or PixelInternalFormat.Rgba32f or PixelInternalFormat.Rgba => 4,
+                PixelInternalFormat.DepthComponent or PixelInternalFormat.DepthComponent16 or PixelInternalFormat.DepthComponent24 or PixelInternalFormat.DepthComponent32f => 1,
+                PixelInternalFormat.DepthStencil or PixelInternalFormat.Depth24Stencil8 or PixelInternalFormat.Depth32fStencil8 => 2,
+                _ => 0 // Unknown format
+            };
+        }
         public static explicit operator int(Texture texture) => texture.GlTextureID;
         public static bool IsDepthComponent(PixelInternalFormat internalPixelFormat)
         {
@@ -182,7 +196,16 @@ namespace JLGraphics
 
             if (MSAA == 0)
             {
-                GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelData.Item3, pixelData.Item2, pixelData.Item1);
+                if(pixelData.Item1 == IntPtr.Zero)
+                {
+                    float[] black = new float[Width * Height * GetNumChannels(internalPixelFormat)];
+                    Array.Fill(black, 0);
+                    GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelData.Item3, pixelData.Item2, black);
+                }
+                else
+                {
+                    GL.TexImage2D(textureTarget, 0, internalPixelFormat, Width, Height, 0, pixelData.Item3, pixelData.Item2, pixelData.Item1);
+                }
             }
             else {
 

@@ -108,36 +108,46 @@ namespace JLGraphics
             textures[textureUnit] = texture;
             SetInt(propertyId, textureUnit);
         }
-        static Texture DefaultTexture = null;
+        public static Texture WhiteDefaultTexture {get;private set;} = null;
+        public static Texture BlackDefaultTexture { get; private set; } = null;
         private void SetDefaultTexture()
         {
-            if (DefaultTexture == null)
+            if (WhiteDefaultTexture == null)
             {
-                DefaultTexture = ImageTexture.LoadTextureFromPath(AssetLoader.GetPathToAsset("./Textures/1x1_white.bmp"));
-                DefaultTexture.ResolveTexture();
+                WhiteDefaultTexture = ImageTexture.LoadTextureFromPath(AssetLoader.GetPathToAsset("./Textures/1x1_white.bmp"));
+                WhiteDefaultTexture.ResolveTexture();
+            }
+            if (BlackDefaultTexture == null)
+            {
+                BlackDefaultTexture = new Texture();
+                BlackDefaultTexture.Width = 1;
+                BlackDefaultTexture.Height = 1;
+                BlackDefaultTexture.ResolveTexture();
             }
             var types = Program.GetUniformTypes();
             for (int i = 0; i < types.Count; i++)
             {
                 if (types[i].Value == ActiveUniformType.Sampler2D)
                 {
-                    SetTexture(types[i].Key, DefaultTexture);
+                    SetTexture(types[i].Key, WhiteDefaultTexture);
                 }
             }
         }
+
+        /// <summary>
+        /// True = white
+        /// False = black
+        /// </summary>
+        public static bool TextureNullIsWhiteOrBlack { get; set; } = true;
         public void SetTexture(int propertyId, Texture texture)
         {
-            //if (!mIsWithinShader)
-            //{
-            //    GL.UseProgram(Program);
-            //}
             if (texture != null)
             {
                 SetTextureUnsafe(propertyId, texture);
             }
             else
             {
-                SetTextureUnsafe(propertyId, DefaultTexture);
+                SetTextureUnsafe(propertyId, TextureNullIsWhiteOrBlack ? WhiteDefaultTexture : BlackDefaultTexture);
             }
         }
 

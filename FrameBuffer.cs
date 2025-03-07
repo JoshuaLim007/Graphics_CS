@@ -81,6 +81,7 @@ namespace JLGraphics
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, FrameBufferObject);
 
             TextureAttachments = new Texture[colorAttachmentCount];
+            int index = 0;
             for (int i = 0; i < colorAttachmentCount; i++)
             {
                 TextureAttachments[i] = new Texture();
@@ -101,8 +102,9 @@ namespace JLGraphics
                 }
                 else
                 {
-                    FramebufferAttachment framebufferAttachment = FramebufferAttachment.ColorAttachment0 + i;
+                    FramebufferAttachment framebufferAttachment = FramebufferAttachment.ColorAttachment0 + index;
                     GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, framebufferAttachment, TextureAttachments[i].textureTarget, TextureAttachments[i].GlTextureID, 0);
+                    index++;
                 }
             }
 

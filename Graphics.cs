@@ -21,6 +21,10 @@ namespace JLGraphics
         readonly static public string AmbientHorizonColor = "HorizonColor";
         readonly static public string AmbientGroundColor = "GroundColor";
         readonly static public string DepthTexture = "_CameraDepthTexture";
+        readonly static public string CameraNormalTexture = "_CameraNormalTexture";
+        readonly static public string SSAOTexture = "AOTex";
+        readonly static public string SSRTexture = "_SSRColor";
+        readonly static public string SSGITexture = "_SSGIColor";
     }
     public struct Time
     {
@@ -211,6 +215,12 @@ namespace JLGraphics
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraDepthTexture"), DepthTextureBuffer.TextureAttachments[0]);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraNormalTexture"), MainFrameBuffer.TextureAttachments[1]);
             Shader.SetGlobalTexture(Shader.GetShaderPropertyId("_CameraSpecularTexture"), MainFrameBuffer.TextureAttachments[2]);
+
+            Shader.TextureNullIsWhiteOrBlack = false;
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId(GlobalUniformNames.SSRTexture), Shader.BlackDefaultTexture);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId(GlobalUniformNames.SSGITexture), Shader.BlackDefaultTexture);
+            Shader.SetGlobalTexture(Shader.GetShaderPropertyId(GlobalUniformNames.SSAOTexture), Shader.BlackDefaultTexture);
+            Shader.TextureNullIsWhiteOrBlack = true;
         }
         public void Init(string windowName, Vector2i windowResolution, float renderFrequency, float fixedUpdateFrequency)
         {
@@ -1166,6 +1176,19 @@ namespace JLGraphics
                 useOverride = true;
             }
 
+            bool isCameraNull = camera == null;
+            bool doFrustumCulling = false;
+            if (!isCameraNull)
+            {
+                SetShaderCameraData(camera);
+                InvokeOnRenders(camera);
+                if (camera.FrustumCull)
+                {
+                    doFrustumCulling = true;
+                    this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : this.cameraFrustum;
+                }
+            }
+
             //render each renderer
             //bucket sort all renderse by rendering everything by shader, then within those shader groups, render it by materials
             //least amount of state changes
@@ -1179,18 +1202,7 @@ namespace JLGraphics
             {
                 return;
             }
-            bool isCameraNull = camera == null;
-            bool doFrustumCulling = false;
-            if (!isCameraNull)
-            {
-                SetShaderCameraData(camera);
-                InvokeOnRenders(camera);
-                if (camera.FrustumCull)
-                {
-                    doFrustumCulling = true;
-                    this.cameraFrustum = !GraphicsDebug.PauseFrustumCulling ? CameraFrustum.Create(camera.ViewMatrix * camera.ProjectionMatrix) : this.cameraFrustum;
-                }
-            }
+
 #if true
             for (int d = 0; d < renderers.Length; d++)
             {

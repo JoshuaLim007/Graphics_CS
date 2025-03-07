@@ -14,11 +14,11 @@ namespace JLGraphics.RenderPasses
         Shader shader;
         public SSR(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
-            var shaderProgram = new ShaderProgram("SSGI",
+            var shaderProgram = new ShaderProgram("SSR",
                 AssetLoader.GetPathToAsset("./Shaders/SSR.frag"),
                 AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));
             shaderProgram.CompileProgram();
-            shader = new Shader("SSGI", shaderProgram);
+            shader = new Shader("SSR", shaderProgram);
         }
 
         public override string Name => "SSR Render Pass";

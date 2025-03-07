@@ -40,6 +40,23 @@ namespace JLGraphics
     }
     public class Mesh : SafeDispose, IFileObject
     {
+        /// <summary>
+        /// type = 0 : cube, type = 1 : sphere
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static Mesh GetPrimative(int type)
+        {
+            switch (type)
+            {
+                case 0:
+                    return new Mesh(AssetLoader.GetPathToAsset("Meshes/Cube.obj"));
+                case 1:
+                    //passthrough
+                default:
+                    return new Mesh(AssetLoader.GetPathToAsset("Meshes/Sphere.obj"));
+            }
+        }
         public static GlMeshObject CreateCubeMesh()
         {
             float[] vertices = {

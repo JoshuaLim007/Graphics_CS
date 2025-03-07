@@ -274,8 +274,10 @@ vec3 halfVector(vec3 viewVector, vec3 lightDir){
 uniform sampler2D _SSRColor;
 void main(){
 	int drawId = DrawID;
-	BatchedMaterialData material = BatchedData.bMatData[drawId];
-
+	BatchedMaterialData material;
+	if (IsBatched == 1) {
+		material = BatchedData.bMatData[drawId];
+	}
 	vec3 viewVector = normalize(CameraWorldSpacePos.xyz - fs_in.Position.xyz);
 	vec4 color = vec4(1,1,1,1);
 	vec4 bump = vec4(0,0,1,0);

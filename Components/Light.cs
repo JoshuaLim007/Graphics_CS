@@ -60,9 +60,9 @@ namespace JLGraphics
     public class DirectionalLight : Light
     {
         DirectionalShadowMap ShadowMapper;
-        DirectionalShadowMap.FilterMode p0;
-        float p1;
-        int p2;
+        DirectionalShadowMap.FilterMode p0 = DirectionalShadowMap.FilterMode.PCF;
+        float p1 = 100;
+        int p2 = 1024;
 
         [Gui]
         DirectionalShadowMap.FilterMode shadowFilterMode {
