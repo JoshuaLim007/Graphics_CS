@@ -45,7 +45,7 @@ namespace JLGraphics
         public override string Name => "Directional Shadow Map: " + DirectionalLight.Name;
         protected override void OnDispose()
         {
-            shader.Program.Dispose();
+            SetShadowMapToWhite();
             DepthOnlyFramebuffer.Dispose();
         }
         public static void SetShadowMapToWhite()
@@ -104,6 +104,7 @@ namespace JLGraphics
             texelSize = new Vector2(1.0f / DepthOnlyFramebuffer.Width, 1.0f / DepthOnlyFramebuffer.Height);
             Shader.SetGlobalVector2(Shader.GetShaderPropertyId("DirectionalShadowDepthMapTexelSize"), texelSize);
         }
+        public static Vector3[] shadowCorners = new Vector3[8];
 
         AABB CalculateShadowFrustum(Transform lightTransform, Quaternion CameraRotation, Vector3 CameraPosition, float CameraFOV, float aspect, out Matrix4 LightViewMatrix)
         {
@@ -112,60 +113,29 @@ namespace JLGraphics
 
             //get frustum corners in world space
             var corners = CameraFrustum.GetCorners(proj.Inverted() * invView);
+            shadowCorners[0] = corners[0];
+            shadowCorners[1] = corners[1];
+            shadowCorners[2] = corners[2];
+            shadowCorners[3] = corners[3];
 
-            //world space aabb
-            var aabb = AABB.GetBoundingBox(corners);
+            shadowCorners[4] = corners[4];
+            shadowCorners[5] = corners[5];
+            shadowCorners[6] = corners[6];
+            shadowCorners[7] = corners[7];
 
-            var LightDirection = lightTransform.Forward;
+            //convert view frustum into light space
+            var yAxis = Vector3.Dot(-lightTransform.Forward, Vector3.UnitZ) < 0 ? -Vector3.UnitY : Vector3.UnitY;
+            var lightSpaceViewMatrix = Matrix4.LookAt(Vector3.Zero, -lightTransform.Forward, yAxis);
 
-            float xDot = MathF.Abs(Vector3.Dot(LightDirection, Vector3.UnitX));
-
-            Vector3 axis = Vector3.Lerp(Vector3.UnitZ, -Vector3.UnitY, xDot);
-            axis.Normalize();
-
-            //if(MathF.Abs(yDot) == 1)
-            //{
-            //    axis = Vector3.UnitZ;
-            //}
-            //else if (MathF.Abs(xDot) == 1)
-            //{
-            //    axis = Vector3.UnitY;
-            //}
-            //else if (MathF.Abs(zDot) == 1)
-            //{
-            //    axis = Vector3.UnitY;
-            //}
-
-            LightDirection = -LightDirection;
-
-            //Debug.Log("light " + LightDirection);
-            //Debug.Log("xDot " + xDot);
-            //Debug.Log("axis " + axis);
-
-            var direction = Matrix4.LookAt(Vector3.Zero, LightDirection, axis);
-
-            var directionalLightViewMatrix = direction;
-
-            var aabb_corners = AABB.GetCorners(aabb);
-            Vector3[] aabb_corners_light = new Vector3[aabb_corners.Length];
-            //aabb corners in light view space
-            for (int i = 0; i < aabb_corners.Length; i++)
+            Vector3[] aabb_corners_light = new Vector3[corners.Length];
+            for (int i = 0; i < corners.Length; i++)
             {
-                aabb_corners_light[i] = (directionalLightViewMatrix * aabb_corners[i]).Xyz;
-                aabb_corners_light[i].Z *= -1;
+                Vector4 temp = new Vector4(corners[i], 1);
+                aabb_corners_light[i] = (temp * lightSpaceViewMatrix).Xyz;
             }
-
             var light_aabb = AABB.GetBoundingBox(aabb_corners_light);
 
-            //add some padding
-            light_aabb.Min.X -= 1.0f;
-            light_aabb.Max.X += 1.0f;
-            light_aabb.Min.Y -= 1.0f;
-            light_aabb.Max.Y += 1.0f;
-            light_aabb.Min.Z += 1.0f;
-            light_aabb.Max.Z += 1.0f;
-
-            LightViewMatrix = directionalLightViewMatrix;
+            LightViewMatrix = Matrix4.LookAt(Vector3.Zero, -lightTransform.Forward, yAxis);
             return light_aabb;
         }
         public override void RenderShadowMap(Camera camera)
@@ -191,26 +161,16 @@ namespace JLGraphics
 
             light_aabb.Max.X = MathF.Floor(light_aabb.Max.X / worldUnitPerTexelX) * worldUnitPerTexelX;
             light_aabb.Max.Y = MathF.Floor(light_aabb.Max.Y / worldUnitPerTexelY) * worldUnitPerTexelY;
-            //Debug.Log(light_aabb.Min.Z);
-            //Debug.Log(light_aabb.Max.Z);
-            //var lightProjectionMatrix = Matrix4.CreateOrthographicOffCenter(
-            //    light_aabb.Min.X,
-            //    light_aabb.Max.X,
-            //    light_aabb.Min.Y,
-            //    light_aabb.Max.Y,
-            //    light_aabb.Min.Z - 500,
-            //    light_aabb.Max.Z + 500);
-
 
             var lightProjectionMatrix = Extensions.CreateOrthographicOffCenter01Depth(
-                light_aabb.Min.X,
-                light_aabb.Max.X,
-                light_aabb.Min.Y,
-                light_aabb.Max.Y,
+                light_aabb.Min.X - 1.0f,
+                light_aabb.Max.X + 1.0f,
+                light_aabb.Min.Y - 1.0f,
+                light_aabb.Max.Y + 1.0f,
                 light_aabb.Min.Z - 500,
                 light_aabb.Max.Z + 500);
 
-            //var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
+            var offsetMatrix = Matrix4.CreateTranslation(-light_aabb.Center);
 
             var ShadowMatrix =
                 directionalLightViewMatrix

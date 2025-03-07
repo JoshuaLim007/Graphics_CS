@@ -10,6 +10,21 @@ namespace JLGraphics
 {
     public static class Extensions
     {
+        public static Vector3 ConstrainToAxis(this Vector3 a, Vector3 b)
+        {
+            if (b == Vector3.Zero)
+                return Vector3.Zero; // Prevent division by zero
+
+            return Vector3.Dot(a, b) / Vector3.Dot(b, b) * b;
+        }
+        public static Vector3 ProjectOntoPlane(this Vector3 v, Vector3 n)
+        {
+            // Ensure the normal is normalized
+            n = Vector3.Normalize(n);
+
+            // Calculate the projection of v onto the plane
+            return v - Vector3.Dot(v, n) * n;
+        }
         public static Vector3 Slerp(this Vector3 v0, Vector3 v1, float t)
         {
             // Normalize vectors
