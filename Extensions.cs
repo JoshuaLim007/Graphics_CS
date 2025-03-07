@@ -10,6 +10,36 @@ namespace JLGraphics
 {
     public static class Extensions
     {
+        public static Vector3 Slerp(this Vector3 v0, Vector3 v1, float t)
+        {
+            // Normalize vectors
+            v0 = Vector3.Normalize(v0);
+            v1 = Vector3.Normalize(v1);
+
+            // Calculate the dot product
+            float dot = Vector3.Dot(v0, v1);
+
+            // Clamp the dot product to avoid numerical errors
+            dot = Math.Clamp(dot, -1.0f, 1.0f);
+
+            // Calculate the angle between the vectors
+            float theta = MathF.Acos(dot);
+
+            // If the angle is very small, return a linear interpolation
+            if (MathF.Abs(theta) < 0.0001f)
+            {
+                return Vector3.Lerp(v0, v1, t);
+            }
+
+            // Calculate the sin(theta)
+            float sinTheta = MathF.Sin(theta);
+
+            // Calculate the interpolated vector
+            float scale0 = MathF.Sin((1 - t) * theta) / sinTheta;
+            float scale1 = MathF.Sin(t * theta) / sinTheta;
+
+            return scale0 * v0 + scale1 * v1;
+        }
         public static bool ReverseDepthBuffer { get; internal set; } = false;
         //https://www.gamedev.net/forums/topic/699724-reversed-depth-matrices-ortho-and-perspective/5394444/
         public static Matrix4 CreatePerspectiveProjectionMatrix01Depth(float fovy_rads, float s, float near, float far)
