@@ -326,7 +326,7 @@ void main(){
 	projectUv.y = projectUv.y < 0 ? 0 : projectUv.y;
 	projectUv.x = projectUv.x > 1 ? 1 : projectUv.x;
 	projectUv.y = projectUv.y > 1 ? 1 : projectUv.y;
-	vec3 ssr = texture(_SSRColor, projectUv).xyz;
+	vec3 ssr = texture(_SSRColor, projectUv).xyz * diffuse;
 	vec3 ssgi = texture(_SSGIColor, projectUv).xyz;
 	ssgi = min(ssgi.xyz, 65536);
 	ssr = min(ssr.xyz, 65536);

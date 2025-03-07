@@ -1082,6 +1082,7 @@ namespace JLGraphics
         
         public float GetDepthAt(int x, int y)
         {
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0);
             float[] results = new float[1];
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, MainFrameBuffer.FrameBufferObject);
             GL.ReadPixels(x, y, 1, 1, PixelFormat.DepthComponent, PixelType.Float, results);

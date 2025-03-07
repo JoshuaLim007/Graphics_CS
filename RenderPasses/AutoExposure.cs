@@ -59,6 +59,7 @@ namespace JLGraphics.RenderPasses
                 GL.GetTexImage(TextureTarget.Texture2D, 0, PixelFormat.Rgb, PixelType.Float, IntPtr.Zero); // Data goes to PBO
                 readSync = GL.FenceSync(SyncCondition.SyncGpuCommandsComplete, 0);
                 downloading = true;
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0);
                 return;
             }
 
@@ -69,11 +70,13 @@ namespace JLGraphics.RenderPasses
                 // Map PBO to CPU memory
                 if (readSync == IntPtr.Zero)
                 {
+                    GL.BindBuffer(BufferTarget.PixelPackBuffer, 0);
                     return;
                 }
                 var syncStatus = GL.ClientWaitSync(readSync, 0, 0);
                 if (syncStatus != WaitSyncStatus.AlreadySignaled && syncStatus != WaitSyncStatus.ConditionSatisfied)
                 {
+                    GL.BindBuffer(BufferTarget.PixelPackBuffer, 0);
                     return;
                 }
                 ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly);
