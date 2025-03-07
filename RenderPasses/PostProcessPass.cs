@@ -30,6 +30,7 @@ namespace JLGraphics.RenderPasses
         public float BrightnessClamp = 0xffff;
         public float Mosaic = 1.0f;
         public bool FXAA = false;
+        public float TargetExposure = 0.25f;
 
         Shader shader = null;
         ShaderProgram PostProcessShader = null;
@@ -56,6 +57,9 @@ namespace JLGraphics.RenderPasses
             {
                 postProcessTexture = new FrameBuffer(frameBuffer.Width, frameBuffer.Height, false, new TFP() { internalFormat = PixelInternalFormat.Rgb8 });
             }
+            if(AutoExposure.Instance != null)
+                AutoExposure.Instance.TargetExposure = TargetExposure;
+
             Shader.SetGlobalFloat(Shader.GetShaderPropertyId("FogDensity"), FogDensity);
             Shader.SetGlobalVector3(Shader.GetShaderPropertyId("FogColor"), FogColor);
             shader.SetBool(Shader.GetShaderPropertyId("Tonemapping"), Tonemapping);

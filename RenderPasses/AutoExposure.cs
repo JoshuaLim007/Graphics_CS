@@ -16,12 +16,13 @@ namespace JLGraphics.RenderPasses
 {
     public class AutoExposure : RenderPass
     {
+        public static AutoExposure Instance { get; private set; }
         int pbo = -1;
         float[] pixelBuffer;
         Vector2i previousResolution = Vector2i.Zero;
         public AutoExposure(int offset) : base(RenderQueue.AfterTransparents, offset)
         {
-
+            Instance = this;
         }
 
         public override string Name => "Auto Exposure";

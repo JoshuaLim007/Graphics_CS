@@ -247,6 +247,10 @@ namespace JLGraphics.Utility
                 t = postProcess.Mosaic;
                 ImGui.InputFloat("Mosaic", ref t);
                 postProcess.Mosaic = t;
+
+                t = postProcess.TargetExposure;
+                ImGui.InputFloat("Target Exposure", ref t);
+                postProcess.TargetExposure = t;
             }
 
             Bloom(bloomV);
