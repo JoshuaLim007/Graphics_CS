@@ -18,6 +18,7 @@ namespace JLGraphics.RenderPasses
     }
     public class PostProcessPass : RenderPass
     {
+        static public PostProcessPass Instance { get; private set; }
         public ToneCurve ToneCurve = ToneCurve.Srgb;
         public float FogDensity = .0025f;
         public Vector3 FogColor = new Vector3(1, 1, 1);
@@ -35,6 +36,7 @@ namespace JLGraphics.RenderPasses
         FrameBuffer postProcessTexture = null;
         public PostProcessPass(int queueOffset) : base(RenderQueue.AfterTransparents, queueOffset)
         {
+            Instance = this;
             PostProcessShader = new ShaderProgram("PostProcess",
                 AssetLoader.GetPathToAsset("./Shaders/PostProcess.frag"),
                 AssetLoader.GetPathToAsset("./Shaders/Passthrough.vert"));

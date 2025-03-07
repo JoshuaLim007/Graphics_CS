@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using JLGraphics.RenderPasses;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 
@@ -33,6 +34,25 @@ namespace JLGraphics.Rendering
             public Vector4 EmissiveColor;
         }
         public const int MAXBATCH_SIZE = 128;
+
+        static VertexSSBO[] vertexSSBOs = new VertexSSBO[MAXBATCH_SIZE];
+        static FragmentSSBO[] fragSSBOs = new FragmentSSBO[MAXBATCH_SIZE];
+        static MeshVerticesData[] verticesData = new MeshVerticesData[MAXBATCH_SIZE];
+        static MotionVectorVertexSSBO[] motionVectorVertexSSBOs = new MotionVectorVertexSSBO[MAXBATCH_SIZE];
+
+        static int vertexSSBO, fragSSBO, mvSSBO;
+        public static void Init()
+        {
+            GL.GenBuffers(1, out vertexSSBO);
+            GL.GenBuffers(1, out fragSSBO);
+            GL.GenBuffers(1, out mvSSBO);
+        }
+        public static void Free()
+        {
+            GL.DeleteBuffer(vertexSSBO);
+            GL.DeleteBuffer(fragSSBO);
+            GL.DeleteBuffer(mvSSBO);
+        }
         public static bool BatchRender(Renderer[] renderers, int startIndex, Shader overrideShader = null, bool isMotionVectorRender = false)
         {
 
@@ -40,18 +60,12 @@ namespace JLGraphics.Rendering
             bool userOverride;
             userOverride = overrideShader != null;
             var shader = userOverride ? overrideShader : renderers[startIndex].Material;
-
             int minEnd = Math.Min(renderers.Length - startIndex, MAXBATCH_SIZE);
-            VertexSSBO[] vertexSSBOs = new VertexSSBO[minEnd];
-            FragmentSSBO[] fragSSBOs = new FragmentSSBO[minEnd];
-            MeshVerticesData[] verticesData = new MeshVerticesData[minEnd];
-            MotionVectorVertexSSBO[] motionVectorVertexSSBOs = null;
-            if (isMotionVectorRender)
-            {
-                motionVectorVertexSSBOs = new MotionVectorVertexSSBO[minEnd];
-            }
+            int count = 0;
+
             for (int i = 0; i < minEnd; i++)
             {
+                count++;
                 int offsetI = i + startIndex;
 
                 //we need same shader program
@@ -98,40 +112,32 @@ namespace JLGraphics.Rendering
             Graphics.Instance.GraphicsDebug.DrawCount++;
             Graphics.Instance.GraphicsDebug.MeshBindCount++;
 
-            GL.GenBuffers(1, out int ssbo);
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo);
-            GL.BufferData(BufferTarget.ShaderStorageBuffer, Unsafe.SizeOf<VertexSSBO>() * minEnd, vertexSSBOs, BufferUsageHint.DynamicDraw);
-            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 4, ssbo);
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, vertexSSBO);
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, Unsafe.SizeOf<VertexSSBO>() * count, vertexSSBOs, BufferUsageHint.DynamicDraw);
+            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 4, vertexSSBO);
 
-            GL.GenBuffers(1, out int ssbo1);
-            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo1);
-            int size = Unsafe.SizeOf<FragmentSSBO>();
-            GL.BufferData(BufferTarget.ShaderStorageBuffer, size * fragSSBOs.Length, fragSSBOs, BufferUsageHint.DynamicDraw);
-            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 5, ssbo1);
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, fragSSBO);
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, Unsafe.SizeOf<FragmentSSBO>() * count, fragSSBOs, BufferUsageHint.DynamicDraw);
+            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 5, fragSSBO);
 
-            int ssbo2 = 0;
             if (isMotionVectorRender)
             {
-                GL.GenBuffers(1, out ssbo2);
-                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo2);
-                size = Unsafe.SizeOf<MotionVectorVertexSSBO>();
-                GL.BufferData(BufferTarget.ShaderStorageBuffer, size * motionVectorVertexSSBOs.Length, motionVectorVertexSSBOs, BufferUsageHint.DynamicDraw);
-                GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 6, ssbo2);
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, mvSSBO);
+                int size = Unsafe.SizeOf<MotionVectorVertexSSBO>();
+                GL.BufferData(BufferTarget.ShaderStorageBuffer, size * count, motionVectorVertexSSBOs, BufferUsageHint.DynamicDraw);
+                GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 6, mvSSBO);
             }
 
             GL.Uniform1(GL.GetUniformLocation(shader.Program, "IsBatched"), 1);
+            
+            PerfTimer.Start("Mesh combine");
             Mesh.CombineMesh(verticesData, out int VAO, out int EBO, out IntPtr[] EBO_Offsets, out int[] Indices_Counts, out int vertexCount);
+            PerfTimer.Stop();
+
             GL.BindVertexArray(VAO);
             GL.MultiDrawElements(PrimitiveType.Triangles, Indices_Counts, DrawElementsType.UnsignedInt, EBO_Offsets, Indices_Counts.Length);
             GL.BindVertexArray(0);
             Graphics.Instance.GraphicsDebug.TotalVertices += vertexCount;
-
-            GL.DeleteBuffer(ssbo);
-            GL.DeleteBuffer(ssbo1);
-            if (isMotionVectorRender)
-            {
-                GL.DeleteBuffer(ssbo2);
-            }
 
             GL.DeleteVertexArray(VAO);
             GL.DeleteBuffer(EBO);

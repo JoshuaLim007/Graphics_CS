@@ -316,6 +316,7 @@ namespace JLGraphics
 
             DepthPrepass = DepthPrePassMode.None;
             SkyboxController.Init(SkyboxShader);
+            Batching.Init();
         }
         public void Dispose()
         {
@@ -349,6 +350,7 @@ namespace JLGraphics
             m_isInit = false;
             m_lazyGraphics = new Lazy<Graphics>(() => new Graphics());
             DestructorCommands.Instance.ExecuteCommands();
+            Batching.Free();
         }
         public void Run()
         {
@@ -1273,12 +1275,14 @@ namespace JLGraphics
 #else
             for (int i = 0; i < renderers.Length; i += Batching.MAXBATCH_SIZE)
             {
+                PerfTimer.Start("Batch render");
                 bool pass = Batching.BatchRender(
                     renderers,
                     i,
                     overrideShader, 
                     overrideShader != null && overrideShader == MotionVectorPass.instance?.motionVectorShader
                     );
+                PerfTimer.Stop();
 
                 //render this batch individually
                 if (!pass)

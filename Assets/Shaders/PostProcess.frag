@@ -88,7 +88,7 @@ void main()
 //        return;
 //    }
 
-    col.rgb *= Exposure;
+    col.rgb *= max(Exposure, 0);
 
     col.r = min(col.r, BrightnessClamp);
     col.g = min(col.g, BrightnessClamp);
@@ -132,6 +132,8 @@ void main()
 //    FragColor = vec4(ld);
 //    vec4 mv = texture(_MotionTexture, pos);
 
+    col = min(col, vec4(1));
+    col = max(col, vec4(0));
     FragColor = col;
 
     //FragColor = vec4(viewReflection.xyz, 1.0);

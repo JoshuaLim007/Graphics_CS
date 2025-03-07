@@ -23,6 +23,7 @@ namespace JLGraphics.Utility
             {
                 Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
             }
+            Graphics.Instance.EnqueueRenderPass(new AutoExposure(13));
         }
         public GraphicsSettings(GuiManager guiManager, bool TAA)
         {
@@ -41,6 +42,7 @@ namespace JLGraphics.Utility
             {
                 Graphics.Instance.EnqueueRenderPass(new TemporalAntiAliasing());
             }
+            Graphics.Instance.EnqueueRenderPass(new AutoExposure(13));
         }
 
         PostProcessPass postProcess;
@@ -171,7 +173,7 @@ namespace JLGraphics.Utility
             {
                 if (enable)
                 {
-                    postProcess = new PostProcessPass(13);
+                    postProcess = new PostProcessPass(14);
                     Graphics.Instance.EnqueueRenderPass(postProcess);
                 }
                 else
@@ -198,6 +200,7 @@ namespace JLGraphics.Utility
             if (motionblurV || ssgiV)
             {
                 depthPrepass = DepthPrePassMode.MotionVectors;
+                Graphics.Instance.DepthPrepass = depthPrepass;
             }
 
             int currentIndex = (int)depthPrepass;
@@ -205,8 +208,8 @@ namespace JLGraphics.Utility
             if (ImGui.Combo("Select Option", ref currentIndex, enumNames, enumNames.Length))
             {
                 depthPrepass = (DepthPrePassMode)currentIndex;
+                Graphics.Instance.DepthPrepass = depthPrepass;
             }
-            Graphics.Instance.DepthPrepass = depthPrepass;
             if (depthPrepass == DepthPrePassMode.MotionVectors)
             {
                 mv = true;
