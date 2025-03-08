@@ -631,6 +631,44 @@ void main()
 
     public static class Debug
     {
+        public class ImGuiConsole
+        {
+            private static List<(object, Flag)> logMessages = new List<(object, Flag)>();
+            private static bool scrollToBottom = false;
+
+            public static void Log(object message, Flag flag = Flag.Normal)
+            {
+                logMessages.Add((message, flag));
+                scrollToBottom = true;
+            }
+
+            public static void Draw()
+            {
+                ImGui.Begin("Debug Log");
+
+                if (ImGui.Button("Clear")) logMessages.Clear();
+
+                ImGui.BeginChild("LogMessages", new System.Numerics.Vector2(0, -ImGui.GetFrameHeightWithSpacing()), ImGuiChildFlags.None);
+                foreach (var msg in logMessages)
+                {
+                    switch (msg.Item2)
+                    {
+                        case Flag.Normal: ImGui.TextColored(System.Numerics.Vector4.One, msg.Item1.ToString()); break;
+                        case Flag.Warning: ImGui.TextColored(new System.Numerics.Vector4(1,1,0,1), msg.Item1.ToString()); break;
+                        case Flag.Error: ImGui.TextColored(new System.Numerics.Vector4(0, 0, 1, 1), msg.Item1.ToString()); break;
+                    }
+                }
+
+                if (scrollToBottom)
+                {
+                    ImGui.SetScrollHereY(1.0f);
+                    scrollToBottom = false;
+                }
+                ImGui.EndChild();
+
+                ImGui.End();
+            }
+        }
         public static bool DisableLog { get; set; } = false;
         public enum Flag
         {
@@ -644,20 +682,24 @@ void main()
             {
                 return;
             }
+
             switch (flag)
             {
                 case Flag.Normal:
                     System.Console.ForegroundColor = ConsoleColor.White;
+                    ImGuiConsole.Log(value);
                     System.Console.WriteLine(value);
                     break;
                 case Flag.Warning:
                     System.Console.ForegroundColor = ConsoleColor.Yellow;
+                    ImGuiConsole.Log("WARNING::" + value, Flag.Warning);
                     System.Console.WriteLine("WARNING::" + value);
                     break;
                 case Flag.Error:
                     System.Console.ForegroundColor = ConsoleColor.Red;
+                    ImGuiConsole.Log("ERROR::" + value, Flag.Error);
                     System.Console.WriteLine("ERROR::" + value);
-                    throw new Exception("ERROR::" + value);
+                    break;
                 default:
                     break;
             }

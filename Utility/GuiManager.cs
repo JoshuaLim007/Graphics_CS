@@ -11,6 +11,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static JLUtility.Debug;
 
 namespace JLGraphics.Utility
 {
@@ -63,7 +64,7 @@ namespace JLGraphics.Utility
 
             guiController.Update(Window, Time.DeltaTime);
             ImGui.DockSpaceOverViewport();
-            ImGui.ShowDebugLogWindow();
+            ImGuiConsole.Draw();
             ImGui.ShowMetricsWindow();
 
             if (!ImGui.IsAnyItemFocused())

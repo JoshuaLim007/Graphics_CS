@@ -237,9 +237,7 @@ namespace JLGraphics.Utility
                 return;
             }
 
-            Debug.Log(uv);
             float depth = graphics.GetDepthAt((int)pos.X, (int)pos.Y);
-            Debug.Log(depth);
             if(depth == 1)
             {
                 ObjectsSelected.Clear();
